@@ -1,0 +1,16 @@
+# Dependencies & build
+node_modules/
+dist/
+
+# Env / secretos (Vite también puede leer .claude/.env)
+.env
+.env.local
+.env.*.local
+.claude/.env
+
+# Editor / OS
+.DS_Store
+*.log
+
+# Claude Code local (opcional; quita esta línea si quieres versionar settings)
+.claude/settings.local.json
