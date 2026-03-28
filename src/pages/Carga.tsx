@@ -4,7 +4,7 @@ import { Trash2, Plus, Pencil, Check, X, CreditCard } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import { useCuotas } from '../hooks/useCuotas'
-import { formatARS } from '../lib/utils'
+import { formatARS, formatMontoFromNumber, montoFieldNextValue, parseMontoInput } from '../lib/utils'
 import type { Categoria, Moneda, MedioPago, TipoTransaccion, Transaccion } from '../lib/types'
 
 const TIPO_CONFIG: Record<TipoTransaccion, { label: string; color: string; bg: string; ring: string }> = {
@@ -28,8 +28,13 @@ export default function Carga() {
   const [descripcion, setDescripcion] = useState('')
   const [monto, setMonto] = useState('')
   const [moneda, setMoneda] = useState<Moneda>('ARS')
-  const [medioPago, setMedioPago] = useState<MedioPago>('efectivo')
+  /** efectivo = billete / efectivo; plastico = tarjeta (luego elige débito o crédito en BD) */
+  const [medioPagoNivel1, setMedioPagoNivel1] = useState<'efectivo' | 'plastico'>('efectivo')
+  const [plasticoTipo, setPlasticoTipo] = useState<'debito' | 'credito'>('debito')
   const [submitting, setSubmitting] = useState(false)
+
+  const medioPagoDb: MedioPago =
+    medioPagoNivel1 === 'efectivo' ? 'efectivo' : plasticoTipo === 'debito' ? 'efectivo' : 'tarjeta'
 
   // Cuotas form
   const [showCuotaForm, setShowCuotaForm] = useState(false)
@@ -76,17 +81,19 @@ export default function Carga() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!fecha || !tipo || !categoriaId || !descripcion.trim() || !monto) return
+    const montoNum = parseMontoInput(monto)
+    if (!fecha || !tipo || !categoriaId || !descripcion.trim() || !Number.isFinite(montoNum) || montoNum <= 0) return
     setSubmitting(true)
     const { error } = await supabase.from('transacciones').insert({
       user_id: user!.id, fecha, tipo, categoria_id: categoriaId,
-      descripcion: descripcion.trim(), monto: parseFloat(monto), moneda, medio_pago: medioPago,
+      descripcion: descripcion.trim(), monto: montoNum, moneda, medio_pago: medioPagoDb,
     })
     setSubmitting(false)
     if (error) { window.alert('Error: ' + error.message) }
     else {
       window.alert('Registrado')
-      setDescripcion(''); setMonto(''); setCategoriaId(''); setFecha(today); setMoneda('ARS'); setMedioPago('efectivo')
+      setDescripcion(''); setMonto(''); setCategoriaId(''); setFecha(today); setMoneda('ARS')
+      setMedioPagoNivel1('efectivo'); setPlasticoTipo('debito')
       fetchRecientes()
     }
   }
@@ -99,15 +106,16 @@ export default function Carga() {
   }
 
   const startEdit = (t: Transaccion) => {
-    setEditingId(t.id); setEditDesc(t.descripcion); setEditMonto(String(t.monto)); setEditFecha(t.fecha)
+    setEditingId(t.id); setEditDesc(t.descripcion); setEditMonto(formatMontoFromNumber(t.monto)); setEditFecha(t.fecha)
   }
 
   const cancelEdit = () => setEditingId(null)
 
   const saveEdit = async (id: string) => {
-    if (!editDesc.trim() || !editMonto || !editFecha) return
+    const m = parseMontoInput(editMonto)
+    if (!editDesc.trim() || !Number.isFinite(m) || m <= 0 || !editFecha) return
     const { error } = await supabase.from('transacciones').update({
-      descripcion: editDesc.trim(), monto: parseFloat(editMonto), fecha: editFecha,
+      descripcion: editDesc.trim(), monto: m, fecha: editFecha,
     }).eq('id', id)
     if (error) window.alert('Error: ' + error.message)
     else { setEditingId(null); fetchRecientes() }
@@ -115,10 +123,11 @@ export default function Carga() {
 
   const handleCuotaSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!cuotaDesc.trim() || !cuotaMontoTotal || !cuotasTotal || !cuotaFecha || !cuotaCatId) return
+    const totalNum = parseMontoInput(cuotaMontoTotal)
+    if (!cuotaDesc.trim() || !Number.isFinite(totalNum) || totalNum <= 0 || !cuotasTotal || !cuotaFecha || !cuotaCatId) return
     setSubmittingCuota(true)
     const ok = await insertCuota({
-      descripcion: cuotaDesc.trim(), monto_total: parseFloat(cuotaMontoTotal),
+      descripcion: cuotaDesc.trim(), monto_total: totalNum,
       cuotas_total: parseInt(cuotasTotal), fecha_primera_cuota: cuotaFecha, moneda: cuotaMoneda, categoria_id: cuotaCatId,
     })
     setSubmittingCuota(false)
@@ -129,8 +138,9 @@ export default function Carga() {
     }
   }
 
-  const cuotaPreview = cuotaMontoTotal && cuotasTotal && parseInt(cuotasTotal) >= 2
-    ? Math.round((parseFloat(cuotaMontoTotal) / parseInt(cuotasTotal)) * 100) / 100
+  const cuotaPreviewNum = parseMontoInput(cuotaMontoTotal)
+  const cuotaPreview = Number.isFinite(cuotaPreviewNum) && cuotasTotal && parseInt(cuotasTotal) >= 2
+    ? Math.round((cuotaPreviewNum / parseInt(cuotasTotal, 10)) * 100) / 100
     : null
 
   return (
@@ -184,8 +194,16 @@ export default function Carga() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Monto</label>
-                <input type="number" value={monto} onChange={(e) => setMonto(e.target.value)}
-                  min="0.01" step="0.01" required placeholder="0.00" className="input-dark" />
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
+                  value={monto}
+                  onChange={(e) => setMonto(montoFieldNextValue(monto, e.target.value))}
+                  required
+                  placeholder="0"
+                  className="input-dark"
+                />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Moneda</label>
@@ -200,19 +218,57 @@ export default function Carga() {
               </div>
             </div>
 
-            {/* Medio de pago */}
+            {/* Medio de pago: efectivo vs tarjeta; tarjeta despliega débito (→ mismo que efectivo en BD) / crédito */}
             {tipo === 'gasto' && (
-              <div>
+              <div className="space-y-2">
                 <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Medio de pago</label>
                 <div className="flex gap-2">
-                  {([['efectivo', 'Efectivo'], ['tarjeta', 'Tarjeta']] as [MedioPago, string][]).map(([v, label]) => (
-                    <button key={v} type="button" onClick={() => setMedioPago(v)}
-                      className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1.5 ${medioPago === v ? 'bg-rose-500/10 text-rose-400 ring-1 ring-rose-500/30' : 'bg-dark-800/50 text-gray-500 hover:text-gray-300'}`}>
-                      {v === 'tarjeta' && <CreditCard size={14} />}
-                      {label}
-                    </button>
-                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setMedioPagoNivel1('efectivo')}
+                    className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${medioPagoNivel1 === 'efectivo' ? 'bg-rose-500/10 text-rose-400 ring-1 ring-rose-500/30' : 'bg-dark-800/50 text-gray-500 hover:text-gray-300'}`}
+                  >
+                    Efectivo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMedioPagoNivel1('plastico')}
+                    className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1.5 ${medioPagoNivel1 === 'plastico' ? 'bg-rose-500/10 text-rose-400 ring-1 ring-rose-500/30' : 'bg-dark-800/50 text-gray-500 hover:text-gray-300'}`}
+                  >
+                    <CreditCard size={14} />
+                    Tarjeta
+                  </button>
                 </div>
+                <AnimatePresence initial={false}>
+                  {medioPagoNivel1 === 'plastico' && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -6 }}
+                      transition={{ duration: 0.2, ease: 'easeOut' }}
+                      className="pt-1 pb-1 space-y-2"
+                    >
+                      <p className="text-[11px] text-gray-500 pl-0.5">Tipo de tarjeta</p>
+                      <div className="flex gap-2 pb-0.5">
+                        <button
+                          type="button"
+                          onClick={() => setPlasticoTipo('debito')}
+                          className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${plasticoTipo === 'debito' ? 'bg-amber-500/10 text-amber-400 ring-1 ring-amber-500/30' : 'bg-dark-800/50 text-gray-500 hover:text-gray-300'}`}
+                        >
+                          Débito
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPlasticoTipo('credito')}
+                          className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1.5 ${plasticoTipo === 'credito' ? 'bg-rose-500/10 text-rose-400 ring-1 ring-rose-500/30' : 'bg-dark-800/50 text-gray-500 hover:text-gray-300'}`}
+                        >
+                          <CreditCard size={14} />
+                          Crédito
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             )}
 
@@ -243,8 +299,16 @@ export default function Carga() {
                   <input type="text" value={cuotaDesc} onChange={(e) => setCuotaDesc(e.target.value)}
                     placeholder="Descripción" required className="input-dark" />
                   <div className="grid grid-cols-2 gap-2">
-                    <input type="number" value={cuotaMontoTotal} onChange={(e) => setCuotaMontoTotal(e.target.value)}
-                      placeholder="Monto total" min="1" step="0.01" required className="input-dark" />
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      autoComplete="off"
+                      value={cuotaMontoTotal}
+                      onChange={(e) => setCuotaMontoTotal(montoFieldNextValue(cuotaMontoTotal, e.target.value))}
+                      placeholder="Monto total"
+                      required
+                      className="input-dark"
+                    />
                     <input type="number" value={cuotasTotal} onChange={(e) => setCuotasTotal(e.target.value)}
                       placeholder="Nº cuotas" min="2" max="48" required className="input-dark" />
                   </div>
@@ -324,8 +388,14 @@ export default function Carga() {
                         <div className="flex-1 flex flex-wrap items-center gap-2">
                           <input type="text" value={editDesc} onChange={(e) => setEditDesc(e.target.value)}
                             className="input-dark !py-1 !text-sm flex-1 min-w-[120px]" />
-                          <input type="number" value={editMonto} onChange={(e) => setEditMonto(e.target.value)}
-                            className="input-dark !py-1 !text-sm w-24" min="0.01" step="0.01" />
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            autoComplete="off"
+                            value={editMonto}
+                            onChange={(e) => setEditMonto(montoFieldNextValue(editMonto, e.target.value))}
+                            className="input-dark !py-1 !text-sm min-w-[6.5rem] flex-1 max-w-[9rem]"
+                          />
                           <input type="date" value={editFecha} onChange={(e) => setEditFecha(e.target.value)}
                             className="input-dark !py-1 !text-sm w-36" />
                           <button onClick={() => saveEdit(t.id)} className="text-emerald-400 hover:text-emerald-300"><Check size={16} /></button>
