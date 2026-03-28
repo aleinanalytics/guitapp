@@ -161,14 +161,14 @@ export default function Carga() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-4">
+              <div className="min-w-0">
                 <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Fecha</label>
-                <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} required className="input-dark" />
+                <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} required className="input-dark min-w-0" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Categoría</label>
-                <select value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} required className="select-dark w-full">
+                <select value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} required className="select-dark w-full min-w-0 max-w-full">
                   <option value="">Seleccionar...</option>
                   {filteredCategorias.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                 </select>
