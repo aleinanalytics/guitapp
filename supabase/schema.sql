@@ -87,6 +87,7 @@ insert into categorias (nombre, tipo, color) values
   ('Sueldo','ingreso','#22c55e'),
   ('Freelance','ingreso','#16a34a'),
   ('Supermercado','gasto','#ef4444'),
+  ('Panadería','gasto','#ca8a04'),
   ('Transporte','gasto','#f97316'),
   ('Salud','gasto','#ec4899'),
   ('Entretenimiento','gasto','#8b5cf6'),
