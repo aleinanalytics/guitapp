@@ -28,7 +28,7 @@ function AppRoutes() {
     <>
       <NavBar />
       {/* pb-20 on mobile for bottom nav, lg:pl-64 for sidebar */}
-      <main className="pb-[calc(8rem+env(safe-area-inset-bottom,0px))] lg:pb-4 lg:pl-64 min-h-screen">
+      <main className="min-h-screen pt-11 pb-[calc(6.75rem+env(safe-area-inset-bottom,0px))] lg:pt-0 lg:pb-4 lg:pl-64">
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/movimientos" element={<MovimientosMes />} />

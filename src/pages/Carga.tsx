@@ -519,7 +519,7 @@ export default function Carga() {
             onSubmit={handleSubmit} className="glass p-4 sm:p-5 mb-6">
             {/* Móvil: layout tipo app de referencia */}
             <div className="lg:hidden space-y-5">
-              <h2 className="text-lg font-bold text-gray-50">Cargar</h2>
+              <h2 className="w-full text-center text-xl font-bold text-gray-50">Cargar</h2>
 
               <div className="flex rounded-2xl bg-dark-800/90 p-1 gap-0.5 ring-1 ring-white/[0.08]">
                 {TIPO_ORDER_MOBILE.map((t) => {

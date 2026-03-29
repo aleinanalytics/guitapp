@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Pencil, Check, X, TrendingUp, TrendingDown, Wallet, CreditCard, RotateCcw, DollarSign, Zap } from 'lucide-react'
+import { Pencil, Check, X, TrendingUp, TrendingDown, ArrowDown, Wallet, CreditCard, RotateCcw, DollarSign, Zap } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
@@ -73,6 +73,12 @@ export default function Dashboard() {
   const mayorGasto = gastosTx.length > 0
     ? gastosTx.reduce((max, t) => (convertirARS(t.monto, t.moneda, tc) > convertirARS(max.monto, max.moneda, tc) ? t : max))
     : null
+  const menorGasto = gastosTx.length > 0
+    ? gastosTx.reduce((min, t) => (convertirARS(t.monto, t.moneda, tc) < convertirARS(min.monto, min.moneda, tc) ? t : min))
+    : null
+
+  /** % de gastos (solo tipo gasto) respecto a ingresos del mes */
+  const pctGastoDelIngreso = ingresos > 0 ? (gastos / ingresos) * 100 : null
 
   // Tarjeta KPI: single payments + cuotas for this month
   const tarjetaData = useMemo(() => {
@@ -204,17 +210,12 @@ export default function Dashboard() {
           <p className="text-sm text-gray-500">{firstName ? `Hola, ${firstName}` : 'Hola'}</p>
           <h1 className="text-2xl lg:text-3xl font-bold text-gray-50">Dashboard</h1>
         </div>
-        <div className="flex items-center gap-3">
-          {dolarLive && (
-            <div className="hidden sm:flex items-center gap-1.5 text-xs text-cyan-400 bg-cyan-500/10 px-3 py-1.5 rounded-lg">
-              <Zap size={12} />
-              Dólar Oficial: {formatARS(dolarLive)}
-            </div>
-          )}
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-accent-blue to-accent-purple flex items-center justify-center text-sm font-bold text-white lg:hidden">
-            {firstName ? firstName[0] : 'U'}
+        {dolarLive && (
+          <div className="hidden sm:flex items-center gap-1.5 text-xs text-cyan-400 bg-cyan-500/10 px-3 py-1.5 rounded-lg">
+            <Zap size={12} />
+            Dólar Oficial: {formatARS(dolarLive)}
           </div>
-        </div>
+        )}
       </motion.div>
 
       {/* Warning */}
@@ -249,27 +250,44 @@ export default function Dashboard() {
           <div className="w-8 h-8 border-2 border-accent-blue/30 border-t-accent-blue rounded-full animate-spin" />
         </div>
       ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
-          {/* Balance primero: fila completa en móvil, primer KPI en desktop */}
-          <div className="col-span-2 lg:col-span-1 min-w-0 h-full">
-            <KPICard titulo="Balance" montoARS={balance} montoUSD={balance / tc}
-              icon={<Wallet size={18} />}
-              accentColor={balance >= 0 ? '#10b981' : '#ef4444'}
-              glowClass={balance >= 0 ? 'glow-green' : 'glow-red'}
-              delay={0}
-              to={toBalance} />
+        <>
+        <div className="mb-4 min-w-0 lg:mb-5">
+          <KPICard
+            variant="hero"
+            titulo="Balance"
+            montoARS={balance}
+            montoUSD={balance / tc}
+            icon={<Wallet size={24} strokeWidth={1.75} />}
+            accentColor={balance >= 0 ? '#10b981' : '#ef4444'}
+            glowClass={balance >= 0 ? 'glow-green' : 'glow-red'}
+            delay={0}
+            to={toBalance}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-4 lg:gap-4">
+          <div className="grid grid-cols-2 gap-3 lg:contents">
+            <KPICard titulo="Ingresos" montoARS={ingresos} montoUSD={ingresos / tc}
+              icon={<TrendingUp size={18} />} accentColor="#10b981" glowClass="glow-green" delay={0.05} to={toIngresos} />
+            <KPICard titulo="Gastos" montoARS={gastos} montoUSD={gastos / tc}
+              icon={<TrendingDown size={18} />} accentColor="#ef4444" glowClass="glow-red" delay={0.08} to={toGastos}>
+              {pctGastoDelIngreso !== null ? (
+                <p className="mt-2 text-[11px] font-medium leading-snug text-rose-300/90">
+                  {pctGastoDelIngreso.toFixed(1)}% del ingreso
+                </p>
+              ) : gastos > 0 ? (
+                <p className="mt-2 text-[11px] text-gray-500">Sin ingresos en el mes</p>
+              ) : null}
+            </KPICard>
           </div>
-          <KPICard titulo="Ingresos" montoARS={ingresos} montoUSD={ingresos / tc}
-            icon={<TrendingUp size={18} />} accentColor="#10b981" glowClass="glow-green" delay={0.05} to={toIngresos} />
-          <KPICard titulo="Gastos" montoARS={gastos} montoUSD={gastos / tc}
-            icon={<TrendingDown size={18} />} accentColor="#ef4444" glowClass="glow-red" delay={0.08} to={toGastos} />
+
           <KPICard titulo="Suscripciones" montoARS={suscripciones} montoUSD={suscripciones / tc}
             icon={<RotateCcw size={18} />} accentColor="#a855f7" glowClass="glow-purple" delay={0.1} to={toSuscripciones} />
 
-          {/* Tarjeta de Crédito KPI — spans 2 cols on desktop */}
+          {/* Tarjeta: ancho completo en móvil; 2 cols en desktop */}
           <Link
             to={toTarjetaCredito}
-            className="col-span-2 block h-full rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/45 focus-visible:ring-offset-2 focus-visible:ring-offset-dark-950"
+            className="block h-full rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/45 focus-visible:ring-offset-2 focus-visible:ring-offset-dark-950 lg:col-span-2"
             aria-label="Ver detalle de tarjeta de crédito"
           >
             <motion.div
@@ -338,16 +356,20 @@ export default function Dashboard() {
             </motion.div>
           </Link>
 
-          <KPICard titulo="Mayor Gasto" delay={0.22}
-            montoARS={mayorGasto ? convertirARS(mayorGasto.monto, mayorGasto.moneda, tc) : 0}
-            descripcion={mayorGasto?.descripcion} icon={<TrendingDown size={18} />} accentColor="#f59e0b" />
+          <div className="grid grid-cols-2 gap-3 lg:contents">
+            <KPICard titulo="Mayor Gasto" delay={0.22}
+              montoARS={mayorGasto ? convertirARS(mayorGasto.monto, mayorGasto.moneda, tc) : 0}
+              descripcion={mayorGasto?.descripcion} icon={<TrendingDown size={18} />} accentColor="#f59e0b" />
+            <KPICard titulo="Menor Gasto" delay={0.24}
+              montoARS={menorGasto ? convertirARS(menorGasto.monto, menorGasto.moneda, tc) : 0}
+              descripcion={menorGasto?.descripcion} icon={<ArrowDown size={18} />} accentColor="#78716c" />
+          </div>
 
-          {/* Tipo de Cambio: ancho completo en móvil (fila propia), 1 col en desktop junto a tarjeta/mayor gasto */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.28, ease: [0.25, 0.46, 0.45, 0.94] }}
-            className="col-span-2 lg:col-span-1 glass p-4 relative overflow-hidden hover:border-white/[0.12] transition-all duration-300 glow-cyan"
+            className="glass relative overflow-hidden p-4 transition-all duration-300 glow-cyan hover:border-white/[0.12] lg:col-span-1"
           >
             <div className="absolute top-0 left-0 right-0 h-[2px] opacity-60"
               style={{ background: 'linear-gradient(90deg, transparent, #06b6d4, transparent)' }}
@@ -380,6 +402,7 @@ export default function Dashboard() {
             )}
           </motion.div>
         </div>
+        </>
       )}
 
       {/* Desktop-only charts */}
