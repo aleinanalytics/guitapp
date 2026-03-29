@@ -28,6 +28,13 @@ export interface TipoCambio {
   usd_ars: number
 }
 
+export interface TarjetaConfig {
+  id: string
+  user_id: string
+  fecha_cierre: string
+  fecha_vencimiento: string
+}
+
 export interface CompraCuotas {
   id: string
   user_id: string

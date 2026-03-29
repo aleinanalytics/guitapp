@@ -1,22 +1,18 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowLeft, CreditCard } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
+import { supabase } from '../lib/supabase'
+import EditableTransaccionListRow from '../components/EditableTransaccionListRow'
 import { useTransacciones } from '../hooks/useTransacciones'
 import { useTipoCambio } from '../hooks/useTipoCambio'
 import { convertirARS, formatARS, formatUSD } from '../lib/utils'
-import type { TipoTransaccion, Transaccion } from '../lib/types'
+import type { Categoria } from '../lib/types'
 
 const MESES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ]
-
-const TIPO_STYLE: Record<TipoTransaccion, { label: string; color: string; bg: string }> = {
-  ingreso: { label: 'Ingreso', color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-  gasto: { label: 'Gasto', color: 'text-red-400', bg: 'bg-red-500/10' },
-  suscripcion: { label: 'Suscripción', color: 'text-purple-400', bg: 'bg-purple-500/10' },
-}
 
 function parseTipo(raw: string | null): 'ingreso' | 'gasto' | 'suscripcion' | 'todos' {
   if (raw === 'ingreso' || raw === 'gasto' || raw === 'suscripcion' || raw === 'todos') return raw
@@ -32,9 +28,16 @@ export default function MovimientosMes() {
   const mes = mesRaw >= 1 && mesRaw <= 12 ? mesRaw : now.getMonth() + 1
   const anio = Number.isFinite(anioRaw) && anioRaw >= 2000 && anioRaw <= 2100 ? anioRaw : now.getFullYear()
 
-  const { transacciones, loading, error } = useTransacciones({ mes, anio })
+  const { transacciones, loading, error, refetch } = useTransacciones({ mes, anio })
   const { tipoCambio } = useTipoCambio()
   const tc = tipoCambio?.usd_ars ?? 1000
+  const [categorias, setCategorias] = useState<Categoria[]>([])
+
+  useEffect(() => {
+    supabase.from('categorias').select('*').then(({ data }) => {
+      if (data) setCategorias(data as Categoria[])
+    })
+  }, [])
 
   const filtradas = useMemo(() => {
     const list = tipo === 'todos' ? transacciones : transacciones.filter((t) => t.tipo === tipo)
@@ -121,54 +124,19 @@ export default function MovimientosMes() {
           ) : (
             <ul className="space-y-2">
               {filtradas.map((t, i) => (
-                <MovimientoRow key={t.id} t={t} delay={i * 0.02} mostrarTipo={tipo === 'todos'} />
+                <EditableTransaccionListRow
+                  key={t.id}
+                  t={t}
+                  categorias={categorias.filter((c) => c.tipo === t.tipo)}
+                  delay={i * 0.02}
+                  mostrarTipo={tipo === 'todos'}
+                  onMutated={() => refetch()}
+                />
               ))}
             </ul>
           )}
         </>
       )}
     </div>
-  )
-}
-
-function MovimientoRow({ t, delay, mostrarTipo }: { t: Transaccion; delay: number; mostrarTipo: boolean }) {
-  const cfg = TIPO_STYLE[t.tipo]
-  const sign = t.tipo === 'ingreso' ? '+' : '-'
-  return (
-    <motion.li
-      initial={{ opacity: 0, x: -12 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay }}
-      className="glass-light p-3 flex items-center gap-3"
-    >
-      <div
-        className="w-10 h-10 rounded-xl flex items-center justify-center text-lg font-semibold shrink-0"
-        style={{ backgroundColor: (t.categoria?.color ?? '#6366f1') + '15', color: t.categoria?.color ?? '#6366f1' }}
-      >
-        {t.categoria?.nombre?.[0] ?? '?'}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-200 truncate">
-          {t.descripcion}
-          {t.tipo === 'gasto' && t.medio_pago === 'tarjeta' && (
-            <CreditCard size={12} className="inline ml-1.5 text-rose-400/60" />
-          )}
-        </p>
-        <p className="text-xs text-gray-500">
-          {t.categoria?.nombre ?? '—'} · {t.fecha}
-          {mostrarTipo && (
-            <span className={`ml-2 px-1.5 py-0.5 rounded-md text-[10px] font-medium ${cfg.bg} ${cfg.color}`}>
-              {cfg.label}
-            </span>
-          )}
-        </p>
-      </div>
-      <div className="text-right shrink-0">
-        <p className={`text-sm font-semibold ${t.tipo === 'ingreso' ? 'text-emerald-400' : 'text-gray-200'}`}>
-          {sign}{t.moneda === 'ARS' ? '$' : 'USD'} {t.monto.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-        </p>
-        <p className="text-[10px] text-gray-500">{t.moneda}</p>
-      </div>
-    </motion.li>
   )
 }

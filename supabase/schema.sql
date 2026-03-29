@@ -82,6 +82,25 @@ create policy "Users can update own compras_cuotas"
 create policy "Users can delete own compras_cuotas"
   on compras_cuotas for delete to authenticated using (auth.uid() = user_id);
 
+-- tarjeta_config: próximo cierre y vencimiento (fechas completas; el usuario las renueva cuando pasa el ciclo)
+create table tarjeta_config (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  fecha_cierre date not null,
+  fecha_vencimiento date not null,
+  created_at timestamptz default now(),
+  unique (user_id)
+);
+
+alter table tarjeta_config enable row level security;
+create policy "Users can read own tarjeta_config"
+  on tarjeta_config for select to authenticated using (auth.uid() = user_id);
+create policy "Users can insert own tarjeta_config"
+  on tarjeta_config for insert to authenticated with check (auth.uid() = user_id);
+create policy "Users can update own tarjeta_config"
+  on tarjeta_config for update to authenticated
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
 -- Seed categorias
 insert into categorias (nombre, tipo, color) values
   ('Sueldo','ingreso','#22c55e'),

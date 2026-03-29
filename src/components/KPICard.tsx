@@ -25,7 +25,7 @@ export default function KPICard({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay, ease: [0.25, 0.46, 0.45, 0.94] }}
-      className={`glass p-4 relative overflow-hidden group transition-all duration-300 ${glowClass ?? ''} ${
+      className={`glass h-full p-4 relative overflow-hidden group transition-all duration-300 ${glowClass ?? ''} ${
         to ? 'cursor-pointer hover:border-white/[0.18] hover:bg-white/[0.02]' : 'hover:border-white/[0.12]'
       }`}
     >
@@ -61,7 +61,7 @@ export default function KPICard({
     return (
       <Link
         to={to}
-        className="block rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue/40 focus-visible:ring-offset-2 focus-visible:ring-offset-dark-950"
+        className="block h-full rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue/40 focus-visible:ring-offset-2 focus-visible:ring-offset-dark-950"
         aria-label={`Ver listado: ${titulo}`}
       >
         {card}

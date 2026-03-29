@@ -1,12 +1,16 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { ArrowLeft, CreditCard } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { ArrowLeft, CreditCard, Calendar, Pencil, Check, X } from 'lucide-react'
+import { supabase } from '../lib/supabase'
+import EditableTransaccionListRow from '../components/EditableTransaccionListRow'
+import EditableCuotaCompraRow from '../components/EditableCuotaCompraRow'
 import { useTransacciones } from '../hooks/useTransacciones'
 import { useCuotas, getCuotaForMonth } from '../hooks/useCuotas'
 import { useTipoCambio } from '../hooks/useTipoCambio'
+import { useTarjetaConfig, diasHastaFecha, formatFechaTarjeta, rangoPickerTarjeta } from '../hooks/useTarjetaConfig'
 import { convertirARS, formatARS, formatUSD } from '../lib/utils'
-import type { Moneda, Transaccion } from '../lib/types'
+import type { Categoria, Moneda } from '../lib/types'
 
 const MESES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -21,10 +25,48 @@ export default function TarjetaCreditoMes() {
   const mes = mesRaw >= 1 && mesRaw <= 12 ? mesRaw : now.getMonth() + 1
   const anio = Number.isFinite(anioRaw) && anioRaw >= 2000 && anioRaw <= 2100 ? anioRaw : now.getFullYear()
 
-  const { transacciones, loading, error } = useTransacciones({ mes, anio })
-  const { cuotas, loading: loadingCuotas } = useCuotas()
+  const { transacciones, loading, error, refetch: refetchTx } = useTransacciones({ mes, anio })
+  const { cuotas, loading: loadingCuotas, refetch: refetchCuotas } = useCuotas()
+  const [categorias, setCategorias] = useState<Categoria[]>([])
+
+  useEffect(() => {
+    supabase.from('categorias').select('*').then(({ data }) => {
+      if (data) setCategorias(data as Categoria[])
+    })
+  }, [])
+
+  const gastoCategorias = useMemo(() => categorias.filter((c) => c.tipo === 'gasto'), [categorias])
+
+  const refreshAll = () => {
+    void refetchTx()
+    void refetchCuotas()
+  }
   const { tipoCambio } = useTipoCambio()
+  const { config: tcConfig, upsert: upsertConfig } = useTarjetaConfig()
   const tc = tipoCambio?.usd_ars ?? 1000
+
+  // Config editor state
+  const [editingConfig, setEditingConfig] = useState(false)
+  const [inputCierre, setInputCierre] = useState('')
+  const [inputVto, setInputVto] = useState('')
+
+  const pickerBounds = rangoPickerTarjeta()
+
+  const startEditConfig = () => {
+    if (tcConfig) {
+      setInputCierre(tcConfig.fecha_cierre)
+      setInputVto(tcConfig.fecha_vencimiento)
+    } else {
+      setInputCierre(pickerBounds.min)
+      setInputVto(pickerBounds.min)
+    }
+    setEditingConfig(true)
+  }
+  const saveConfig = async () => {
+    if (!inputCierre || !inputVto) return
+    const ok = await upsertConfig(inputCierre, inputVto)
+    if (ok) setEditingConfig(false)
+  }
 
   const tarjetaGastos = useMemo(
     () => transacciones.filter((t) => t.tipo === 'gasto' && t.medio_pago === 'tarjeta'),
@@ -97,6 +139,94 @@ export default function TarjetaCreditoMes() {
         <p className="text-gray-500 text-sm mt-1">{MESES[mes - 1]} {anio}</p>
       </motion.div>
 
+      {/* Fechas de cierre y vencimiento */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05 }}
+        className="glass p-4 mb-6"
+      >
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-xs font-medium text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+            <Calendar size={14} /> Fechas de la tarjeta
+          </h2>
+          {!editingConfig && (
+            <button onClick={startEditConfig} className="text-gray-600 hover:text-gray-400 transition-colors">
+              <Pencil size={14} />
+            </button>
+          )}
+        </div>
+
+        <AnimatePresence mode="wait">
+          {editingConfig ? (
+            <motion.div
+              key="edit"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="space-y-3"
+            >
+              <p className="text-xs text-gray-500 leading-relaxed">
+                Usá el calendario para elegir <strong className="text-gray-400">día y mes</strong>. Las fechas pueden ir desde hoy hasta
+                aproximadamente <strong className="text-gray-400">tres meses adelante</strong>, así podés cargar cierre en un mes y vencimiento en el siguiente.
+              </p>
+              <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-end">
+                <div className="flex-1 min-w-0">
+                  <label className="block text-[10px] text-gray-500 mb-1">Fecha de cierre</label>
+                  <input
+                    type="date"
+                    min={pickerBounds.min}
+                    max={pickerBounds.max}
+                    value={inputCierre}
+                    onChange={(e) => setInputCierre(e.target.value)}
+                    className="input-dark !py-1.5 !text-sm w-full min-w-0"
+                    autoFocus
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <label className="block text-[10px] text-gray-500 mb-1">Fecha de vencimiento</label>
+                  <input
+                    type="date"
+                    min={pickerBounds.min}
+                    max={pickerBounds.max}
+                    value={inputVto}
+                    onChange={(e) => setInputVto(e.target.value)}
+                    className="input-dark !py-1.5 !text-sm w-full min-w-0"
+                  />
+                </div>
+                <div className="flex gap-1.5 pb-0.5 shrink-0">
+                  <button type="button" onClick={saveConfig} className="text-emerald-400 hover:text-emerald-300 transition-colors"><Check size={18} /></button>
+                  <button type="button" onClick={() => setEditingConfig(false)} className="text-red-400 hover:text-red-300 transition-colors"><X size={18} /></button>
+                </div>
+              </div>
+            </motion.div>
+          ) : tcConfig ? (
+            <motion.div key="display" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex gap-4">
+              <div className="flex-1 bg-rose-500/10 rounded-xl p-3 text-center">
+                <p className="text-[10px] text-rose-400/70 uppercase tracking-wider font-medium">Cierre</p>
+                <p className="text-lg font-bold text-rose-400 mt-0.5">{formatFechaTarjeta(tcConfig.fecha_cierre)}</p>
+                <p className="text-xs text-rose-300/60 mt-0.5">
+                  {diasHastaFecha(tcConfig.fecha_cierre) === 1 ? 'Mañana' : `Faltan ${diasHastaFecha(tcConfig.fecha_cierre)} días`}
+                </p>
+              </div>
+              <div className="flex-1 bg-amber-500/10 rounded-xl p-3 text-center">
+                <p className="text-[10px] text-amber-400/70 uppercase tracking-wider font-medium">Vencimiento</p>
+                <p className="text-lg font-bold text-amber-400 mt-0.5">{formatFechaTarjeta(tcConfig.fecha_vencimiento)}</p>
+                <p className="text-xs text-amber-300/60 mt-0.5">
+                  {diasHastaFecha(tcConfig.fecha_vencimiento) === 1 ? 'Mañana' : `Faltan ${diasHastaFecha(tcConfig.fecha_vencimiento)} días`}
+                </p>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.p key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="text-sm text-gray-500">
+              No configuraste las fechas de tu tarjeta.{' '}
+              <button onClick={startEditConfig} className="text-accent-blue hover:underline">Configurar</button>
+            </motion.p>
+          )}
+        </AnimatePresence>
+      </motion.div>
+
       {loadingAny ? (
         <div className="flex items-center justify-center py-20">
           <div className="w-8 h-8 border-2 border-accent-blue/30 border-t-accent-blue rounded-full animate-spin" />
@@ -134,7 +264,13 @@ export default function TarjetaCreditoMes() {
             ) : (
               <ul className="space-y-2">
                 {tarjetaGastos.map((t, i) => (
-                  <TarjetaTxRow key={t.id} t={t} delay={i * 0.02} />
+                  <EditableTransaccionListRow
+                    key={t.id}
+                    t={t}
+                    categorias={gastoCategorias}
+                    delay={i * 0.02}
+                    onMutated={refreshAll}
+                  />
                 ))}
               </ul>
             )}
@@ -146,26 +282,20 @@ export default function TarjetaCreditoMes() {
               <p className="text-gray-500 text-sm glass-light p-4 rounded-xl">Sin cuotas activas en este mes.</p>
             ) : (
               <ul className="space-y-2">
-                {cuotaLines.map((l, i) => (
-                  <motion.li
-                    key={`${l.compraId}-${l.numero}`}
-                    initial={{ opacity: 0, x: -12 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.02 }}
-                    className="glass-light p-3 flex items-center justify-between gap-3"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-200 truncate">{l.desc}</p>
-                      <p className="text-xs text-gray-500">Cuota {l.numero} de {l.total}</p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-sm font-semibold text-gray-100">
-                        {l.moneda === 'ARS' ? '$' : 'USD'} {l.monto.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-                      </p>
-                      <p className="text-[10px] text-gray-500">{l.moneda}</p>
-                    </div>
-                  </motion.li>
-                ))}
+                {cuotaLines.map((l, i) => {
+                  const compra = cuotas.find((c) => c.id === l.compraId)
+                  if (!compra) return null
+                  return (
+                    <EditableCuotaCompraRow
+                      key={`${l.compraId}-${l.numero}`}
+                      compra={compra}
+                      cuotaNumero={l.numero}
+                      delay={i * 0.02}
+                      gastoCategorias={gastoCategorias}
+                      onMutated={refreshAll}
+                    />
+                  )
+                })}
               </ul>
             )}
           </section>
@@ -191,33 +321,5 @@ export default function TarjetaCreditoMes() {
         </>
       )}
     </div>
-  )
-}
-
-function TarjetaTxRow({ t, delay }: { t: Transaccion; delay: number }) {
-  return (
-    <motion.li
-      initial={{ opacity: 0, x: -12 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay }}
-      className="glass-light p-3 flex items-center gap-3"
-    >
-      <div
-        className="w-10 h-10 rounded-xl flex items-center justify-center text-lg font-semibold shrink-0"
-        style={{ backgroundColor: (t.categoria?.color ?? '#6366f1') + '15', color: t.categoria?.color ?? '#6366f1' }}
-      >
-        {t.categoria?.nombre?.[0] ?? '?'}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-200 truncate">{t.descripcion}</p>
-        <p className="text-xs text-gray-500">{t.categoria?.nombre ?? '—'} · {t.fecha}</p>
-      </div>
-      <div className="text-right shrink-0">
-        <p className="text-sm font-semibold text-gray-200">
-          -{t.moneda === 'ARS' ? '$' : 'USD'} {t.monto.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-        </p>
-        <p className="text-[10px] text-gray-500">{t.moneda}</p>
-      </div>
-    </motion.li>
   )
 }

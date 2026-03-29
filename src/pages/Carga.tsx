@@ -33,8 +33,15 @@ export default function Carga() {
   const [plasticoTipo, setPlasticoTipo] = useState<'debito' | 'credito'>('debito')
   const [submitting, setSubmitting] = useState(false)
 
+  /** When crédito selected, user can opt to pay in cuotas */
+  const [enCuotas, setEnCuotas] = useState(false)
+  const [numCuotas, setNumCuotas] = useState('')
+  const [cuotaFechaInline, setCuotaFechaInline] = useState(today)
+
   const medioPagoDb: MedioPago =
     medioPagoNivel1 === 'efectivo' ? 'efectivo' : plasticoTipo === 'debito' ? 'efectivo' : 'tarjeta'
+
+  const esTarjetaCredito = medioPagoNivel1 === 'plastico' && plasticoTipo === 'credito'
 
   // Cuotas form
   const [showCuotaForm, setShowCuotaForm] = useState(false)
@@ -84,6 +91,31 @@ export default function Carga() {
     e.preventDefault()
     const montoNum = parseMontoInput(monto)
     if (!fecha || !tipo || !categoriaId || !descripcion.trim() || !Number.isFinite(montoNum) || montoNum <= 0) return
+
+    // If TC crédito + en cuotas, insert into compras_cuotas instead
+    if (esTarjetaCredito && enCuotas) {
+      const nCuotas = parseInt(numCuotas)
+      if (!nCuotas || nCuotas < 2) { window.alert('Ingresá al menos 2 cuotas'); return }
+      setSubmitting(true)
+      const ok = await insertCuota({
+        descripcion: descripcion.trim(),
+        monto_total: montoNum,
+        cuotas_total: nCuotas,
+        fecha_primera_cuota: cuotaFechaInline,
+        moneda,
+        categoria_id: categoriaId,
+      })
+      setSubmitting(false)
+      if (ok) {
+        window.alert('Cuotas registradas')
+        setDescripcion(''); setMonto(''); setCategoriaId(''); setFecha(today); setMoneda('ARS')
+        setMedioPagoNivel1('efectivo'); setPlasticoTipo('debito')
+        setEnCuotas(false); setNumCuotas('')
+        fetchRecientes()
+      }
+      return
+    }
+
     setSubmitting(true)
     const { error } = await supabase.from('transacciones').insert({
       user_id: user!.id, fecha, tipo, categoria_id: categoriaId,
@@ -95,6 +127,7 @@ export default function Carga() {
       window.alert('Registrado')
       setDescripcion(''); setMonto(''); setCategoriaId(''); setFecha(today); setMoneda('ARS')
       setMedioPagoNivel1('efectivo'); setPlasticoTipo('debito')
+      setEnCuotas(false); setNumCuotas('')
       fetchRecientes()
     }
   }
@@ -280,6 +313,78 @@ export default function Carga() {
                           Crédito
                         </button>
                       </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Cuotas inline when Crédito is selected */}
+                <AnimatePresence initial={false}>
+                  {esTarjetaCredito && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -6 }}
+                      transition={{ duration: 0.2, ease: 'easeOut' }}
+                      className="space-y-2"
+                    >
+                      <div className="flex items-center gap-3 pt-1">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={enCuotas}
+                            onChange={(e) => setEnCuotas(e.target.checked)}
+                            className="accent-rose-500 w-4 h-4"
+                          />
+                          <span className="text-xs text-gray-400">Pagar en cuotas</span>
+                        </label>
+                      </div>
+                      <AnimatePresence initial={false}>
+                        {enCuotas && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="space-y-2"
+                          >
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="block text-[10px] text-gray-500 mb-1">Nº cuotas</label>
+                                <input
+                                  type="number"
+                                  min="2"
+                                  max="48"
+                                  value={numCuotas}
+                                  onChange={(e) => setNumCuotas(e.target.value)}
+                                  placeholder="Ej: 6"
+                                  className="input-dark !py-1.5 !text-sm"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] text-gray-500 mb-1">Primera cuota</label>
+                                <input
+                                  type="date"
+                                  value={cuotaFechaInline}
+                                  onChange={(e) => setCuotaFechaInline(e.target.value)}
+                                  className="input-dark !py-1.5 !text-sm"
+                                />
+                              </div>
+                            </div>
+                            {(() => {
+                              const montoNum = parseMontoInput(monto)
+                              const nC = parseInt(numCuotas)
+                              if (Number.isFinite(montoNum) && montoNum > 0 && nC >= 2) {
+                                const cuotaMensual = Math.round((montoNum / nC) * 100) / 100
+                                return (
+                                  <p className="text-xs text-rose-400/80 bg-rose-500/10 px-2 py-1.5 rounded-lg">
+                                    {nC} cuotas de {formatARS(cuotaMensual)}
+                                  </p>
+                                )
+                              }
+                              return null
+                            })()}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </motion.div>
                   )}
                 </AnimatePresence>
