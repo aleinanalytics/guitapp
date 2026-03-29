@@ -181,7 +181,7 @@ export default function Analisis() {
         supabase.from('compras_cuotas').select('*, categoria:categorias(nombre)').order('fecha_primera_cuota', { ascending: true }),
       ])
 
-      const esc = (s: string | number | null | undefined) => {
+      const esc = (s: unknown) => {
         const str = String(s ?? '')
         return str.includes(',') || str.includes('"') || str.includes('\n')
           ? `"${str.replace(/"/g, '""')}"`

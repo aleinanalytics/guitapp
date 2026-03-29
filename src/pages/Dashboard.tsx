@@ -402,7 +402,7 @@ export default function Dashboard() {
                       ))}
                     </Pie>
                     <Tooltip
-                      formatter={(v: number) => formatARS(v)}
+                      formatter={(value) => formatARS(Number(value ?? 0))}
                       contentStyle={{ background: '#151524', border: '1px solid #2d2d44', borderRadius: 8, fontSize: 12 }}
                       itemStyle={{ color: '#e2e8f0' }}
                       labelStyle={{ color: '#94a3b8' }}
@@ -447,7 +447,7 @@ export default function Dashboard() {
                     tickLine={false}
                   />
                   <Tooltip
-                    formatter={(v: number) => formatARS(v)}
+                    formatter={(value) => formatARS(Number(value ?? 0))}
                     contentStyle={{ background: '#151524', border: '1px solid #2d2d44', borderRadius: 8, fontSize: 12 }}
                     itemStyle={{ color: '#e2e8f0' }}
                     labelStyle={{ color: '#94a3b8' }}
@@ -488,7 +488,7 @@ export default function Dashboard() {
                 width={52}
               />
               <Tooltip
-                formatter={(v: number, name: string) => [formatARS(v), name]}
+                formatter={(value, name) => [formatARS(Number(value ?? 0)), String(name ?? '')]}
                 contentStyle={{ background: '#151524', border: '1px solid #2d2d44', borderRadius: 8, fontSize: 12 }}
                 itemStyle={{ color: '#e2e8f0' }}
                 labelStyle={{ color: '#94a3b8' }}
