@@ -18,6 +18,8 @@ export interface Transaccion {
   tipo: TipoTransaccion
   medio_pago: MedioPago
   categoria_id: string | null
+  /** Solo tipo gasto: si es true, cuenta en el promedio de gastos fijos (fondo de emergencia). */
+  es_gasto_fijo?: boolean
   categoria?: Categoria
   created_at: string
 }

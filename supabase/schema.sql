@@ -18,6 +18,7 @@ create table transacciones (
   tipo text not null check (tipo in ('ingreso','gasto','suscripcion')),
   medio_pago text not null default 'efectivo' check (medio_pago in ('efectivo','tarjeta')),
   categoria_id uuid references categorias(id) on delete set null,
+  es_gasto_fijo boolean not null default false,
   created_at timestamptz default now()
 );
 

@@ -3,10 +3,9 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import { useTipoCambio } from './useTipoCambio'
 import { convertirARS } from '../lib/utils'
-import type { Transaccion } from '../lib/types'
+import type { Moneda } from '../lib/types'
 
-/** Categorías usadas para estimar gastos fijos del fondo de emergencia (nombres en BD). */
-export const CATEGORIAS_GASTO_FIJO = ['Alquiler', 'Servicios', 'Supermercado', 'Alimentos'] as const
+type RowGastoFijo = { fecha: string; monto: number; moneda: Moneda }
 
 /** Últimos n meses calendario, del más antiguo al actual (YYYY-MM). */
 function monthKeysLastN(n: number): string[] {
@@ -33,18 +32,19 @@ function todayStr(): string {
   return `${y}-${m}-${day}`
 }
 
+/** Promedio mensual de gastos marcados como fijos (últimos 3 meses), en ARS. */
 export function useGastoFijoMensualPromedio() {
   const { user } = useAuth()
   const { tipoCambio } = useTipoCambio()
   const tc = tipoCambio?.usd_ars ?? 1000
-  const [transacciones, setTransacciones] = useState<Transaccion[]>([])
+  const [filas, setFilas] = useState<RowGastoFijo[]>([])
   const [loading, setLoading] = useState(true)
 
   const keys = useMemo(() => monthKeysLastN(3), [])
 
   useEffect(() => {
     if (!user) {
-      setTransacciones([])
+      setFilas([])
       setLoading(false)
       return
     }
@@ -53,30 +53,28 @@ export function useGastoFijoMensualPromedio() {
       setLoading(true)
       const { data, error } = await supabase
         .from('transacciones')
-        .select('*, categoria:categorias(*)')
+        .select('fecha, monto, moneda')
         .eq('tipo', 'gasto')
+        .eq('es_gasto_fijo', true)
         .gte('fecha', oldest)
         .lte('fecha', todayStr())
-      if (!error && data) setTransacciones(data as Transaccion[])
-      else setTransacciones([])
+      if (!error && data) setFilas(data as RowGastoFijo[])
+      else setFilas([])
       setLoading(false)
     })()
   }, [user, keys])
 
   const promedioMensual = useMemo(() => {
-    const set = new Set<string>(CATEGORIAS_GASTO_FIJO)
     const byMonth: Record<string, number> = {}
     for (const k of keys) byMonth[k] = 0
-    for (const t of transacciones) {
-      const nombre = t.categoria?.nombre
-      if (!nombre || !set.has(nombre)) continue
+    for (const t of filas) {
       const ym = t.fecha.slice(0, 7)
       if (byMonth[ym] === undefined) continue
       byMonth[ym] += convertirARS(t.monto, t.moneda, tc)
     }
     const sums = keys.map((k) => byMonth[k] ?? 0)
     return sums.reduce((a, b) => a + b, 0) / keys.length
-  }, [transacciones, keys, tc])
+  }, [filas, keys, tc])
 
   return { promedioMensual, loading, mesesEnPromedio: keys.length }
 }

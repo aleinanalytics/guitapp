@@ -25,6 +25,7 @@ export default function EditableTransaccionListRow({ t, categorias, delay = 0, m
   const [editMonto, setEditMonto] = useState('')
   const [editFecha, setEditFecha] = useState('')
   const [editCategoriaId, setEditCategoriaId] = useState('')
+  const [editEsGastoFijo, setEditEsGastoFijo] = useState(false)
   const [busy, setBusy] = useState(false)
 
   const cfg = TIPO_STYLE[t.tipo]
@@ -35,6 +36,7 @@ export default function EditableTransaccionListRow({ t, categorias, delay = 0, m
     setEditMonto(formatMontoFromNumber(t.monto))
     setEditFecha(t.fecha)
     setEditCategoriaId(t.categoria_id ?? '')
+    setEditEsGastoFijo(t.tipo === 'gasto' && !!t.es_gasto_fijo)
     setEditing(true)
   }
 
@@ -49,6 +51,7 @@ export default function EditableTransaccionListRow({ t, categorias, delay = 0, m
       monto: m,
       fecha: editFecha,
       categoria_id: editCategoriaId,
+      es_gasto_fijo: t.tipo === 'gasto' ? editEsGastoFijo : false,
     }).eq('id', t.id)
     setBusy(false)
     if (error) window.alert('Error: ' + error.message)
@@ -110,6 +113,17 @@ export default function EditableTransaccionListRow({ t, categorias, delay = 0, m
             onChange={(e) => setEditFecha(e.target.value)}
             className="input-dark !py-1.5 !text-sm min-w-0 w-[9.5rem] sm:w-36 max-w-full"
           />
+          {t.tipo === 'gasto' && (
+            <label className="flex items-center gap-1.5 text-[11px] text-gray-400 w-full sm:w-auto shrink-0">
+              <input
+                type="checkbox"
+                checked={editEsGastoFijo}
+                onChange={(e) => setEditEsGastoFijo(e.target.checked)}
+                className="accent-rose-500 w-3.5 h-3.5"
+              />
+              Fijo
+            </label>
+          )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <button type="button" disabled={busy} onClick={save} className="text-emerald-400 hover:text-emerald-300 disabled:opacity-40">
@@ -145,6 +159,9 @@ export default function EditableTransaccionListRow({ t, categorias, delay = 0, m
         </p>
         <p className="text-xs text-gray-500">
           {t.categoria?.nombre ?? '—'} · {t.fecha}
+          {t.tipo === 'gasto' && t.es_gasto_fijo && (
+            <span className="ml-1 text-[10px] font-medium text-sky-400/90">· Fijo</span>
+          )}
           {mostrarTipo && (
             <span className={`ml-2 px-1.5 py-0.5 rounded-md text-[10px] font-medium ${cfg.bg} ${cfg.color}`}>
               {cfg.label}

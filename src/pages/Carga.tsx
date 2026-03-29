@@ -311,6 +311,8 @@ export default function Carga() {
   const [medioPagoNivel1, setMedioPagoNivel1] = useState<'efectivo' | 'plastico'>('efectivo')
   const [plasticoTipo, setPlasticoTipo] = useState<'debito' | 'credito'>('debito')
   const [submitting, setSubmitting] = useState(false)
+  /** Solo gastos: marca el movimiento como gasto fijo (fondo de emergencia). */
+  const [esGastoFijo, setEsGastoFijo] = useState(false)
 
   /** When crédito selected, user can opt to pay in cuotas */
   const [enCuotas, setEnCuotas] = useState(false)
@@ -349,6 +351,7 @@ export default function Carga() {
   const [editMonto, setEditMonto] = useState('')
   const [editFecha, setEditFecha] = useState('')
   const [editCategoriaId, setEditCategoriaId] = useState('')
+  const [editEsGastoFijo, setEditEsGastoFijo] = useState(false)
 
   useEffect(() => {
     supabase.from('categorias').select('*').then(({ data }) => {
@@ -379,6 +382,7 @@ export default function Carga() {
   useEffect(() => {
     setEnCuotas(false)
     setNumCuotas('')
+    if (tipo !== 'gasto') setEsGastoFijo(false)
   }, [tipo])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -404,7 +408,7 @@ export default function Carga() {
         window.alert('Cuotas registradas')
         setDescripcion(''); setMonto(''); setCategoriaId(''); setFecha(today); setMoneda('ARS')
         setMedioPagoNivel1('efectivo'); setPlasticoTipo('debito')
-        setEnCuotas(false); setNumCuotas('')
+        setEnCuotas(false); setNumCuotas(''); setEsGastoFijo(false)
         fetchRecientes()
       }
       return
@@ -412,8 +416,15 @@ export default function Carga() {
 
     setSubmitting(true)
     const { error } = await supabase.from('transacciones').insert({
-      user_id: user!.id, fecha, tipo, categoria_id: categoriaId,
-      descripcion: descripcion.trim(), monto: montoNum, moneda, medio_pago: medioPagoDb,
+      user_id: user!.id,
+      fecha,
+      tipo,
+      categoria_id: categoriaId,
+      descripcion: descripcion.trim(),
+      monto: montoNum,
+      moneda,
+      medio_pago: medioPagoDb,
+      es_gasto_fijo: tipo === 'gasto' && esGastoFijo,
     })
     setSubmitting(false)
     if (error) { window.alert('Error: ' + error.message) }
@@ -421,7 +432,7 @@ export default function Carga() {
       window.alert('Registrado')
       setDescripcion(''); setMonto(''); setCategoriaId(''); setFecha(today); setMoneda('ARS')
       setMedioPagoNivel1('efectivo'); setPlasticoTipo('debito')
-      setEnCuotas(false); setNumCuotas('')
+      setEnCuotas(false); setNumCuotas(''); setEsGastoFijo(false)
       fetchRecientes()
     }
   }
@@ -439,11 +450,12 @@ export default function Carga() {
     setEditMonto(formatMontoFromNumber(t.monto))
     setEditFecha(t.fecha)
     setEditCategoriaId(t.categoria_id ?? '')
+    setEditEsGastoFijo(t.tipo === 'gasto' && !!t.es_gasto_fijo)
   }
 
   const cancelEdit = () => setEditingId(null)
 
-  const saveEdit = async (id: string) => {
+  const saveEdit = async (id: string, tipoTx: TipoTransaccion) => {
     const m = parseMontoInput(editMonto)
     if (!editDesc.trim() || !Number.isFinite(m) || m <= 0 || !editFecha || !editCategoriaId) return
     const { error } = await supabase.from('transacciones').update({
@@ -451,6 +463,7 @@ export default function Carga() {
       monto: m,
       fecha: editFecha,
       categoria_id: editCategoriaId,
+      es_gasto_fijo: tipoTx === 'gasto' ? editEsGastoFijo : false,
     }).eq('id', id)
     if (error) window.alert('Error: ' + error.message)
     else { setEditingId(null); fetchRecientes() }
@@ -634,6 +647,19 @@ export default function Carga() {
                 />
               </div>
 
+              {tipo === 'gasto' && (
+                <label className="flex items-center gap-2.5 cursor-pointer rounded-xl border border-white/[0.08] bg-dark-800/40 px-3 py-2.5">
+                  <input
+                    type="checkbox"
+                    checked={esGastoFijo}
+                    onChange={(e) => setEsGastoFijo(e.target.checked)}
+                    className="accent-rose-500 w-4 h-4 shrink-0"
+                  />
+                  <span className="text-xs text-gray-300 leading-snug">
+                    Gasto fijo <span className="text-gray-500">(suma al promedio para sugerir el fondo de emergencia)</span>
+                  </span>
+                </label>
+              )}
               {tipo === 'gasto' && <MedioPagoGastoFields {...medioGastoProps} />}
               {tipo === 'suscripcion' && <MedioPagoSuscripcionFields {...medioSuscripcionProps} />}
 
@@ -723,6 +749,19 @@ export default function Carga() {
                 </div>
               </div>
 
+              {tipo === 'gasto' && (
+                <label className="flex items-center gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={esGastoFijo}
+                    onChange={(e) => setEsGastoFijo(e.target.checked)}
+                    className="accent-rose-500 w-4 h-4 shrink-0"
+                  />
+                  <span className="text-xs text-gray-400 leading-snug">
+                    Gasto fijo <span className="text-gray-600">(para calcular sugerencia del fondo de emergencia)</span>
+                  </span>
+                </label>
+              )}
               {tipo === 'gasto' && <MedioPagoGastoFields {...medioGastoProps} />}
               {tipo === 'suscripcion' && <MedioPagoSuscripcionFields {...medioSuscripcionProps} />}
 
@@ -863,7 +902,18 @@ export default function Carga() {
                           />
                           <input type="date" value={editFecha} onChange={(e) => setEditFecha(e.target.value)}
                             className="input-dark !py-1 !text-sm min-w-0 w-[9.5rem] sm:w-36 max-w-full" />
-                          <button type="button" onClick={() => saveEdit(t.id)} className="text-emerald-400 hover:text-emerald-300 shrink-0"><Check size={16} /></button>
+                          {t.tipo === 'gasto' && (
+                            <label className="flex items-center gap-1.5 text-[11px] text-gray-400 w-full sm:w-auto">
+                              <input
+                                type="checkbox"
+                                checked={editEsGastoFijo}
+                                onChange={(e) => setEditEsGastoFijo(e.target.checked)}
+                                className="accent-rose-500 w-3.5 h-3.5"
+                              />
+                              Fijo
+                            </label>
+                          )}
+                          <button type="button" onClick={() => saveEdit(t.id, t.tipo)} className="text-emerald-400 hover:text-emerald-300 shrink-0"><Check size={16} /></button>
                           <button type="button" onClick={cancelEdit} className="text-red-400 hover:text-red-300 shrink-0"><X size={16} /></button>
                         </div>
                       ) : (
@@ -875,7 +925,12 @@ export default function Carga() {
                                 <CreditCard size={12} className="inline ml-1.5 text-rose-400/60" />
                               )}
                             </p>
-                            <p className="text-xs text-gray-500">{t.categoria?.nombre ?? '—'} · {t.fecha}</p>
+                            <p className="text-xs text-gray-500">
+                              {t.categoria?.nombre ?? '—'} · {t.fecha}
+                              {t.tipo === 'gasto' && t.es_gasto_fijo && (
+                                <span className="ml-1.5 text-[10px] font-medium text-sky-400/90">· Fijo</span>
+                              )}
+                            </p>
                           </div>
                           <div className="text-right shrink-0">
                             <p className={`text-sm font-semibold ${t.tipo === 'ingreso' ? 'text-emerald-400' : 'text-gray-200'}`}>

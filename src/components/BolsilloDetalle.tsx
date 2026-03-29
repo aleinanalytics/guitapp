@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowLeft, PiggyBank, Plus, Minus, Shield } from 'lucide-react'
 import { useBolsillos } from '../hooks/useBolsillos'
-import { useGastoFijoMensualPromedio, CATEGORIAS_GASTO_FIJO } from '../hooks/useGastoFijoMensualPromedio'
+import { useGastoFijoMensualPromedio } from '../hooks/useGastoFijoMensualPromedio'
 import { formatARS, parseMontoInput, formatMontoFromNumber } from '../lib/utils'
 import type { BolsilloTipo } from '../lib/types'
 
@@ -172,8 +172,8 @@ export default function BolsilloDetalle({ tipo, titulo }: Props) {
         {tipo === 'emergencia' && (
           <div className="mb-5 rounded-xl border border-sky-500/20 bg-sky-500/[0.06] px-3 py-2.5 text-[11px] text-sky-200/85 leading-relaxed">
             Se recomienda un fondo de al menos <strong className="text-sky-100">3 o 6 meses</strong> de gastos
-            fijos. Podés usar la sugerencia (promedio de tus gastos en {CATEGORIAS_GASTO_FIJO.join(', ')}) y
-            ajustar el objetivo cuando quieras.
+            fijos. La sugerencia usa el promedio de los gastos que marcaste como <strong className="text-sky-100">fijos</strong> al
+            cargarlos; podés ajustar la meta manualmente cuando quieras.
           </div>
         )}
 
@@ -199,7 +199,7 @@ export default function BolsilloDetalle({ tipo, titulo }: Props) {
             </div>
             <div className="rounded-xl bg-white/[0.03] px-3 py-2.5 text-xs text-gray-400 space-y-1">
               <p>
-                Promedio mensual estimado (gastos fijos, últimos 3 meses):{' '}
+                Promedio mensual (gastos marcados como fijos, últimos 3 meses):{' '}
                 {loadingPromedio ? '…' : <span className="text-gray-200">{formatARS(promedioMensual)}</span>}
               </p>
               <p>
