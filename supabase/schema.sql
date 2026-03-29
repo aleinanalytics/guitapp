@@ -86,6 +86,7 @@ create policy "Users can delete own compras_cuotas"
 insert into categorias (nombre, tipo, color) values
   ('Sueldo','ingreso','#22c55e'),
   ('Freelance','ingreso','#16a34a'),
+  ('Varios','ingreso','#059669'),
   ('Supermercado','gasto','#ef4444'),
   ('Panadería','gasto','#ca8a04'),
   ('Transporte','gasto','#f97316'),
