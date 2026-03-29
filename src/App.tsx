@@ -6,6 +6,9 @@ import MovimientosMes from './pages/MovimientosMes'
 import TarjetaCreditoMes from './pages/TarjetaCreditoMes'
 import Carga from './pages/Carga'
 import Analisis from './pages/Analisis'
+import Ahorros from './pages/Ahorros'
+import FondoEmergencia from './pages/FondoEmergencia'
+import Inversiones from './pages/Inversiones'
 import Login from './pages/Login'
 
 function AppRoutes() {
@@ -28,13 +31,16 @@ function AppRoutes() {
     <>
       <NavBar />
       {/* pb-20 on mobile for bottom nav, lg:pl-64 for sidebar */}
-      <main className="min-h-screen pt-11 pb-[calc(6.75rem+env(safe-area-inset-bottom,0px))] lg:pt-0 lg:pb-4 lg:pl-64">
+      <main className="min-h-screen pb-[calc(7.75rem+env(safe-area-inset-bottom,0px))] pt-[max(0.5rem,env(safe-area-inset-top,0px))] lg:pb-4 lg:pl-64 lg:pt-0">
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/movimientos" element={<MovimientosMes />} />
           <Route path="/tarjeta-credito" element={<TarjetaCreditoMes />} />
           <Route path="/carga" element={<Carga />} />
           <Route path="/analisis" element={<Analisis />} />
+          <Route path="/ahorros" element={<Ahorros />} />
+          <Route path="/fondo-emergencia" element={<FondoEmergencia />} />
+          <Route path="/inversiones" element={<Inversiones />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

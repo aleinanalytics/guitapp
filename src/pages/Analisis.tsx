@@ -11,6 +11,7 @@ import { supabase } from '../lib/supabase'
 import { convertirARS, formatARS } from '../lib/utils'
 import type { TipoTransaccion } from '../lib/types'
 import { TrendingUp, TrendingDown, RotateCcw, CalendarDays, Download } from 'lucide-react'
+import MobileUserMenu from '../components/MobileUserMenu'
 
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
 const MESES_FULL = [
@@ -250,19 +251,24 @@ export default function Analisis() {
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between mb-6"
+        className="mb-6 flex flex-wrap items-center justify-between gap-3"
       >
-        <h1 className="text-2xl lg:text-3xl font-bold text-gray-50">Análisis</h1>
-        <button
-          onClick={handleDescargarCSV}
-          disabled={downloading}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium bg-accent-blue/10 text-accent-blue ring-1 ring-accent-blue/25 hover:bg-accent-blue/20 disabled:opacity-50 transition-all duration-200"
-        >
-          {downloading
-            ? <div className="w-4 h-4 border-2 border-accent-blue/30 border-t-accent-blue rounded-full animate-spin" />
-            : <Download size={15} />}
-          <span className="hidden sm:inline">{downloading ? 'Descargando...' : 'Descargar CSV'}</span>
-        </button>
+        <h1 className="min-w-0 text-2xl font-bold text-gray-50 lg:text-3xl">Análisis</h1>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleDescargarCSV}
+            disabled={downloading}
+            className="flex items-center gap-2 rounded-xl bg-accent-blue/10 px-3 py-2 text-sm font-medium text-accent-blue ring-1 ring-accent-blue/25 transition-all duration-200 hover:bg-accent-blue/20 disabled:opacity-50"
+          >
+            {downloading
+              ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-accent-blue/30 border-t-accent-blue" />
+              : <Download size={15} />}
+            <span className="hidden sm:inline">{downloading ? 'Descargando...' : 'Descargar CSV'}</span>
+          </button>
+          <div className="lg:hidden">
+            <MobileUserMenu />
+          </div>
+        </div>
       </motion.div>
 
       <motion.div

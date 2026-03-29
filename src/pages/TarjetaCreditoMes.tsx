@@ -5,6 +5,7 @@ import { ArrowLeft, CreditCard, Calendar, Pencil, Check, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import EditableTransaccionListRow from '../components/EditableTransaccionListRow'
 import EditableCuotaCompraRow from '../components/EditableCuotaCompraRow'
+import MobileUserMenu from '../components/MobileUserMenu'
 import { useTransacciones } from '../hooks/useTransacciones'
 import { useCuotas, getCuotaForMonth } from '../hooks/useCuotas'
 import { useTipoCambio } from '../hooks/useTipoCambio'
@@ -131,12 +132,17 @@ export default function TarjetaCreditoMes() {
         Volver al dashboard
       </Link>
 
-      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
-        <div className="flex items-center gap-2">
-          <CreditCard size={28} className="text-rose-400/90" />
-          <h1 className="text-2xl lg:text-3xl font-bold text-gray-50">Tarjeta de crédito</h1>
+      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mb-6 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <CreditCard size={28} className="shrink-0 text-rose-400/90" />
+            <h1 className="text-2xl font-bold text-gray-50 lg:text-3xl">Tarjeta de crédito</h1>
+          </div>
+          <p className="mt-1 text-sm text-gray-500">{MESES[mes - 1]} {anio}</p>
         </div>
-        <p className="text-gray-500 text-sm mt-1">{MESES[mes - 1]} {anio}</p>
+        <div className="shrink-0 lg:hidden">
+          <MobileUserMenu />
+        </div>
       </motion.div>
 
       {/* Fechas de cierre y vencimiento */}

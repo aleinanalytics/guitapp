@@ -1,7 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import { BarChart2, Plus, TrendingUp, LogOut } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
-import MobileUserMenu from './MobileUserMenu'
 
 const sidebarLinks = [
   { to: '/', label: 'Dashboard', icon: BarChart2 },
@@ -15,13 +14,6 @@ export default function NavBar() {
 
   return (
     <>
-      {/* Móvil: mismo avatar arriba a la derecha en todas las pantallas */}
-      <div className="pointer-events-none fixed left-0 right-0 top-0 z-[60] flex justify-end px-4 pt-[max(0.75rem,env(safe-area-inset-top))] lg:hidden">
-        <div className="pointer-events-auto">
-          <MobileUserMenu />
-        </div>
-      </div>
-
       {/* Desktop sidebar */}
       <nav className="hidden lg:flex fixed left-0 top-0 bottom-0 w-64 flex-col bg-dark-900/60 backdrop-blur-xl border-r border-white/[0.06] z-50">
         <div className="p-6">
@@ -76,11 +68,10 @@ export default function NavBar() {
         </div>
       </nav>
 
-      {/* Mobile bottom nav: FAB central */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-        <div className="relative max-w-lg mx-auto">
-          <div className="bg-dark-900/90 backdrop-blur-xl border-t border-white/[0.06] shadow-[0_-8px_32px_rgba(0,0,0,0.35)]">
-            <div className="relative grid grid-cols-3 items-end min-h-[4.25rem] px-2 pt-3 pb-0.5">
+      {/* Mobile bottom nav: fondo opaco (sin ver el scroll detrás) + área segura iOS */}
+      <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-dark-950 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] shadow-[0_-12px_48px_rgba(0,0,0,0.92)] lg:hidden">
+        <div className="relative mx-auto max-w-lg">
+          <div className="relative grid min-h-[4.25rem] grid-cols-3 items-end px-2 pb-1 pt-3">
               <div className="flex justify-center pb-1.5">
                 <NavLink
                   to="/"
@@ -134,7 +125,6 @@ export default function NavBar() {
                   )}
                 </NavLink>
               </div>
-            </div>
           </div>
         </div>
       </nav>

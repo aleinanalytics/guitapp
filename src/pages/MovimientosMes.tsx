@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { ArrowLeft } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import EditableTransaccionListRow from '../components/EditableTransaccionListRow'
+import MobileUserMenu from '../components/MobileUserMenu'
 import { useTransacciones } from '../hooks/useTransacciones'
 import { useTipoCambio } from '../hooks/useTipoCambio'
 import { convertirARS, formatARS, formatUSD } from '../lib/utils'
@@ -75,9 +76,14 @@ export default function MovimientosMes() {
         Volver al dashboard
       </Link>
 
-      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
-        <h1 className="text-2xl lg:text-3xl font-bold text-gray-50">{titulo}</h1>
-        <p className="text-gray-500 text-sm mt-1">{sub}</p>
+      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mb-6 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold text-gray-50 lg:text-3xl">{titulo}</h1>
+          <p className="mt-1 text-sm text-gray-500">{sub}</p>
+        </div>
+        <div className="shrink-0 lg:hidden">
+          <MobileUserMenu />
+        </div>
       </motion.div>
 
       {loading ? (

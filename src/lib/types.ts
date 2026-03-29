@@ -48,3 +48,21 @@ export interface CompraCuotas {
   categoria?: Categoria
   created_at: string
 }
+
+export type BolsilloTipo = 'ahorro' | 'emergencia'
+
+export interface BolsilloConfig {
+  user_id: string
+  tipo: BolsilloTipo
+  objetivo_monto: number | null
+  meses_sugerencia: number
+  updated_at: string
+}
+
+export interface BolsilloMovimiento {
+  id: string
+  user_id: string
+  tipo: BolsilloTipo
+  monto: number
+  created_at: string
+}

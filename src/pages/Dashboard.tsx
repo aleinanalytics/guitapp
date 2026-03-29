@@ -1,13 +1,14 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Pencil, Check, X, TrendingUp, TrendingDown, ArrowDown, Wallet, CreditCard, RotateCcw, DollarSign, Zap } from 'lucide-react'
+import { Pencil, Check, X, TrendingUp, TrendingDown, ArrowDown, Wallet, CreditCard, RotateCcw, DollarSign, Zap, Plus, PiggyBank, Shield } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
   LineChart, Line, CartesianGrid, Legend,
 } from 'recharts'
 import KPICard from '../components/KPICard'
+import MobileUserMenu from '../components/MobileUserMenu'
 import { useTransacciones } from '../hooks/useTransacciones'
 import { useTipoCambio } from '../hooks/useTipoCambio'
 import { useCuotas, getCuotaForMonth } from '../hooks/useCuotas'
@@ -15,6 +16,7 @@ import { useTarjetaConfig, countdownTarjeta, formatFechaTarjeta } from '../hooks
 import { useAnalisis } from '../hooks/useAnalisis'
 import { convertirARS, formatARS, formatUSD } from '../lib/utils'
 import { useAuth } from '../lib/AuthContext'
+import { useBolsillos } from '../hooks/useBolsillos'
 
 const MESES_CORTOS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
 
@@ -49,6 +51,7 @@ export default function Dashboard() {
   const { cuotas } = useCuotas()
   const { config: tcConfig } = useTarjetaConfig()
   const { transacciones: txAnio } = useAnalisis({ anio })
+  const { disponible: disponibleReservas, saldo: saldoBolsillo, loading: loadingBolsillos } = useBolsillos()
 
   const [editingTC, setEditingTC] = useState(false)
   const [tcInput, setTcInput] = useState('')
@@ -206,16 +209,23 @@ export default function Dashboard() {
         animate={{ opacity: 1, y: 0 }}
         className="flex items-center justify-between mb-6"
       >
-        <div>
+        <div className="min-w-0 flex-1">
           <p className="text-sm text-gray-500">{firstName ? `Hola, ${firstName}` : 'Hola'}</p>
-          <h1 className="text-2xl lg:text-3xl font-bold text-gray-50">Dashboard</h1>
+          <h1 className="text-xl leading-snug sm:text-2xl lg:text-3xl lg:leading-tight font-bold text-gray-50">
+            Dashboard de Gastos Personales
+          </h1>
         </div>
-        {dolarLive && (
-          <div className="hidden sm:flex items-center gap-1.5 text-xs text-cyan-400 bg-cyan-500/10 px-3 py-1.5 rounded-lg">
-            <Zap size={12} />
-            Dólar Oficial: {formatARS(dolarLive)}
+        <div className="flex shrink-0 items-start gap-2">
+          {dolarLive && (
+            <div className="hidden sm:flex items-center gap-1.5 text-xs text-cyan-400 bg-cyan-500/10 px-3 py-1.5 rounded-lg">
+              <Zap size={12} />
+              Dólar Oficial: {formatARS(dolarLive)}
+            </div>
+          )}
+          <div className="lg:hidden">
+            <MobileUserMenu />
           </div>
-        )}
+        </div>
       </motion.div>
 
       {/* Warning */}
@@ -402,6 +412,74 @@ export default function Dashboard() {
             )}
           </motion.div>
         </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, delay: 0.32 }}
+          className="mt-5 lg:mt-6"
+        >
+          <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Reservas</p>
+          <p className="text-[11px] text-gray-500 mb-3 leading-snug">
+            Asigná plata al margen de tus gastos.{' '}
+            {!loadingBolsillos ? (
+              <>
+                Disponible (historial completo):{' '}
+                <span className={disponibleReservas >= 0 ? 'text-cyan-400/90' : 'text-rose-400/90'}>
+                  {formatARS(disponibleReservas)}
+                </span>
+                {saldoBolsillo('ahorro') + saldoBolsillo('emergencia') > 0 && (
+                  <span className="text-gray-600">
+                    {' '}
+                    · En bolsillos: {formatARS(saldoBolsillo('ahorro') + saldoBolsillo('emergencia'))}
+                  </span>
+                )}
+              </>
+            ) : (
+              <span className="text-gray-600">Calculando disponible…</span>
+            )}
+          </p>
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            <Link
+              to="/ahorros"
+              className="glass flex flex-col items-center justify-center gap-1.5 rounded-2xl p-3 sm:p-4 border border-white/[0.06] hover:border-emerald-500/25 hover:bg-emerald-500/[0.04] transition-all min-h-[5.5rem] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/40"
+            >
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-400">
+                <Plus size={20} strokeWidth={2.5} />
+              </span>
+              <span className="text-[11px] sm:text-xs font-medium text-gray-200 text-center leading-tight">Ahorros</span>
+              <span className="text-[9px] text-gray-600 text-center flex items-center gap-0.5">
+                <PiggyBank size={10} /> Objetivos
+              </span>
+            </Link>
+            <Link
+              to="/fondo-emergencia"
+              className="glass flex flex-col items-center justify-center gap-1.5 rounded-2xl p-3 sm:p-4 border border-white/[0.06] hover:border-sky-500/25 hover:bg-sky-500/[0.04] transition-all min-h-[5.5rem] focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/40"
+            >
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-sky-500/15 text-sky-400">
+                <Plus size={20} strokeWidth={2.5} />
+              </span>
+              <span className="text-[11px] sm:text-xs font-medium text-gray-200 text-center leading-tight">
+                Fondo emergencia
+              </span>
+              <span className="text-[9px] text-gray-600 text-center flex items-center gap-0.5">
+                <Shield size={10} /> Meta sugerida
+              </span>
+            </Link>
+            <Link
+              to="/inversiones"
+              className="glass flex flex-col items-center justify-center gap-1.5 rounded-2xl p-3 sm:p-4 border border-white/[0.06] hover:border-violet-500/20 transition-all min-h-[5.5rem] opacity-85 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/35"
+            >
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-violet-500/10 text-violet-400/80">
+                <Plus size={20} strokeWidth={2.5} />
+              </span>
+              <span className="text-[11px] sm:text-xs font-medium text-gray-300 text-center leading-tight">
+                Inversiones
+              </span>
+              <span className="text-[9px] text-amber-400/80 text-center font-medium">En desarrollo</span>
+            </Link>
+          </div>
+        </motion.div>
         </>
       )}
 

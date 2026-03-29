@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Trash2, Plus, Pencil, Check, X, CreditCard, Calendar } from 'lucide-react'
+import MobileUserMenu from '../components/MobileUserMenu'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import { useCuotas } from '../hooks/useCuotas'
@@ -507,6 +508,9 @@ export default function Carga() {
 
   return (
     <div className="p-4 lg:p-8 max-w-5xl mx-auto">
+      <div className="mb-4 flex justify-end lg:hidden">
+        <MobileUserMenu />
+      </div>
       <motion.h1 initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
         className="hidden lg:block text-2xl lg:text-3xl font-bold text-gray-50 mb-6">
         Cargar Transacción
