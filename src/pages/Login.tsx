@@ -21,9 +21,9 @@ export default function Login() {
           initial={{ opacity: 0, scale: 0.5 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-accent-blue to-accent-purple flex items-center justify-center"
+          className="w-16 h-16 mx-auto mb-6 rounded-2xl overflow-hidden ring-1 ring-white/10 shadow-lg"
         >
-          <span className="text-2xl font-bold text-white">G</span>
+          <img src="/apple-touch-icon.png" alt="GuitaApp" className="w-full h-full object-cover" width={64} height={64} />
         </motion.div>
 
         <motion.h1

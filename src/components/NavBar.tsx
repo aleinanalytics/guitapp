@@ -18,9 +18,13 @@ export default function NavBar() {
       <nav className="hidden lg:flex fixed left-0 top-0 bottom-0 w-64 flex-col bg-dark-900/60 backdrop-blur-xl border-r border-white/[0.06] z-50">
         <div className="p-6">
           <div className="flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-blue to-accent-purple flex items-center justify-center text-sm font-bold text-white">
-              G
-            </div>
+            <img
+              src="/apple-touch-icon.png"
+              alt=""
+              width={40}
+              height={40}
+              className="w-10 h-10 rounded-xl object-cover ring-1 ring-white/10"
+            />
             <span className="text-lg font-bold text-gray-100">GuitaApp</span>
           </div>
 
