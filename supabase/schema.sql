@@ -116,7 +116,7 @@ insert into categorias (nombre, tipo, color) values
   ('Alquiler','gasto','#92400e'),
   ('Estacionamiento','gasto','#0891b2'),
   ('Otros gastos','gasto','#94a3b8'),
-  ('Netflix','suscripcion','#dc2626'),
-  ('Spotify','suscripcion','#16a34a'),
-  ('Software','suscripcion','#0ea5e9'),
-  ('Otras suscripciones','suscripcion','#a855f7');
+  ('Streaming','suscripcion','#dc2626'),
+  ('Música','suscripcion','#16a34a'),
+  ('IA','suscripcion','#0ea5e9'),
+  ('Otras','suscripcion','#a855f7');
