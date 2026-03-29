@@ -10,7 +10,7 @@ import { useAnalisis } from '../hooks/useAnalisis'
 import { supabase } from '../lib/supabase'
 import { convertirARS, formatARS } from '../lib/utils'
 import type { TipoTransaccion } from '../lib/types'
-import { TrendingUp, TrendingDown, RotateCcw, CalendarDays } from 'lucide-react'
+import { TrendingUp, TrendingDown, RotateCcw, CalendarDays, Download } from 'lucide-react'
 
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
 const MESES_FULL = [
@@ -171,6 +171,56 @@ export default function Analisis() {
 
   const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i)
 
+  const [downloading, setDownloading] = useState(false)
+
+  const handleDescargarCSV = async () => {
+    setDownloading(true)
+    try {
+      const [{ data: txData }, { data: cuotasData }] = await Promise.all([
+        supabase.from('transacciones').select('*, categoria:categorias(nombre)').order('fecha', { ascending: true }),
+        supabase.from('compras_cuotas').select('*, categoria:categorias(nombre)').order('fecha_primera_cuota', { ascending: true }),
+      ])
+
+      const esc = (s: string | number | null | undefined) => {
+        const str = String(s ?? '')
+        return str.includes(',') || str.includes('"') || str.includes('\n')
+          ? `"${str.replace(/"/g, '""')}"`
+          : str
+      }
+
+      const lines: string[] = []
+
+      // — Transacciones —
+      lines.push('TRANSACCIONES')
+      lines.push('fecha,tipo,descripcion,categoria,monto,moneda,medio_pago')
+      for (const t of (txData ?? []) as Array<Record<string, unknown>>) {
+        const cat = (t.categoria as { nombre?: string } | null)?.nombre ?? ''
+        lines.push([t.fecha, t.tipo, t.descripcion, cat, t.monto, t.moneda, t.medio_pago].map(esc).join(','))
+      }
+
+      lines.push('')
+
+      // — Compras en cuotas —
+      lines.push('COMPRAS EN CUOTAS')
+      lines.push('fecha_primera_cuota,descripcion,categoria,monto_total,cuotas_total,monto_cuota,moneda')
+      for (const c of (cuotasData ?? []) as Array<Record<string, unknown>>) {
+        const cat = (c.categoria as { nombre?: string } | null)?.nombre ?? ''
+        lines.push([c.fecha_primera_cuota, c.descripcion, cat, c.monto_total, c.cuotas_total, c.monto_cuota, c.moneda].map(esc).join(','))
+      }
+
+      const csv = lines.join('\n')
+      const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `guita_datos_${new Date().toISOString().slice(0, 10)}.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+    } finally {
+      setDownloading(false)
+    }
+  }
+
   function deltaColor(deltaPct: number, tipo: TipoTransaccion): string {
     if (deltaPct === 0) return 'text-gray-500'
     if (tipo === 'ingreso') return deltaPct > 0 ? 'text-emerald-400' : 'text-red-400'
@@ -197,13 +247,23 @@ export default function Analisis() {
 
   return (
     <div className="p-4 lg:p-8 max-w-5xl mx-auto">
-      <motion.h1
+      <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="text-2xl lg:text-3xl font-bold text-gray-50 mb-6"
+        className="flex items-center justify-between mb-6"
       >
-        Análisis
-      </motion.h1>
+        <h1 className="text-2xl lg:text-3xl font-bold text-gray-50">Análisis</h1>
+        <button
+          onClick={handleDescargarCSV}
+          disabled={downloading}
+          className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium bg-accent-blue/10 text-accent-blue ring-1 ring-accent-blue/25 hover:bg-accent-blue/20 disabled:opacity-50 transition-all duration-200"
+        >
+          {downloading
+            ? <div className="w-4 h-4 border-2 border-accent-blue/30 border-t-accent-blue rounded-full animate-spin" />
+            : <Download size={15} />}
+          <span className="hidden sm:inline">{downloading ? 'Descargando...' : 'Descargar CSV'}</span>
+        </button>
+      </motion.div>
 
       <motion.div
         initial={{ opacity: 0 }}
