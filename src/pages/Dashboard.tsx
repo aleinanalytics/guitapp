@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Pencil, Check, X, TrendingUp, TrendingDown, ArrowDown, Wallet, CreditCard, RotateCcw, DollarSign, Zap, Plus, PiggyBank, Shield } from 'lucide-react'
+import { Pencil, Check, X, TrendingUp, TrendingDown, ArrowDown, Wallet, CreditCard, RotateCcw, DollarSign, Zap, Plus, PiggyBank, Shield, Store } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
@@ -14,7 +14,8 @@ import { useTipoCambio } from '../hooks/useTipoCambio'
 import { useCuotas, getCuotaForMonth } from '../hooks/useCuotas'
 import { useTarjetaConfig, countdownTarjeta, formatFechaTarjeta } from '../hooks/useTarjetaConfig'
 import { useAnalisis } from '../hooks/useAnalisis'
-import type { Moneda } from '../lib/types'
+import type { Categoria, Moneda } from '../lib/types'
+import { supabase } from '../lib/supabase'
 import { convertirARS, formatARS, formatUSD, sumarPorMoneda } from '../lib/utils'
 import { useAuth } from '../lib/AuthContext'
 import { useBolsillos } from '../hooks/useBolsillos'
@@ -28,6 +29,11 @@ const MESES = [
 
 const now = new Date()
 const currentYear = now.getFullYear()
+
+const LS_KPI_GASTO_CATEGORIA = 'guita_dashboard_kpi_gasto_categoria_id'
+
+/** Por encima de este % del ingreso, el KPI de Suscripciones muestra una alerta */
+const UMBRAL_ALERTA_SUSCRIPCIONES_PCT = 35
 
 export default function Dashboard() {
   const { user } = useAuth()
@@ -56,6 +62,34 @@ export default function Dashboard() {
 
   const [editingTC, setEditingTC] = useState(false)
   const [tcInput, setTcInput] = useState('')
+  const [categoriasGasto, setCategoriasGasto] = useState<Categoria[]>([])
+  const [kpiCatId, setKpiCatId] = useState('')
+  const [kpiCatSelectorAbierto, setKpiCatSelectorAbierto] = useState(false)
+
+  useEffect(() => {
+    supabase
+      .from('categorias')
+      .select('*')
+      .eq('tipo', 'gasto')
+      .order('nombre')
+      .then(({ data }) => {
+        if (data) setCategoriasGasto(data as Categoria[])
+      })
+  }, [])
+
+  useEffect(() => {
+    if (categoriasGasto.length === 0) return
+    const stored = localStorage.getItem(LS_KPI_GASTO_CATEGORIA)
+    const valid = stored && categoriasGasto.some((c) => c.id === stored)
+    if (valid) {
+      setKpiCatId(stored!)
+      return
+    }
+    const sup = categoriasGasto.find((c) => c.nombre.toLowerCase() === 'supermercado')
+    const id = sup?.id ?? categoriasGasto[0].id
+    setKpiCatId(id)
+    localStorage.setItem(LS_KPI_GASTO_CATEGORIA, id)
+  }, [categoriasGasto])
 
   const tc = tipoCambio?.usd_ars ?? 1000
 
@@ -83,6 +117,20 @@ export default function Dashboard() {
 
   /** % de gastos (solo tipo gasto) respecto a ingresos del mes */
   const pctGastoDelIngreso = ingresos > 0 ? (gastos / ingresos) * 100 : null
+
+  /** % suscripciones sobre ingresos (montos ya en equivalente ARS, USD convertido con tc) */
+  const pctSuscripcionDelIngreso = ingresos > 0 ? (suscripciones / ingresos) * 100 : null
+
+  const gastoCategoriaKpi = useMemo(() => {
+    if (!kpiCatId) return 0
+    return transacciones
+      .filter((t) => t.tipo === 'gasto' && t.categoria_id === kpiCatId)
+      .reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
+  }, [transacciones, kpiCatId, tc])
+
+  const pctGastoCategoriaKpi = ingresos > 0 ? (gastoCategoriaKpi / ingresos) * 100 : null
+
+  const categoriaKpiSeleccionada = categoriasGasto.find((c) => c.id === kpiCatId)
 
   // Tarjeta KPI: pagos únicos + cuotas del mes, ARS y USD por separado (sin convertir para el resumen)
   const tarjetaData = useMemo(() => {
@@ -237,6 +285,8 @@ export default function Dashboard() {
   const toSuscripciones = `/movimientos?tipo=suscripcion&${qMesAnio}`
   const toBalance = `/movimientos?tipo=todos&${qMesAnio}`
   const toTarjetaCredito = `/tarjeta-credito?${qMesAnio}`
+  const toGastoCategoriaKpi =
+    kpiCatId !== '' ? `/movimientos?tipo=gasto&categoria_id=${encodeURIComponent(kpiCatId)}&${qMesAnio}` : `/movimientos?tipo=gasto&${qMesAnio}`
 
   return (
     <div className="p-4 lg:p-8 max-w-5xl mx-auto">
@@ -249,7 +299,7 @@ export default function Dashboard() {
         <div className="min-w-0 flex-1">
           <p className="text-sm text-gray-500">{firstName ? `Hola, ${firstName}` : 'Hola'}</p>
           <h1 className="text-xl leading-snug sm:text-2xl lg:text-3xl lg:leading-tight font-bold text-gray-50">
-            Dashboard de Gastos Personales
+            Control de Gastos Personales
           </h1>
         </div>
         <div className="flex shrink-0 items-start gap-2">
@@ -312,7 +362,7 @@ export default function Dashboard() {
           />
         </div>
 
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-4 lg:gap-4">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-6 lg:gap-4">
           <div className="grid min-w-0 grid-cols-2 gap-3 lg:contents">
             <KPICard
               titulo="Ingresos"
@@ -346,8 +396,109 @@ export default function Dashboard() {
             </KPICard>
           </div>
 
-          <KPICard titulo="Suscripciones" montoARS={suscripciones} montoUSD={suscripciones / tc}
-            icon={<RotateCcw size={18} />} accentColor="#a855f7" glowClass="glow-purple" delay={0.1} to={toSuscripciones} />
+          <div className="grid min-w-0 grid-cols-2 gap-3 lg:contents">
+            <KPICard
+              titulo="Suscripciones"
+              montoARS={suscripciones}
+              montoUSD={suscripciones / tc}
+              icon={<RotateCcw size={18} />}
+              accentColor="#a855f7"
+              glowClass="glow-purple"
+              delay={0.1}
+              to={toSuscripciones}
+              mobileStatLayout
+              topAccessory={
+                kpiCatId !== '' && categoriaKpiSeleccionada ? (
+                  <div className="flex h-8 shrink-0 justify-end" aria-hidden />
+                ) : undefined
+              }
+            >
+              {pctSuscripcionDelIngreso !== null ? (
+                <>
+                  <p className="text-center text-xs font-medium leading-snug text-violet-300/90 lg:text-left lg:text-[11px]">
+                    {pctSuscripcionDelIngreso.toFixed(1)}% del ingreso
+                  </p>
+                  {pctSuscripcionDelIngreso > UMBRAL_ALERTA_SUSCRIPCIONES_PCT ? (
+                    <p
+                      role="status"
+                      className="mt-2 rounded-lg border border-amber-500/25 bg-amber-500/10 px-2 py-1.5 text-center text-[11px] font-medium leading-snug text-amber-200/95 lg:text-left"
+                    >
+                      Tus suscripciones ya superan el {UMBRAL_ALERTA_SUSCRIPCIONES_PCT}% de lo que ingresás este mes. Conviene revisar si podés dar de baja alguna.
+                    </p>
+                  ) : null}
+                </>
+              ) : suscripciones > 0 ? (
+                <p className="text-center text-xs text-gray-500 lg:text-left lg:text-[11px]">Sin ingresos en el mes</p>
+              ) : null}
+            </KPICard>
+
+            {kpiCatId !== '' && categoriaKpiSeleccionada && (
+              <KPICard
+                titulo={categoriaKpiSeleccionada.nombre}
+                montoARS={gastoCategoriaKpi}
+                montoUSD={gastoCategoriaKpi / tc}
+                icon={<Store size={18} />}
+                accentColor={categoriaKpiSeleccionada.color}
+                delay={0.11}
+                to={toGastoCategoriaKpi}
+                mobileStatLayout
+                topAccessory={
+                  kpiCatSelectorAbierto ? (
+                    <div className="flex min-w-0 items-center gap-1">
+                      <label className="sr-only" htmlFor="kpi-gasto-categoria">
+                        Categoría de gasto para este indicador
+                      </label>
+                      <select
+                        id="kpi-gasto-categoria"
+                        value={kpiCatId}
+                        onChange={(e) => {
+                          const v = e.target.value
+                          setKpiCatId(v)
+                          localStorage.setItem(LS_KPI_GASTO_CATEGORIA, v)
+                          setKpiCatSelectorAbierto(false)
+                        }}
+                        className="select-dark min-w-0 flex-1 py-1 text-[11px]"
+                        aria-label="Elegir categoría de gasto"
+                      >
+                        {categoriasGasto.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.nombre}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        className="shrink-0 rounded-lg p-1.5 text-gray-500 hover:bg-white/10 hover:text-gray-300"
+                        aria-label="Cerrar selector de categoría"
+                        onClick={() => setKpiCatSelectorAbierto(false)}
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        className="rounded-lg p-1.5 text-gray-500 hover:bg-white/10 hover:text-gray-300"
+                        aria-label="Editar categoría del indicador"
+                        onClick={() => setKpiCatSelectorAbierto(true)}
+                      >
+                        <Pencil size={14} />
+                      </button>
+                    </div>
+                  )
+                }
+              >
+                {pctGastoCategoriaKpi !== null ? (
+                  <p className="text-center text-xs font-medium leading-snug text-emerald-300/90 lg:text-left lg:text-[11px]">
+                    {pctGastoCategoriaKpi.toFixed(1)}% del ingreso
+                  </p>
+                ) : gastoCategoriaKpi > 0 ? (
+                  <p className="text-center text-xs text-gray-500 lg:text-left lg:text-[11px]">Sin ingresos en el mes</p>
+                ) : null}
+              </KPICard>
+            )}
+          </div>
 
           {/* Tarjeta: ancho completo en móvil; 2 cols en desktop */}
           <Link
@@ -365,35 +516,41 @@ export default function Dashboard() {
               <div className="absolute top-0 left-0 right-0 h-[2px] opacity-60"
                 style={{ background: 'linear-gradient(90deg, transparent, #f43f5e, transparent)' }}
               />
-              <div className="flex items-start justify-between mb-2">
-                <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">Tarjeta de Crédito</p>
-                <CreditCard size={18} className="text-gray-500" />
+              <div className="flex items-center justify-center gap-2 mb-3">
+                <CreditCard size={20} className="text-gray-500 shrink-0" />
+                <p className="text-xs font-medium text-gray-400 uppercase tracking-wider text-center">
+                  Tarjeta de Crédito
+                </p>
               </div>
 
-              <div className="mt-1 grid grid-cols-2 gap-2">
-                <div>
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                <div className="text-center min-w-0">
                   <p className="text-[10px] text-gray-500 uppercase tracking-wide">ARS</p>
-                  <p className="text-lg font-bold text-gray-50 tabular-nums leading-tight">{formatARS(tarjetaData.totalArs)}</p>
+                  <p className="text-xl sm:text-2xl font-bold text-gray-50 tabular-nums leading-tight mt-0.5 break-words">
+                    {formatARS(tarjetaData.totalArs)}
+                  </p>
                 </div>
-                <div>
+                <div className="text-center min-w-0">
                   <p className="text-[10px] text-gray-500 uppercase tracking-wide">USD</p>
-                  <p className="text-lg font-bold text-gray-50 tabular-nums leading-tight">{formatUSD(tarjetaData.totalUsd)}</p>
+                  <p className="text-xl sm:text-2xl font-bold text-gray-50 tabular-nums leading-tight mt-0.5 break-words">
+                    {formatUSD(tarjetaData.totalUsd)}
+                  </p>
                 </div>
               </div>
-              <p className="text-[10px] text-gray-600 mt-1.5">Consumo por moneda, sin convertir.</p>
+              <p className="text-[10px] text-gray-600 mt-2 text-center">Consumo por moneda, sin convertir.</p>
 
               {tcConfig ? (
-                <div className="mt-3 pt-3 border-t border-white/[0.06] space-y-2.5 text-[11px] sm:text-xs">
-                  <div>
+                <div className="mt-3 pt-3 border-t border-white/[0.06] grid gap-x-5 gap-y-2.5 text-[11px] sm:text-xs text-center [grid-template-columns:repeat(auto-fit,minmax(11rem,1fr))]">
+                  <div className="min-w-0">
                     <p className="text-gray-500 uppercase tracking-wide">Fecha de cierre</p>
-                    <p className="mt-0.5 text-gray-200">
+                    <p className="mt-0.5 text-gray-200 leading-snug">
                       {formatFechaTarjeta(tcConfig.fecha_cierre)}
                       <span className="text-rose-400/90"> · {countdownTarjeta(tcConfig.fecha_cierre)}</span>
                     </p>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-gray-500 uppercase tracking-wide">Vencimiento</p>
-                    <p className="mt-0.5 text-gray-200">
+                    <p className="mt-0.5 text-gray-200 leading-snug">
                       {formatFechaTarjeta(tcConfig.fecha_vencimiento)}
                       <span className="text-amber-400/90"> · {countdownTarjeta(tcConfig.fecha_vencimiento)}</span>
                     </p>
@@ -507,7 +664,7 @@ export default function Dashboard() {
             Asigná plata al margen de tus gastos.{' '}
             {!loadingBolsillos ? (
               <>
-                Disponible (historial completo):{' '}
+                Disponible:{' '}
                 <span className={disponibleReservas >= 0 ? 'text-cyan-400/90' : 'text-rose-400/90'}>
                   {formatARS(disponibleReservas)}
                 </span>

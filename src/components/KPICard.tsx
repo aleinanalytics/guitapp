@@ -19,6 +19,8 @@ interface KPICardProps {
   variant?: 'default' | 'hero'
   /** Solo móvil: ARS más grande y centrado; USD y contenido debajo centrados (mismo tamaño entre USD y extra) */
   mobileStatLayout?: boolean
+  /** Controles fuera del Link (p. ej. select) para HTML válido y evitar navegar al cambiar categoría */
+  topAccessory?: React.ReactNode
 }
 
 export default function KPICard({
@@ -35,6 +37,7 @@ export default function KPICard({
   to,
   variant = 'default',
   mobileStatLayout = false,
+  topAccessory,
 }: KPICardProps) {
   const isHero = variant === 'hero'
   const ms = mobileStatLayout && !isHero
@@ -60,16 +63,16 @@ export default function KPICard({
         </div>
       ) : (
         <div
-          className={`mb-2 flex items-center gap-2 ${ms ? 'justify-center lg:justify-between' : 'justify-between'}`}
+          className={`mb-2 flex min-w-0 items-center gap-2 ${ms ? 'justify-center lg:justify-between' : 'justify-between'}`}
         >
-          <p className="text-xs font-medium uppercase tracking-wider text-gray-400">{titulo}</p>
+          <p className="min-w-0 truncate text-xs font-medium uppercase tracking-wider text-gray-400">{titulo}</p>
           {icon && <div className="text-gray-500 shrink-0">{icon}</div>}
         </div>
       )}
       <p
         className={`font-bold text-gray-50 tracking-tight tabular-nums ${
           isHero
-            ? 'text-3xl sm:text-4xl lg:text-5xl'
+            ? 'text-4xl sm:text-5xl lg:text-6xl'
             : ms
               ? 'text-center text-2xl lg:text-left lg:text-xl'
               : 'text-xl'
@@ -81,7 +84,7 @@ export default function KPICard({
         <p
           className={`mt-1 text-gray-500 ${
             isHero
-              ? 'text-base sm:text-lg'
+              ? 'text-lg sm:text-xl'
               : ms
                 ? 'text-center text-xs lg:text-left lg:text-sm'
                 : 'text-sm mt-0.5'
@@ -113,19 +116,30 @@ export default function KPICard({
     </motion.div>
   )
 
-  if (to) {
+  const linked = to ? (
+    <Link
+      to={to}
+      className={`${
+        topAccessory ? 'flex min-h-0 min-w-0 flex-1 flex-col' : 'block h-full min-w-0'
+      } focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue/40 focus-visible:ring-offset-2 focus-visible:ring-offset-dark-950 ${
+        isHero ? 'rounded-3xl' : 'rounded-2xl'
+      }`}
+      aria-label={`Ver listado: ${titulo}`}
+    >
+      {card}
+    </Link>
+  ) : (
+    card
+  )
+
+  if (topAccessory) {
     return (
-      <Link
-        to={to}
-        className={`block h-full min-w-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue/40 focus-visible:ring-offset-2 focus-visible:ring-offset-dark-950 ${
-          isHero ? 'rounded-3xl' : 'rounded-2xl'
-        }`}
-        aria-label={`Ver listado: ${titulo}`}
-      >
-        {card}
-      </Link>
+      <div className="flex h-full min-w-0 flex-col">
+        <div className="mb-1 min-w-0 shrink-0">{topAccessory}</div>
+        <div className="flex min-h-0 flex-1 flex-col">{linked}</div>
+      </div>
     )
   }
 
-  return card
+  return linked
 }

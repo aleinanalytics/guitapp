@@ -28,6 +28,7 @@ export default function MovimientosMes() {
   const anioRaw = Number(searchParams.get('anio'))
   const mes = mesRaw >= 1 && mesRaw <= 12 ? mesRaw : now.getMonth() + 1
   const anio = Number.isFinite(anioRaw) && anioRaw >= 2000 && anioRaw <= 2100 ? anioRaw : now.getFullYear()
+  const categoriaIdFiltro = searchParams.get('categoria_id')
 
   const { transacciones, loading, error, refetch } = useTransacciones({ mes, anio })
   const { tipoCambio } = useTipoCambio()
@@ -41,13 +42,16 @@ export default function MovimientosMes() {
   }, [])
 
   const filtradas = useMemo(() => {
-    const list = tipo === 'todos' ? transacciones : transacciones.filter((t) => t.tipo === tipo)
+    let list = tipo === 'todos' ? transacciones : transacciones.filter((t) => t.tipo === tipo)
+    if (categoriaIdFiltro) {
+      list = list.filter((t) => t.categoria_id === categoriaIdFiltro)
+    }
     return [...list].sort((a, b) => {
       const fd = b.fecha.localeCompare(a.fecha)
       if (fd !== 0) return fd
       return (b.created_at ?? '').localeCompare(a.created_at ?? '')
     })
-  }, [transacciones, tipo])
+  }, [transacciones, tipo, categoriaIdFiltro])
 
   const resumen = useMemo(() => {
     const ing = transacciones.filter((t) => t.tipo === 'ingreso').reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
@@ -56,9 +60,16 @@ export default function MovimientosMes() {
     return { ingresos: ing, gastos: gas, suscripciones: sus, balance: ing - gas - sus }
   }, [transacciones, tc])
 
+  const nombreCategoriaFiltro = categoriaIdFiltro
+    ? categorias.find((c) => c.id === categoriaIdFiltro)?.nombre
+    : undefined
+
   const titulo =
     tipo === 'ingreso' ? 'Ingresos del mes'
-      : tipo === 'gasto' ? 'Gastos del mes'
+      : tipo === 'gasto'
+        ? nombreCategoriaFiltro
+          ? `Gastos del mes — ${nombreCategoriaFiltro}`
+          : 'Gastos del mes'
         : tipo === 'suscripcion' ? 'Suscripciones del mes'
           : 'Todas las operaciones'
 
