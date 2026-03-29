@@ -396,7 +396,8 @@ export default function Dashboard() {
             </KPICard>
           </div>
 
-          <div className="grid min-w-0 grid-cols-2 gap-3 lg:contents">
+          <div className="grid min-h-0 min-w-0 grid-cols-2 gap-3 items-stretch lg:contents">
+            <div className="flex h-full min-h-0 w-full min-w-0">
             <KPICard
               titulo="Suscripciones"
               montoARS={suscripciones}
@@ -407,11 +408,6 @@ export default function Dashboard() {
               delay={0.1}
               to={toSuscripciones}
               mobileStatLayout
-              topAccessory={
-                kpiCatId !== '' && categoriaKpiSeleccionada ? (
-                  <div className="flex h-8 shrink-0 justify-end" aria-hidden />
-                ) : undefined
-              }
             >
               {pctSuscripcionDelIngreso !== null ? (
                 <>
@@ -431,8 +427,10 @@ export default function Dashboard() {
                 <p className="text-center text-xs text-gray-500 lg:text-left lg:text-[11px]">Sin ingresos en el mes</p>
               ) : null}
             </KPICard>
+            </div>
 
             {kpiCatId !== '' && categoriaKpiSeleccionada && (
+            <div className="flex h-full min-h-0 w-full min-w-0">
               <KPICard
                 titulo={categoriaKpiSeleccionada.nombre}
                 montoARS={gastoCategoriaKpi}
@@ -497,6 +495,7 @@ export default function Dashboard() {
                   <p className="text-center text-xs text-gray-500 lg:text-left lg:text-[11px]">Sin ingresos en el mes</p>
                 ) : null}
               </KPICard>
+            </div>
             )}
           </div>
 
@@ -526,13 +525,13 @@ export default function Dashboard() {
               <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 <div className="text-center min-w-0">
                   <p className="text-[10px] text-gray-500 uppercase tracking-wide">ARS</p>
-                  <p className="text-xl sm:text-2xl font-bold text-gray-50 tabular-nums leading-tight mt-0.5 break-words">
+                  <p className="text-2xl sm:text-3xl font-bold text-gray-50 tabular-nums leading-tight mt-0.5 break-words">
                     {formatARS(tarjetaData.totalArs)}
                   </p>
                 </div>
                 <div className="text-center min-w-0">
                   <p className="text-[10px] text-gray-500 uppercase tracking-wide">USD</p>
-                  <p className="text-xl sm:text-2xl font-bold text-gray-50 tabular-nums leading-tight mt-0.5 break-words">
+                  <p className="text-2xl sm:text-3xl font-bold text-gray-50 tabular-nums leading-tight mt-0.5 break-words">
                     {formatUSD(tarjetaData.totalUsd)}
                   </p>
                 </div>

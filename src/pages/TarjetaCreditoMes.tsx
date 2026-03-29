@@ -255,11 +255,11 @@ export default function TarjetaCreditoMes() {
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-xl bg-white/[0.04] px-3 py-2.5">
                 <p className="text-[10px] text-gray-500 uppercase tracking-wide">Total ARS</p>
-                <p className="text-xl font-bold text-gray-50 tabular-nums mt-0.5">{formatARS(totalArs)}</p>
+                <p className="text-2xl sm:text-3xl font-bold text-gray-50 tabular-nums mt-0.5">{formatARS(totalArs)}</p>
               </div>
               <div className="rounded-xl bg-white/[0.04] px-3 py-2.5">
                 <p className="text-[10px] text-gray-500 uppercase tracking-wide">Total USD</p>
-                <p className="text-xl font-bold text-gray-50 tabular-nums mt-0.5">{formatUSD(totalUsd)}</p>
+                <p className="text-2xl sm:text-3xl font-bold text-gray-50 tabular-nums mt-0.5">{formatUSD(totalUsd)}</p>
               </div>
             </div>
             <div className="mt-3 pt-3 border-t border-white/[0.06] grid grid-cols-2 gap-3 text-xs">

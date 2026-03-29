@@ -19,7 +19,7 @@ interface KPICardProps {
   variant?: 'default' | 'hero'
   /** Solo móvil: ARS más grande y centrado; USD y contenido debajo centrados (mismo tamaño entre USD y extra) */
   mobileStatLayout?: boolean
-  /** Controles fuera del Link (p. ej. select) para HTML válido y evitar navegar al cambiar categoría */
+  /** Controles interactivos dentro del vidrio pero fuera del Link (p. ej. lápiz / select) */
   topAccessory?: React.ReactNode
 }
 
@@ -41,21 +41,17 @@ export default function KPICard({
 }: KPICardProps) {
   const isHero = variant === 'hero'
   const ms = mobileStatLayout && !isHero
-  const card = (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay, ease: [0.25, 0.46, 0.45, 0.94] }}
-      className={`glass h-full min-w-0 relative overflow-hidden group transition-all duration-300 ${glowClass ?? ''} ${
-        isHero ? 'p-5 sm:p-7 lg:p-8 text-center' : 'p-4'
-      } ${to ? 'cursor-pointer hover:border-white/[0.18] hover:bg-white/[0.02]' : 'hover:border-white/[0.12]'}`}
-    >
-      {accentColor && (
-        <div
-          className="absolute top-0 left-0 right-0 h-[2px] opacity-60"
-          style={{ background: `linear-gradient(90deg, transparent, ${accentColor}, transparent)` }}
-        />
-      )}
+
+  const accentBar =
+    accentColor != null ? (
+      <div
+        className="absolute top-0 left-0 right-0 h-[2px] opacity-60"
+        style={{ background: `linear-gradient(90deg, transparent, ${accentColor}, transparent)` }}
+      />
+    ) : null
+
+  const innerBody = (
+    <>
       {isHero ? (
         <div className="mb-3 flex flex-wrap items-center justify-center gap-2 sm:mb-5">
           {icon && <span className="text-gray-500">{icon}</span>}
@@ -63,7 +59,9 @@ export default function KPICard({
         </div>
       ) : (
         <div
-          className={`mb-2 flex min-w-0 items-center gap-2 ${ms ? 'justify-center lg:justify-between' : 'justify-between'}`}
+          className={`mb-2 flex min-w-0 items-center gap-2 ${ms ? 'justify-center lg:justify-between' : 'justify-between'} ${
+            topAccessory ? 'pr-8 sm:pr-9' : ''
+          }`}
         >
           <p className="min-w-0 truncate text-xs font-medium uppercase tracking-wider text-gray-400">{titulo}</p>
           {icon && <div className="text-gray-500 shrink-0">{icon}</div>}
@@ -113,33 +111,71 @@ export default function KPICard({
       ) : (
         children
       )}
-    </motion.div>
+    </>
   )
 
-  const linked = to ? (
-    <Link
-      to={to}
-      className={`${
-        topAccessory ? 'flex min-h-0 min-w-0 flex-1 flex-col' : 'block h-full min-w-0'
-      } focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue/40 focus-visible:ring-offset-2 focus-visible:ring-offset-dark-950 ${
-        isHero ? 'rounded-3xl' : 'rounded-2xl'
-      }`}
-      aria-label={`Ver listado: ${titulo}`}
-    >
-      {card}
-    </Link>
-  ) : (
-    card
-  )
+  const motionPad = isHero ? 'p-5 sm:p-7 lg:p-8 text-center' : 'p-4'
+  const roundedClass = isHero ? 'rounded-3xl' : 'rounded-2xl'
+  const motionBase = `glass h-full w-full min-w-0 relative overflow-hidden group transition-all duration-300 ${glowClass ?? ''} ${motionPad} ${
+    to && !topAccessory ? 'cursor-pointer hover:border-white/[0.18] hover:bg-white/[0.02]' : 'hover:border-white/[0.12]'
+  }`
 
+  const linkFocusClass =
+    'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue/40 focus-visible:ring-offset-2 focus-visible:ring-offset-dark-950'
+
+  /** Accesorio flotante: no ocupa fila en el flujo, título y montos alinean como el resto de KPIs */
   if (topAccessory) {
+    const shellClass = `glass h-full w-full min-w-0 relative overflow-hidden group transition-all duration-300 ${glowClass ?? ''} ${motionPad} ${roundedClass} ${
+      to ? 'cursor-pointer hover:border-white/[0.18] hover:bg-white/[0.02]' : 'hover:border-white/[0.12]'
+    }`
+
     return (
-      <div className="flex h-full min-w-0 flex-col">
-        <div className="mb-1 min-w-0 shrink-0">{topAccessory}</div>
-        <div className="flex min-h-0 flex-1 flex-col">{linked}</div>
-      </div>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay, ease: [0.25, 0.46, 0.45, 0.94] }}
+        className={shellClass}
+      >
+        {accentBar}
+        <div className="pointer-events-auto absolute left-2 right-2 top-2 z-20">{topAccessory}</div>
+        {to ? (
+          <Link
+            to={to}
+            className={`block min-h-0 w-full rounded-xl hover:bg-white/[0.02] ${linkFocusClass}`}
+            aria-label={`Ver listado: ${titulo}`}
+          >
+            {innerBody}
+          </Link>
+        ) : (
+          innerBody
+        )}
+      </motion.div>
     )
   }
 
-  return linked
+  const card = (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay, ease: [0.25, 0.46, 0.45, 0.94] }}
+      className={`${motionBase} ${roundedClass}`}
+    >
+      {accentBar}
+      {innerBody}
+    </motion.div>
+  )
+
+  if (to) {
+    return (
+      <Link
+        to={to}
+        className={`block h-full min-h-0 min-w-0 w-full ${linkFocusClass} ${isHero ? 'rounded-3xl' : 'rounded-2xl'}`}
+        aria-label={`Ver listado: ${titulo}`}
+      >
+        {card}
+      </Link>
+    )
+  }
+
+  return card
 }
