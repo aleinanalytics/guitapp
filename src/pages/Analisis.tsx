@@ -10,6 +10,12 @@ import { useAnalisis } from '../hooks/useAnalisis'
 import { supabase } from '../lib/supabase'
 import { convertirARS, formatARS } from '../lib/utils'
 import type { TipoTransaccion } from '../lib/types'
+import {
+  getIpcMensual,
+  writeIpcOverride,
+  ipcMonthKey,
+  IPC_MENSUAL_VARIACION_PCT,
+} from '../lib/ipcArgentinaMensual'
 import { TrendingUp, TrendingDown, RotateCcw, CalendarDays, Download } from 'lucide-react'
 import MobileUserMenu from '../components/MobileUserMenu'
 
@@ -30,6 +36,22 @@ const CHART_COLORS = {
   axis: '#4a4a66',
   tooltipBg: '#151524',
   tooltipBorder: '#2d2d44',
+}
+
+type MomCatRow = { catId: string; nombre: string; tipo: TipoTransaccion; anterior: number; actual: number }
+
+function aggregateMomRows(rows: MomCatRow[]) {
+  const anterior = rows.reduce((s, r) => s + r.anterior, 0)
+  const actual = rows.reduce((s, r) => s + r.actual, 0)
+  const delta = actual - anterior
+  const pct = anterior > 0 ? ((actual - anterior) / anterior) * 100 : null
+  return { anterior, actual, delta, pct }
+}
+
+/** Variación % mes a mes; null si no se puede calcular (división por cero). */
+function pctMoM(anterior: number, actual: number): number | null {
+  if (anterior <= 0) return null
+  return ((actual - anterior) / anterior) * 100
 }
 
 export default function Analisis() {
@@ -104,8 +126,7 @@ export default function Analisis() {
 
   const donutTotal = donutData.reduce((s, d) => s + d.total, 0)
 
-  // Section 3: MoM comparison
-  const momData = useMemo(() => {
+  const momGrouped = useMemo(() => {
     const prevMes = mesSeleccionado === 1 ? 12 : mesSeleccionado - 1
     const prevAnio = mesSeleccionado === 1 ? anioSeleccionado - 1 : anioSeleccionado
 
@@ -117,39 +138,69 @@ export default function Analisis() {
     )
     if (prevAnio !== anioSeleccionado) prevTx = []
 
-    type CatRow = { catId: string; nombre: string; tipo: TipoTransaccion; anterior: number; actual: number }
-    const map = new Map<string, CatRow>()
+    const rowKey = (t: { categoria_id: string | null; tipo: string }) =>
+      `${t.categoria_id ?? 'sin-cat'}__${t.tipo}`
+
+    const map = new Map<string, MomCatRow>()
 
     for (const t of prevTx) {
-      const catId = t.categoria_id ?? 'sin-cat'
-      const row = map.get(catId)
+      const k = rowKey(t)
+      const row = map.get(k)
       const ars = convertirARS(t.monto, t.moneda, tc)
       if (row) row.anterior += ars
-      else map.set(catId, { catId, nombre: t.categoria?.nombre ?? 'Sin categoría', tipo: t.tipo, anterior: ars, actual: 0 })
+      else
+        map.set(k, {
+          catId: t.categoria_id ?? 'sin-cat',
+          nombre: t.categoria?.nombre ?? 'Sin categoría',
+          tipo: t.tipo,
+          anterior: ars,
+          actual: 0,
+        })
     }
 
     for (const t of currentTx) {
-      const catId = t.categoria_id ?? 'sin-cat'
-      const row = map.get(catId)
+      const k = rowKey(t)
+      const row = map.get(k)
       const ars = convertirARS(t.monto, t.moneda, tc)
       if (row) row.actual += ars
-      else map.set(catId, { catId, nombre: t.categoria?.nombre ?? 'Sin categoría', tipo: t.tipo, anterior: 0, actual: ars })
+      else
+        map.set(k, {
+          catId: t.categoria_id ?? 'sin-cat',
+          nombre: t.categoria?.nombre ?? 'Sin categoría',
+          tipo: t.tipo,
+          anterior: 0,
+          actual: ars,
+        })
     }
 
-    const rows = Array.from(map.values())
-    rows.sort((a, b) => {
-      const absA = a.anterior === 0 ? 0 : Math.abs(((a.actual - a.anterior) / a.anterior) * 100)
-      const absB = b.anterior === 0 ? 0 : Math.abs(((b.actual - b.anterior) / b.anterior) * 100)
-      return absB - absA
-    })
-    return rows
+    const sortRows = (rows: MomCatRow[]) =>
+      [...rows].sort((a, b) => {
+        const mag = (r: MomCatRow) =>
+          r.anterior > 0
+            ? Math.abs(((r.actual - r.anterior) / r.anterior) * 100)
+            : r.actual > 0
+              ? 1e6
+              : 0
+        return mag(b) - mag(a)
+      })
+
+    const all = Array.from(map.values())
+    return {
+      gasto: sortRows(all.filter((r) => r.tipo === 'gasto')),
+      ingreso: sortRows(all.filter((r) => r.tipo === 'ingreso')),
+      suscripcion: sortRows(all.filter((r) => r.tipo === 'suscripcion')),
+      all,
+    }
   }, [transacciones, mesSeleccionado, anioSeleccionado, tc])
 
-  const momTotals = useMemo(() => {
-    const anterior = momData.reduce((s, r) => s + r.anterior, 0)
-    const actual = momData.reduce((s, r) => s + r.actual, 0)
-    return { anterior, actual }
-  }, [momData])
+  const momSaldo = useMemo(() => {
+    const g = aggregateMomRows(momGrouped.gasto)
+    const i = aggregateMomRows(momGrouped.ingreso)
+    const s = aggregateMomRows(momGrouped.suscripcion)
+    const anterior = i.anterior - g.anterior - s.anterior
+    const actual = i.actual - g.actual - s.actual
+    return { anterior, actual, delta: actual - anterior }
+  }, [momGrouped])
 
   // Section 4: Annual summary
   const annualSummary = useMemo(() => {
@@ -173,6 +224,31 @@ export default function Analisis() {
   const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i)
 
   const [downloading, setDownloading] = useState(false)
+  const [ipcUiTick, setIpcUiTick] = useState(0)
+  const [ipcDraft, setIpcDraft] = useState('')
+
+  const ipcMesReferencia = getIpcMensual(anioSeleccionado, mesSeleccionado)
+
+  useEffect(() => {
+    const v = getIpcMensual(anioSeleccionado, mesSeleccionado)
+    setIpcDraft(v !== null ? String(v).replace('.', ',') : '')
+  }, [anioSeleccionado, mesSeleccionado, ipcUiTick])
+
+  const aplicarIpcPersonalizado = () => {
+    const raw = ipcDraft.trim().replace(/\s/g, '').replace(',', '.')
+    if (raw === '') {
+      writeIpcOverride(anioSeleccionado, mesSeleccionado, null)
+    } else {
+      const n = parseFloat(raw)
+      if (Number.isFinite(n)) writeIpcOverride(anioSeleccionado, mesSeleccionado, n)
+    }
+    setIpcUiTick((x) => x + 1)
+  }
+
+  const restablecerIpcTabla = () => {
+    writeIpcOverride(anioSeleccionado, mesSeleccionado, null)
+    setIpcUiTick((x) => x + 1)
+  }
 
   const handleDescargarCSV = async () => {
     setDownloading(true)
@@ -226,6 +302,37 @@ export default function Analisis() {
     if (deltaPct === 0) return 'text-gray-500'
     if (tipo === 'ingreso') return deltaPct > 0 ? 'text-emerald-400' : 'text-red-400'
     return deltaPct < 0 ? 'text-emerald-400' : 'text-red-400'
+  }
+
+  function deltaPctCell(ant: number, act: number, tipo: TipoTransaccion) {
+    const pct = pctMoM(ant, act)
+    if (ant <= 0 && act <= 0) return <span className="text-gray-600">—</span>
+    if (pct === null && act > 0) return <span className="text-amber-400/90 text-xs">Nuevo</span>
+    if (pct === null) return <span className="text-gray-600">—</span>
+    const cls = deltaColor(pct, tipo)
+    return (
+      <span className={`font-semibold ${cls}`}>
+        {pct >= 0 ? '+' : ''}
+        {pct.toFixed(1)}%
+      </span>
+    )
+  }
+
+  /** Gastos: diferencia en puntos porcentuales vs IPC del mes actual (misma lógica mes a mes). */
+  function vsIpcPp(ant: number, act: number) {
+    const pct = pctMoM(ant, act)
+    if (ipcMesReferencia === null || pct === null) {
+      return <span className="text-gray-600">—</span>
+    }
+    const pp = pct - ipcMesReferencia
+    const cls =
+      pp > 0.5 ? 'text-rose-400' : pp < -0.5 ? 'text-emerald-400' : 'text-gray-400'
+    return (
+      <span className={cls} title="Puntos porcentuales respecto al IPC nacional del mes">
+        {pp >= 0 ? '+' : ''}
+        {pp.toFixed(1)} pp
+      </span>
+    )
   }
 
   const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ value?: number }>; label?: string }) => {
@@ -429,63 +536,170 @@ export default function Analisis() {
             transition={{ delay: 0.25 }}
             className="glass p-4 lg:p-6 mb-6"
           >
-            <h2 className="text-base font-semibold text-gray-200 mb-4">
-              Comparativa {MESES_FULL[mesSeleccionado === 1 ? 11 : mesSeleccionado - 2]} vs {MESES_FULL[mesSeleccionado - 1]}
+            <h2 className="text-base font-semibold text-gray-200 mb-2">
+              Comparativa {MESES_FULL[mesSeleccionado === 1 ? 11 : mesSeleccionado - 2]} vs{' '}
+              {MESES_FULL[mesSeleccionado - 1]} {anioSeleccionado}
             </h2>
-            {momData.length === 0 ? (
+            <p className="text-xs text-gray-500 mb-3 leading-relaxed">
+              Cada bloque suma solo su tipo (gastos, ingresos o suscripciones). El total de gastos ya no mezcla
+              sueldos ni ingresos. La columna <span className="text-gray-400">Δ %</span> es la variación mes a mes
+              de cada categoría; <span className="text-gray-400">vs IPC</span> compara esa variación con la
+              inflación oficial del mes actual (referencia INDEC, editable abajo).
+            </p>
+
+            <div className="mb-5 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-3 space-y-2">
+              <div className="flex flex-wrap items-end gap-2">
+                <div className="flex-1 min-w-[10rem]">
+                  <label className="block text-[10px] uppercase tracking-wider text-gray-500 mb-1">
+                    IPC nacional — {MESES_FULL[mesSeleccionado - 1]} (% mensual vs mes anterior)
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="Ej: 2,9"
+                    value={ipcDraft}
+                    onChange={(e) => setIpcDraft(e.target.value)}
+                    className="input-dark !py-2 !text-sm w-full max-w-[8rem]"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={aplicarIpcPersonalizado}
+                  className="rounded-xl bg-sky-500/15 px-3 py-2 text-xs font-medium text-sky-300 ring-1 ring-sky-500/25 hover:bg-sky-500/25"
+                >
+                  Guardar IPC
+                </button>
+                <button
+                  type="button"
+                  onClick={restablecerIpcTabla}
+                  className="rounded-xl px-3 py-2 text-xs text-gray-500 hover:text-gray-400"
+                >
+                  Quitar personalizado
+                </button>
+              </div>
+              <p className="text-[11px] text-gray-600 leading-snug">
+                Valor en app:{' '}
+                <span className="text-gray-400 font-medium">
+                  {ipcMesReferencia !== null ? `${ipcMesReferencia.toFixed(1)}%` : 'sin dato — cargá el % del INDEC'}
+                </span>
+                {IPC_MENSUAL_VARIACION_PCT[ipcMonthKey(anioSeleccionado, mesSeleccionado)] !== undefined && (
+                  <span className="text-gray-600"> (tabla interna; podés sobreescribir)</span>
+                )}
+              </p>
+            </div>
+
+            {mesSeleccionado === 1 && (
+              <p className="text-amber-400/80 text-xs mb-4">
+                En <strong>enero</strong> el mes anterior es diciembre del año previo; por ahora solo se cargan
+                movimientos del año elegido arriba, así que la columna «Anterior» suele salir en $0. Compará
+                febrero en adelante para ver el mes previo completo.
+              </p>
+            )}
+
+            {momGrouped.all.length === 0 ? (
               <p className="text-gray-500 text-sm text-center py-8">Sin datos para comparar</p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-gray-500 text-xs uppercase tracking-wider">
-                      <th className="text-left pb-3 font-medium">Categoría</th>
-                      <th className="text-right pb-3 font-medium">Anterior</th>
-                      <th className="text-right pb-3 font-medium">Actual</th>
-                      <th className="text-right pb-3 font-medium">Δ ARS</th>
-                      <th className="text-right pb-3 font-medium">Δ %</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {momData.map((r, i) => {
-                      const delta = r.actual - r.anterior
-                      const pct = r.anterior === 0 ? null : ((r.actual - r.anterior) / r.anterior) * 100
-                      return (
-                        <motion.tr
-                          key={r.catId}
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ delay: 0.3 + i * 0.03 }}
-                          className="border-t border-white/[0.04]"
-                        >
-                          <td className="py-2.5 text-gray-300">{r.nombre}</td>
-                          <td className="py-2.5 text-right text-gray-400">{formatARS(r.anterior)}</td>
-                          <td className="py-2.5 text-right text-gray-300">{formatARS(r.actual)}</td>
-                          <td className="py-2.5 text-right text-gray-400">
-                            {delta >= 0 ? '+' : ''}{formatARS(delta)}
-                          </td>
-                          <td className={`py-2.5 text-right font-semibold ${pct === null ? 'text-gray-600' : deltaColor(pct, r.tipo)}`}>
-                            {pct === null ? '—' : `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%`}
-                          </td>
-                        </motion.tr>
-                      )
-                    })}
-                    <tr className="border-t-2 border-white/[0.08] font-bold">
-                      <td className="py-2.5 text-gray-100">TOTAL</td>
-                      <td className="py-2.5 text-right text-gray-300">{formatARS(momTotals.anterior)}</td>
-                      <td className="py-2.5 text-right text-gray-100">{formatARS(momTotals.actual)}</td>
-                      <td className="py-2.5 text-right text-gray-300">
-                        {momTotals.actual - momTotals.anterior >= 0 ? '+' : ''}
-                        {formatARS(momTotals.actual - momTotals.anterior)}
-                      </td>
-                      <td className="py-2.5 text-right text-gray-300">
-                        {momTotals.anterior === 0
-                          ? '—'
-                          : `${(((momTotals.actual - momTotals.anterior) / momTotals.anterior) * 100) >= 0 ? '+' : ''}${(((momTotals.actual - momTotals.anterior) / momTotals.anterior) * 100).toFixed(1)}%`}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+              <div className="space-y-8">
+                {(
+                  [
+                    {
+                      key: 'gasto',
+                      title: 'Gastos',
+                      rows: momGrouped.gasto,
+                      showIpc: true,
+                    },
+                    {
+                      key: 'ingreso',
+                      title: 'Ingresos',
+                      rows: momGrouped.ingreso,
+                      showIpc: false,
+                    },
+                    {
+                      key: 'suscripcion',
+                      title: 'Suscripciones',
+                      rows: momGrouped.suscripcion,
+                      showIpc: false,
+                    },
+                  ] as const
+                ).map((block) => {
+                  if (block.rows.length === 0) return null
+                  const sub = aggregateMomRows(block.rows)
+                  return (
+                    <div key={block.key} className="overflow-x-auto">
+                      <h3 className="text-sm font-semibold text-gray-300 mb-2">{block.title}</h3>
+                      <table className="w-full text-sm min-w-[28rem]">
+                        <thead>
+                          <tr className="text-gray-500 text-xs uppercase tracking-wider">
+                            <th className="text-left pb-3 font-medium">Categoría</th>
+                            <th className="text-right pb-3 font-medium">Anterior</th>
+                            <th className="text-right pb-3 font-medium">Actual</th>
+                            <th className="text-right pb-3 font-medium">Δ ARS</th>
+                            <th className="text-right pb-3 font-medium">Δ %</th>
+                            {block.showIpc && (
+                              <th className="text-right pb-3 font-medium">vs IPC</th>
+                            )}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {block.rows.map((r, i) => {
+                            const delta = r.actual - r.anterior
+                            return (
+                              <motion.tr
+                                key={`${block.key}-${r.catId}-${r.nombre}`}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: 0.05 + i * 0.02 }}
+                                className="border-t border-white/[0.04]"
+                              >
+                                <td className="py-2.5 text-gray-300">{r.nombre}</td>
+                                <td className="py-2.5 text-right text-gray-400">{formatARS(r.anterior)}</td>
+                                <td className="py-2.5 text-right text-gray-300">{formatARS(r.actual)}</td>
+                                <td className="py-2.5 text-right text-gray-400">
+                                  {delta >= 0 ? '+' : ''}
+                                  {formatARS(delta)}
+                                </td>
+                                <td className="py-2.5 text-right">{deltaPctCell(r.anterior, r.actual, r.tipo)}</td>
+                                {block.showIpc && (
+                                  <td className="py-2.5 text-right text-xs">{vsIpcPp(r.anterior, r.actual)}</td>
+                                )}
+                              </motion.tr>
+                            )
+                          })}
+                          <tr className="border-t-2 border-white/[0.1] font-semibold bg-white/[0.02]">
+                            <td className="py-2.5 text-gray-100">Subtotal {block.title.toLowerCase()}</td>
+                            <td className="py-2.5 text-right text-gray-300">{formatARS(sub.anterior)}</td>
+                            <td className="py-2.5 text-right text-gray-100">{formatARS(sub.actual)}</td>
+                            <td className="py-2.5 text-right text-gray-300">
+                              {sub.delta >= 0 ? '+' : ''}
+                              {formatARS(sub.delta)}
+                            </td>
+                            <td className="py-2.5 text-right">{deltaPctCell(sub.anterior, sub.actual, block.key)}</td>
+                            {block.showIpc && (
+                              <td className="py-2.5 text-right text-xs">{vsIpcPp(sub.anterior, sub.actual)}</td>
+                            )}
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  )
+                })}
+
+                <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/[0.06] px-4 py-3">
+                  <p className="text-xs font-semibold text-indigo-200/90 mb-1">Saldo (ingresos − gastos − suscripciones)</p>
+                  <p className="text-sm text-gray-400">
+                    Mes anterior: <span className="text-gray-200">{formatARS(momSaldo.anterior)}</span>
+                    {' · '}
+                    Mes actual: <span className="text-gray-200">{formatARS(momSaldo.actual)}</span>
+                    {' · '}
+                    <span className={momSaldo.delta >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                      Cambio: {momSaldo.delta >= 0 ? '+' : ''}
+                      {formatARS(momSaldo.delta)}
+                    </span>
+                  </p>
+                  <p className="text-[10px] text-gray-600 mt-1.5 leading-snug">
+                    Es la diferencia de flujo entre los dos meses, no la suma de categorías.
+                  </p>
+                </div>
               </div>
             )}
           </motion.section>

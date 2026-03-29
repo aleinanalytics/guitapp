@@ -53,10 +53,23 @@
   .input-dark[type='date'] {
     min-width: 0;
     max-width: 100%;
+    width: 100%;
     box-sizing: border-box;
+    -webkit-appearance: none;
+    appearance: none;
   }
   .input-dark[type='date']::-webkit-datetime-edit-fields-wrapper {
     max-width: 100%;
+    padding: 0;
+  }
+  .input-date-contained[type='date'] {
+    display: block;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+  .input-date-contained[type='date']::-webkit-datetime-edit {
+    max-width: 100%;
+    overflow: hidden;
   }
   .select-dark {
     @apply bg-dark-800/80 border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-gray-100 focus:outline-none focus:border-accent-blue/50 focus:ring-1 focus:ring-accent-blue/30 transition-all duration-200 appearance-none cursor-pointer;

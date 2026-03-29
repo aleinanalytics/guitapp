@@ -276,17 +276,35 @@ export default function Dashboard() {
         </div>
 
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-4 lg:gap-4">
-          <div className="grid grid-cols-2 gap-3 lg:contents">
-            <KPICard titulo="Ingresos" montoARS={ingresos} montoUSD={ingresos / tc}
-              icon={<TrendingUp size={18} />} accentColor="#10b981" glowClass="glow-green" delay={0.05} to={toIngresos} />
-            <KPICard titulo="Gastos" montoARS={gastos} montoUSD={gastos / tc}
-              icon={<TrendingDown size={18} />} accentColor="#ef4444" glowClass="glow-red" delay={0.08} to={toGastos}>
+          <div className="grid min-w-0 grid-cols-2 gap-3 lg:contents">
+            <KPICard
+              titulo="Ingresos"
+              montoARS={ingresos}
+              montoUSD={ingresos / tc}
+              icon={<TrendingUp size={18} />}
+              accentColor="#10b981"
+              glowClass="glow-green"
+              delay={0.05}
+              to={toIngresos}
+              mobileStatLayout
+            />
+            <KPICard
+              titulo="Gastos"
+              montoARS={gastos}
+              montoUSD={gastos / tc}
+              icon={<TrendingDown size={18} />}
+              accentColor="#ef4444"
+              glowClass="glow-red"
+              delay={0.08}
+              to={toGastos}
+              mobileStatLayout
+            >
               {pctGastoDelIngreso !== null ? (
-                <p className="mt-2 text-[11px] font-medium leading-snug text-rose-300/90">
+                <p className="text-center text-xs font-medium leading-snug text-rose-300/90 lg:text-left lg:text-[11px]">
                   {pctGastoDelIngreso.toFixed(1)}% del ingreso
                 </p>
               ) : gastos > 0 ? (
-                <p className="mt-2 text-[11px] text-gray-500">Sin ingresos en el mes</p>
+                <p className="text-center text-xs text-gray-500 lg:text-left lg:text-[11px]">Sin ingresos en el mes</p>
               ) : null}
             </KPICard>
           </div>

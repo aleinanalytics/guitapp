@@ -589,7 +589,7 @@ export default function Carga() {
                 </div>
               </div>
 
-              <div className="rounded-2xl bg-dark-800/50 border border-white/[0.06] px-4 py-3">
+              <div className="rounded-2xl bg-dark-800/50 border border-white/[0.06] px-4 py-3 min-w-0 max-w-full overflow-hidden">
                 <div className="flex items-center gap-2 text-[10px] font-medium uppercase tracking-wider text-gray-500 mb-2">
                   <Calendar className="shrink-0" size={14} strokeWidth={2} />
                   Fecha
@@ -599,7 +599,7 @@ export default function Carga() {
                   value={fecha}
                   onChange={(e) => setFecha(e.target.value)}
                   required
-                  className="input-dark w-full min-w-0 bg-dark-900/40 border-white/[0.06]"
+                  className="input-dark input-date-contained w-full min-w-0 max-w-full bg-dark-900/40 border-white/[0.06]"
                 />
               </div>
 
@@ -655,9 +655,7 @@ export default function Carga() {
                     onChange={(e) => setEsGastoFijo(e.target.checked)}
                     className="accent-rose-500 w-4 h-4 shrink-0"
                   />
-                  <span className="text-xs text-gray-300 leading-snug">
-                    Gasto fijo <span className="text-gray-500">(suma al promedio para sugerir el fondo de emergencia)</span>
-                  </span>
+                  <span className="text-xs text-gray-300 leading-snug">Gasto fijo</span>
                 </label>
               )}
               {tipo === 'gasto' && <MedioPagoGastoFields {...medioGastoProps} />}
@@ -757,9 +755,7 @@ export default function Carga() {
                     onChange={(e) => setEsGastoFijo(e.target.checked)}
                     className="accent-rose-500 w-4 h-4 shrink-0"
                   />
-                  <span className="text-xs text-gray-400 leading-snug">
-                    Gasto fijo <span className="text-gray-600">(para calcular sugerencia del fondo de emergencia)</span>
-                  </span>
+                  <span className="text-xs text-gray-400 leading-snug">Gasto fijo</span>
                 </label>
               )}
               {tipo === 'gasto' && <MedioPagoGastoFields {...medioGastoProps} />}
