@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Trash2, Plus, Pencil, Check, X, CreditCard } from 'lucide-react'
+import { Trash2, Plus, Pencil, Check, X, CreditCard, Calendar } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import { useCuotas } from '../hooks/useCuotas'
@@ -13,7 +13,285 @@ const TIPO_CONFIG: Record<TipoTransaccion, { label: string; color: string; bg: s
   suscripcion: { label: 'Suscripción', color: 'text-purple-400', bg: 'bg-purple-500/10', ring: 'ring-purple-500/30' },
 }
 
+const TIPO_ORDER_MOBILE: TipoTransaccion[] = ['gasto', 'ingreso', 'suscripcion']
+
 const today = new Date().toISOString().split('T')[0]
+
+type MedioPagoGastoFieldsProps = {
+  medioPagoNivel1: 'efectivo' | 'plastico'
+  setMedioPagoNivel1: (v: 'efectivo' | 'plastico') => void
+  plasticoTipo: 'debito' | 'credito'
+  setPlasticoTipo: (v: 'debito' | 'credito') => void
+  esTarjetaCredito: boolean
+  enCuotas: boolean
+  setEnCuotas: (v: boolean) => void
+  numCuotas: string
+  setNumCuotas: (v: string) => void
+  cuotaFechaInline: string
+  setCuotaFechaInline: (v: string) => void
+  monto: string
+}
+
+function MedioPagoGastoFields({
+  medioPagoNivel1,
+  setMedioPagoNivel1,
+  plasticoTipo,
+  setPlasticoTipo,
+  esTarjetaCredito,
+  enCuotas,
+  setEnCuotas,
+  numCuotas,
+  setNumCuotas,
+  cuotaFechaInline,
+  setCuotaFechaInline,
+  monto,
+}: MedioPagoGastoFieldsProps) {
+  return (
+    <div className="space-y-2">
+      <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Medio de pago</label>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => setMedioPagoNivel1('efectivo')}
+          className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${medioPagoNivel1 === 'efectivo' ? 'bg-rose-500/10 text-rose-400 ring-1 ring-rose-500/30' : 'bg-dark-800/50 text-gray-500 hover:text-gray-300'}`}
+        >
+          Efectivo
+        </button>
+        <button
+          type="button"
+          onClick={() => setMedioPagoNivel1('plastico')}
+          className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1.5 ${medioPagoNivel1 === 'plastico' ? 'bg-rose-500/10 text-rose-400 ring-1 ring-rose-500/30' : 'bg-dark-800/50 text-gray-500 hover:text-gray-300'}`}
+        >
+          <CreditCard size={14} />
+          Tarjeta
+        </button>
+      </div>
+      <AnimatePresence initial={false}>
+        {medioPagoNivel1 === 'plastico' && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="pt-1 pb-1 space-y-2"
+          >
+            <p className="text-[11px] text-gray-500 pl-0.5">Tipo de tarjeta</p>
+            <div className="flex gap-2 pb-0.5">
+              <button
+                type="button"
+                onClick={() => setPlasticoTipo('debito')}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${plasticoTipo === 'debito' ? 'bg-amber-500/10 text-amber-400 ring-1 ring-amber-500/30' : 'bg-dark-800/50 text-gray-500 hover:text-gray-300'}`}
+              >
+                Débito
+              </button>
+              <button
+                type="button"
+                onClick={() => setPlasticoTipo('credito')}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1.5 ${plasticoTipo === 'credito' ? 'bg-rose-500/10 text-rose-400 ring-1 ring-rose-500/30' : 'bg-dark-800/50 text-gray-500 hover:text-gray-300'}`}
+              >
+                <CreditCard size={14} />
+                Crédito
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence initial={false}>
+        {esTarjetaCredito && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="space-y-2"
+          >
+            <div className="flex items-center gap-3 pt-1">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={enCuotas}
+                  onChange={(e) => setEnCuotas(e.target.checked)}
+                  className="accent-rose-500 w-4 h-4"
+                />
+                <span className="text-xs text-gray-400">Pagar en cuotas</span>
+              </label>
+            </div>
+            <AnimatePresence initial={false}>
+              {enCuotas && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="space-y-2"
+                >
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] text-gray-500 mb-1">Nº cuotas</label>
+                      <input
+                        type="number"
+                        min="2"
+                        max="48"
+                        value={numCuotas}
+                        onChange={(e) => setNumCuotas(e.target.value)}
+                        placeholder="Ej: 6"
+                        className="input-dark !py-1.5 !text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-gray-500 mb-1">Primera cuota</label>
+                      <input
+                        type="date"
+                        value={cuotaFechaInline}
+                        onChange={(e) => setCuotaFechaInline(e.target.value)}
+                        className="input-dark !py-1.5 !text-sm"
+                      />
+                    </div>
+                  </div>
+                  {(() => {
+                    const montoNum = parseMontoInput(monto)
+                    const nC = parseInt(numCuotas)
+                    if (Number.isFinite(montoNum) && montoNum > 0 && nC >= 2) {
+                      const cuotaMensual = Math.round((montoNum / nC) * 100) / 100
+                      return (
+                        <p className="text-xs text-rose-400/80 bg-rose-500/10 px-2 py-1.5 rounded-lg">
+                          {nC} cuotas de {formatARS(cuotaMensual)}
+                        </p>
+                      )
+                    }
+                    return null
+                  })()}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+type MedioPagoSuscripcionFieldsProps = {
+  plasticoTipo: 'debito' | 'credito'
+  setPlasticoTipo: (v: 'debito' | 'credito') => void
+  esTarjetaCredito: boolean
+  enCuotas: boolean
+  setEnCuotas: (v: boolean) => void
+  numCuotas: string
+  setNumCuotas: (v: string) => void
+  cuotaFechaInline: string
+  setCuotaFechaInline: (v: string) => void
+  monto: string
+}
+
+/** Suscripciones: solo tarjeta — débito (→ efectivo en BD) o crédito (→ tarjeta), con cuotas opcionales en crédito */
+function MedioPagoSuscripcionFields({
+  plasticoTipo,
+  setPlasticoTipo,
+  esTarjetaCredito,
+  enCuotas,
+  setEnCuotas,
+  numCuotas,
+  setNumCuotas,
+  cuotaFechaInline,
+  setCuotaFechaInline,
+  monto,
+}: MedioPagoSuscripcionFieldsProps) {
+  return (
+    <div className="space-y-2">
+      <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Pago de la suscripción</label>
+      <p className="text-[11px] text-gray-500 -mt-1 mb-1">Con tarjeta: débito o crédito</p>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => setPlasticoTipo('debito')}
+          className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${plasticoTipo === 'debito' ? 'bg-amber-500/10 text-amber-400 ring-1 ring-amber-500/30' : 'bg-dark-800/50 text-gray-500 hover:text-gray-300'}`}
+        >
+          Débito
+        </button>
+        <button
+          type="button"
+          onClick={() => setPlasticoTipo('credito')}
+          className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1.5 ${plasticoTipo === 'credito' ? 'bg-rose-500/10 text-rose-400 ring-1 ring-rose-500/30' : 'bg-dark-800/50 text-gray-500 hover:text-gray-300'}`}
+        >
+          <CreditCard size={14} />
+          Crédito
+        </button>
+      </div>
+
+      <AnimatePresence initial={false}>
+        {esTarjetaCredito && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="space-y-2"
+          >
+            <div className="flex items-center gap-3 pt-1">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={enCuotas}
+                  onChange={(e) => setEnCuotas(e.target.checked)}
+                  className="accent-rose-500 w-4 h-4"
+                />
+                <span className="text-xs text-gray-400">Pagar en cuotas</span>
+              </label>
+            </div>
+            <AnimatePresence initial={false}>
+              {enCuotas && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="space-y-2"
+                >
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] text-gray-500 mb-1">Nº cuotas</label>
+                      <input
+                        type="number"
+                        min="2"
+                        max="48"
+                        value={numCuotas}
+                        onChange={(e) => setNumCuotas(e.target.value)}
+                        placeholder="Ej: 6"
+                        className="input-dark !py-1.5 !text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-gray-500 mb-1">Primera cuota</label>
+                      <input
+                        type="date"
+                        value={cuotaFechaInline}
+                        onChange={(e) => setCuotaFechaInline(e.target.value)}
+                        className="input-dark !py-1.5 !text-sm"
+                      />
+                    </div>
+                  </div>
+                  {(() => {
+                    const montoNum = parseMontoInput(monto)
+                    const nC = parseInt(numCuotas)
+                    if (Number.isFinite(montoNum) && montoNum > 0 && nC >= 2) {
+                      const cuotaMensual = Math.round((montoNum / nC) * 100) / 100
+                      return (
+                        <p className="text-xs text-rose-400/80 bg-rose-500/10 px-2 py-1.5 rounded-lg">
+                          {nC} cuotas de {formatARS(cuotaMensual)}
+                        </p>
+                      )
+                    }
+                    return null
+                  })()}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
 
 export default function Carga() {
   const { user } = useAuth()
@@ -39,9 +317,20 @@ export default function Carga() {
   const [cuotaFechaInline, setCuotaFechaInline] = useState(today)
 
   const medioPagoDb: MedioPago =
-    medioPagoNivel1 === 'efectivo' ? 'efectivo' : plasticoTipo === 'debito' ? 'efectivo' : 'tarjeta'
+    tipo === 'ingreso'
+      ? 'efectivo'
+      : tipo === 'suscripcion'
+        ? plasticoTipo === 'debito'
+          ? 'efectivo'
+          : 'tarjeta'
+        : medioPagoNivel1 === 'efectivo'
+          ? 'efectivo'
+          : plasticoTipo === 'debito'
+            ? 'efectivo'
+            : 'tarjeta'
 
-  const esTarjetaCredito = medioPagoNivel1 === 'plastico' && plasticoTipo === 'credito'
+  const esTarjetaCreditoGasto = tipo === 'gasto' && medioPagoNivel1 === 'plastico' && plasticoTipo === 'credito'
+  const esTarjetaCreditoSuscripcion = tipo === 'suscripcion' && plasticoTipo === 'credito'
 
   // Cuotas form
   const [showCuotaForm, setShowCuotaForm] = useState(false)
@@ -86,14 +375,18 @@ export default function Carga() {
   const filteredCategorias = categorias.filter((c) => c.tipo === tipo)
   const gastoCategorias = categorias.filter((c) => c.tipo === 'gasto')
   useEffect(() => { setCategoriaId('') }, [tipo])
+  useEffect(() => {
+    setEnCuotas(false)
+    setNumCuotas('')
+  }, [tipo])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const montoNum = parseMontoInput(monto)
     if (!fecha || !tipo || !categoriaId || !descripcion.trim() || !Number.isFinite(montoNum) || montoNum <= 0) return
 
-    // If TC crédito + en cuotas, insert into compras_cuotas instead
-    if (esTarjetaCredito && enCuotas) {
+    // Si crédito + cuotas (gasto o suscripción), insertar en compras_cuotas
+    if ((esTarjetaCreditoGasto || esTarjetaCreditoSuscripcion) && enCuotas) {
       const nCuotas = parseInt(numCuotas)
       if (!nCuotas || nCuotas < 2) { window.alert('Ingresá al menos 2 cuotas'); return }
       setSubmitting(true)
@@ -184,10 +477,38 @@ export default function Carga() {
     ? Math.round((cuotaPreviewNum / parseInt(cuotasTotal, 10)) * 100) / 100
     : null
 
+  const medioGastoProps: MedioPagoGastoFieldsProps = {
+    medioPagoNivel1,
+    setMedioPagoNivel1,
+    plasticoTipo,
+    setPlasticoTipo,
+    esTarjetaCredito: esTarjetaCreditoGasto,
+    enCuotas,
+    setEnCuotas,
+    numCuotas,
+    setNumCuotas,
+    cuotaFechaInline,
+    setCuotaFechaInline,
+    monto,
+  }
+
+  const medioSuscripcionProps: MedioPagoSuscripcionFieldsProps = {
+    plasticoTipo,
+    setPlasticoTipo,
+    esTarjetaCredito: esTarjetaCreditoSuscripcion,
+    enCuotas,
+    setEnCuotas,
+    numCuotas,
+    setNumCuotas,
+    cuotaFechaInline,
+    setCuotaFechaInline,
+    monto,
+  }
+
   return (
     <div className="p-4 lg:p-8 max-w-5xl mx-auto">
       <motion.h1 initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-        className="text-2xl lg:text-3xl font-bold text-gray-50 mb-6">
+        className="hidden lg:block text-2xl lg:text-3xl font-bold text-gray-50 mb-6">
         Cargar Transacción
       </motion.h1>
 
@@ -195,207 +516,218 @@ export default function Carga() {
         {/* Form column */}
         <div className="lg:col-span-2">
           <motion.form initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-            onSubmit={handleSubmit} className="glass p-5 space-y-4 mb-6">
-            {/* Tipo */}
-            <div>
-              <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Tipo</label>
-              <div className="flex gap-2">
-                {(['ingreso', 'gasto', 'suscripcion'] as TipoTransaccion[]).map((t) => {
-                  const cfg = TIPO_CONFIG[t]; const active = tipo === t
+            onSubmit={handleSubmit} className="glass p-4 sm:p-5 mb-6">
+            {/* Móvil: layout tipo app de referencia */}
+            <div className="lg:hidden space-y-5">
+              <h2 className="text-lg font-bold text-gray-50">Cargar</h2>
+
+              <div className="flex rounded-2xl bg-dark-800/90 p-1 gap-0.5 ring-1 ring-white/[0.08]">
+                {TIPO_ORDER_MOBILE.map((t) => {
+                  const cfg = TIPO_CONFIG[t]
+                  const active = tipo === t
                   return (
-                    <button key={t} type="button" onClick={() => setTipo(t)}
-                      className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${active ? `${cfg.bg} ${cfg.color} ring-1 ${cfg.ring}` : 'bg-dark-800/50 text-gray-500 hover:text-gray-300'}`}>
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setTipo(t)}
+                      className={`flex-1 py-3 rounded-xl text-xs font-semibold transition-all duration-200 ${
+                        active
+                          ? 'bg-gray-100 text-dark-950 shadow-md'
+                          : 'text-gray-500 hover:text-gray-400'
+                      }`}
+                    >
                       {cfg.label}
                     </button>
                   )
                 })}
               </div>
-            </div>
 
-            <div className="grid w-full min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-4">
-              <div className="min-w-0 w-full max-w-full">
-                <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Fecha</label>
+              <div>
+                <p className="text-[10px] font-medium text-gray-500 uppercase tracking-[0.2em] text-center mb-3">Cantidad</p>
+                <div className="flex flex-wrap items-end justify-center gap-3">
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    autoComplete="off"
+                    value={monto}
+                    onChange={(e) => setMonto(montoFieldNextValue(monto, e.target.value))}
+                    required
+                    placeholder="0,00"
+                    className="min-w-0 max-w-[11rem] sm:max-w-[14rem] bg-transparent border-0 text-center text-4xl sm:text-5xl font-bold text-gray-50 placeholder:text-gray-700 focus:ring-0 focus:outline-none"
+                  />
+                  <div className="flex rounded-xl bg-dark-800/90 p-0.5 gap-0.5 ring-1 ring-white/[0.06] shrink-0 mb-1">
+                    {(['ARS', 'USD'] as Moneda[]).map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => setMoneda(m)}
+                        className={`px-3 py-2 rounded-lg text-xs font-bold transition-all duration-200 ${
+                          moneda === m ? 'bg-gray-100 text-dark-950' : 'text-gray-500'
+                        }`}
+                      >
+                        {m}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl bg-dark-800/50 border border-white/[0.06] px-4 py-3">
+                <div className="flex items-center gap-2 text-[10px] font-medium uppercase tracking-wider text-gray-500 mb-2">
+                  <Calendar className="shrink-0" size={14} strokeWidth={2} />
+                  Fecha
+                </div>
                 <input
                   type="date"
                   value={fecha}
                   onChange={(e) => setFecha(e.target.value)}
                   required
-                  className="input-dark block w-full min-w-0 max-w-full"
+                  className="input-dark w-full min-w-0 bg-dark-900/40 border-white/[0.06]"
                 />
               </div>
-              <div className="min-w-0 w-full max-w-full">
-                <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Categoría</label>
-                <select value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} required className="select-dark block w-full min-w-0 max-w-full">
-                  <option value="">Seleccionar...</option>
-                  {filteredCategorias.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                </select>
-              </div>
-            </div>
 
-            <div>
-              <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Descripción</label>
-              <input type="text" value={descripcion} onChange={(e) => setDescripcion(e.target.value)}
-                maxLength={100} required placeholder="Ej: Compra semanal" className="input-dark" />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Monto</label>
+                <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-2">Categoría</p>
+                <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1 snap-x snap-mandatory [scrollbar-width:thin]">
+                  {filteredCategorias.map((c) => {
+                    const active = categoriaId === c.id
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => setCategoriaId(c.id)}
+                        className={`flex flex-col items-center gap-1.5 shrink-0 w-[4.25rem] snap-start ${active ? 'scale-[1.02]' : ''}`}
+                      >
+                        <div
+                          className={`w-12 h-12 rounded-full border-2 flex items-center justify-center text-sm font-bold ${
+                            active ? 'ring-2 ring-accent-blue ring-offset-2 ring-offset-dark-950' : 'opacity-80'
+                          }`}
+                          style={{
+                            borderColor: c.color,
+                            backgroundColor: `${c.color}22`,
+                            color: c.color,
+                          }}
+                        >
+                          {c.nombre[0]}
+                        </div>
+                        <span className="text-[9px] text-gray-400 text-center leading-tight line-clamp-2 w-full">{c.nombre}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-2">Descripción</label>
                 <input
                   type="text"
-                  inputMode="decimal"
-                  autoComplete="off"
-                  value={monto}
-                  onChange={(e) => setMonto(montoFieldNextValue(monto, e.target.value))}
+                  value={descripcion}
+                  onChange={(e) => setDescripcion(e.target.value)}
+                  maxLength={100}
                   required
-                  placeholder="0"
+                  placeholder="Ej: compra semanal"
                   className="input-dark"
                 />
               </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Moneda</label>
-                <div className="flex gap-2 mt-0.5">
-                  {(['ARS', 'USD'] as Moneda[]).map((m) => (
-                    <button key={m} type="button" onClick={() => setMoneda(m)}
-                      className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${moneda === m ? 'bg-accent-blue/10 text-accent-blue ring-1 ring-accent-blue/30' : 'bg-dark-800/50 text-gray-500 hover:text-gray-300'}`}>
-                      {m}
-                    </button>
-                  ))}
-                </div>
-              </div>
+
+              {tipo === 'gasto' && <MedioPagoGastoFields {...medioGastoProps} />}
+              {tipo === 'suscripcion' && <MedioPagoSuscripcionFields {...medioSuscripcionProps} />}
+
+              <motion.button
+                type="submit"
+                disabled={submitting}
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
+                className="w-full bg-gradient-to-r from-accent-blue to-accent-purple text-white rounded-2xl py-3.5 text-sm font-semibold hover:opacity-90 disabled:opacity-40 transition-all duration-200 flex items-center justify-center gap-2"
+              >
+                {submitting ? (
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <Plus size={18} />
+                )}
+                {submitting ? 'Guardando...' : 'Guardar movimiento'}
+              </motion.button>
             </div>
 
-            {/* Medio de pago: efectivo vs tarjeta; tarjeta despliega débito (→ mismo que efectivo en BD) / crédito */}
-            {tipo === 'gasto' && (
-              <div className="space-y-2">
-                <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Medio de pago</label>
+            {/* Desktop */}
+            <div className="hidden lg:block space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Tipo</label>
                 <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setMedioPagoNivel1('efectivo')}
-                    className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${medioPagoNivel1 === 'efectivo' ? 'bg-rose-500/10 text-rose-400 ring-1 ring-rose-500/30' : 'bg-dark-800/50 text-gray-500 hover:text-gray-300'}`}
-                  >
-                    Efectivo
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMedioPagoNivel1('plastico')}
-                    className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1.5 ${medioPagoNivel1 === 'plastico' ? 'bg-rose-500/10 text-rose-400 ring-1 ring-rose-500/30' : 'bg-dark-800/50 text-gray-500 hover:text-gray-300'}`}
-                  >
-                    <CreditCard size={14} />
-                    Tarjeta
-                  </button>
+                  {(['ingreso', 'gasto', 'suscripcion'] as TipoTransaccion[]).map((t) => {
+                    const cfg = TIPO_CONFIG[t]; const active = tipo === t
+                    return (
+                      <button key={t} type="button" onClick={() => setTipo(t)}
+                        className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${active ? `${cfg.bg} ${cfg.color} ring-1 ${cfg.ring}` : 'bg-dark-800/50 text-gray-500 hover:text-gray-300'}`}>
+                        {cfg.label}
+                      </button>
+                    )
+                  })}
                 </div>
-                <AnimatePresence initial={false}>
-                  {medioPagoNivel1 === 'plastico' && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -6 }}
-                      transition={{ duration: 0.2, ease: 'easeOut' }}
-                      className="pt-1 pb-1 space-y-2"
-                    >
-                      <p className="text-[11px] text-gray-500 pl-0.5">Tipo de tarjeta</p>
-                      <div className="flex gap-2 pb-0.5">
-                        <button
-                          type="button"
-                          onClick={() => setPlasticoTipo('debito')}
-                          className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${plasticoTipo === 'debito' ? 'bg-amber-500/10 text-amber-400 ring-1 ring-amber-500/30' : 'bg-dark-800/50 text-gray-500 hover:text-gray-300'}`}
-                        >
-                          Débito
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setPlasticoTipo('credito')}
-                          className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1.5 ${plasticoTipo === 'credito' ? 'bg-rose-500/10 text-rose-400 ring-1 ring-rose-500/30' : 'bg-dark-800/50 text-gray-500 hover:text-gray-300'}`}
-                        >
-                          <CreditCard size={14} />
-                          Crédito
-                        </button>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {/* Cuotas inline when Crédito is selected */}
-                <AnimatePresence initial={false}>
-                  {esTarjetaCredito && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -6 }}
-                      transition={{ duration: 0.2, ease: 'easeOut' }}
-                      className="space-y-2"
-                    >
-                      <div className="flex items-center gap-3 pt-1">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={enCuotas}
-                            onChange={(e) => setEnCuotas(e.target.checked)}
-                            className="accent-rose-500 w-4 h-4"
-                          />
-                          <span className="text-xs text-gray-400">Pagar en cuotas</span>
-                        </label>
-                      </div>
-                      <AnimatePresence initial={false}>
-                        {enCuotas && (
-                          <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            className="space-y-2"
-                          >
-                            <div className="grid grid-cols-2 gap-2">
-                              <div>
-                                <label className="block text-[10px] text-gray-500 mb-1">Nº cuotas</label>
-                                <input
-                                  type="number"
-                                  min="2"
-                                  max="48"
-                                  value={numCuotas}
-                                  onChange={(e) => setNumCuotas(e.target.value)}
-                                  placeholder="Ej: 6"
-                                  className="input-dark !py-1.5 !text-sm"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-[10px] text-gray-500 mb-1">Primera cuota</label>
-                                <input
-                                  type="date"
-                                  value={cuotaFechaInline}
-                                  onChange={(e) => setCuotaFechaInline(e.target.value)}
-                                  className="input-dark !py-1.5 !text-sm"
-                                />
-                              </div>
-                            </div>
-                            {(() => {
-                              const montoNum = parseMontoInput(monto)
-                              const nC = parseInt(numCuotas)
-                              if (Number.isFinite(montoNum) && montoNum > 0 && nC >= 2) {
-                                const cuotaMensual = Math.round((montoNum / nC) * 100) / 100
-                                return (
-                                  <p className="text-xs text-rose-400/80 bg-rose-500/10 px-2 py-1.5 rounded-lg">
-                                    {nC} cuotas de {formatARS(cuotaMensual)}
-                                  </p>
-                                )
-                              }
-                              return null
-                            })()}
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </div>
-            )}
 
-            <motion.button type="submit" disabled={submitting} whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
-              className="w-full bg-gradient-to-r from-accent-blue to-accent-purple text-white rounded-xl py-3 text-sm font-semibold hover:opacity-90 disabled:opacity-40 transition-all duration-200 flex items-center justify-center gap-2">
-              {submitting ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Plus size={18} />}
-              {submitting ? 'Guardando...' : 'Guardar'}
-            </motion.button>
+              <div className="grid w-full min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-4">
+                <div className="min-w-0 w-full max-w-full">
+                  <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Fecha</label>
+                  <input
+                    type="date"
+                    value={fecha}
+                    onChange={(e) => setFecha(e.target.value)}
+                    required
+                    className="input-dark block w-full min-w-0 max-w-full"
+                  />
+                </div>
+                <div className="min-w-0 w-full max-w-full">
+                  <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Categoría</label>
+                  <select value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} required className="select-dark block w-full min-w-0 max-w-full">
+                    <option value="">Seleccionar...</option>
+                    {filteredCategorias.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Descripción</label>
+                <input type="text" value={descripcion} onChange={(e) => setDescripcion(e.target.value)}
+                  maxLength={100} required placeholder="Ej: Compra semanal" className="input-dark" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Monto</label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    autoComplete="off"
+                    value={monto}
+                    onChange={(e) => setMonto(montoFieldNextValue(monto, e.target.value))}
+                    required
+                    placeholder="0"
+                    className="input-dark"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Moneda</label>
+                  <div className="flex gap-2 mt-0.5">
+                    {(['ARS', 'USD'] as Moneda[]).map((m) => (
+                      <button key={m} type="button" onClick={() => setMoneda(m)}
+                        className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${moneda === m ? 'bg-accent-blue/10 text-accent-blue ring-1 ring-accent-blue/30' : 'bg-dark-800/50 text-gray-500 hover:text-gray-300'}`}>
+                        {m}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {tipo === 'gasto' && <MedioPagoGastoFields {...medioGastoProps} />}
+              {tipo === 'suscripcion' && <MedioPagoSuscripcionFields {...medioSuscripcionProps} />}
+
+              <motion.button type="submit" disabled={submitting} whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
+                className="w-full bg-gradient-to-r from-accent-blue to-accent-purple text-white rounded-xl py-3 text-sm font-semibold hover:opacity-90 disabled:opacity-40 transition-all duration-200 flex items-center justify-center gap-2">
+                {submitting ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Plus size={18} />}
+                {submitting ? 'Guardando...' : 'Guardar'}
+              </motion.button>
+            </div>
           </motion.form>
 
           {/* Cuotas section */}
