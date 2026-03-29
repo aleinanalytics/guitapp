@@ -43,7 +43,7 @@ export default function KPICard({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay, ease: [0.25, 0.46, 0.45, 0.94] }}
-      className={`glass h-full relative overflow-hidden group transition-all duration-300 ${glowClass ?? ''} ${
+      className={`glass h-full min-w-0 relative overflow-hidden group transition-all duration-300 ${glowClass ?? ''} ${
         isHero ? 'p-5 sm:p-7 lg:p-8 text-center' : 'p-4'
       } ${to ? 'cursor-pointer hover:border-white/[0.18] hover:bg-white/[0.02]' : 'hover:border-white/[0.12]'}`}
     >

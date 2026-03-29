@@ -384,13 +384,25 @@ export default function Dashboard() {
             </motion.div>
           </Link>
 
-          <div className="grid grid-cols-2 gap-3 lg:contents">
-            <KPICard titulo="Mayor Gasto" delay={0.22}
+          <div className="grid min-w-0 grid-cols-2 gap-3 lg:contents">
+            <KPICard
+              titulo="Mayor Gasto"
+              delay={0.22}
               montoARS={mayorGasto ? convertirARS(mayorGasto.monto, mayorGasto.moneda, tc) : 0}
-              descripcion={mayorGasto?.descripcion} icon={<TrendingDown size={18} />} accentColor="#f59e0b" />
-            <KPICard titulo="Menor Gasto" delay={0.24}
+              descripcion={mayorGasto?.descripcion}
+              icon={<TrendingDown size={18} />}
+              accentColor="#f59e0b"
+              mobileStatLayout
+            />
+            <KPICard
+              titulo="Menor Gasto"
+              delay={0.24}
               montoARS={menorGasto ? convertirARS(menorGasto.monto, menorGasto.moneda, tc) : 0}
-              descripcion={menorGasto?.descripcion} icon={<ArrowDown size={18} />} accentColor="#78716c" />
+              descripcion={menorGasto?.descripcion}
+              icon={<ArrowDown size={18} />}
+              accentColor="#78716c"
+              mobileStatLayout
+            />
           </div>
 
           <motion.div

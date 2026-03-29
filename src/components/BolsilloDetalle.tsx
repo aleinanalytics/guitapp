@@ -169,6 +169,13 @@ export default function BolsilloDetalle({ tipo, titulo }: Props) {
           </div>
         </div>
 
+        {tipo === 'ahorro' && (
+          <div className="mb-5 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.06] px-3 py-2.5 text-[11px] text-emerald-200/90 leading-relaxed">
+            Se recomienda como mínimo un <strong className="text-emerald-100">10%</strong> de los ingresos para
+            ahorrar de forma sostenible.
+          </div>
+        )}
+
         {tipo === 'emergencia' && (
           <div className="mb-5 rounded-xl border border-sky-500/20 bg-sky-500/[0.06] px-3 py-2.5 text-[11px] text-sky-200/85 leading-relaxed">
             Se recomienda un fondo de al menos <strong className="text-sky-100">3 o 6 meses</strong> de gastos
