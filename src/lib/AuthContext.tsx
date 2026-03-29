@@ -2,11 +2,15 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import type { User, Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 
+type AuthError = { error: string | null }
+
 interface AuthState {
   user: User | null
   session: Session | null
   loading: boolean
   signInWithGoogle: () => Promise<void>
+  signInWithEmail: (email: string, password: string) => Promise<AuthError>
+  signUpWithEmail: (email: string, password: string) => Promise<AuthError & { needsEmailConfirmation: boolean }>
   signOut: () => Promise<void>
 }
 
@@ -41,12 +45,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) window.alert('Error al iniciar sesión: ' + error.message)
   }
 
+  const signInWithEmail = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
+    return { error: error?.message ?? null }
+  }
+
+  const signUpWithEmail = async (email: string, password: string) => {
+    const { data, error } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+      options: { emailRedirectTo: `${window.location.origin}/` },
+    })
+    if (error) return { error: error.message, needsEmailConfirmation: false }
+    const needsEmailConfirmation = !data.session
+    return { error: null, needsEmailConfirmation }
+  }
+
   const signOut = async () => {
     await supabase.auth.signOut()
   }
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signInWithGoogle, signOut }}>
+    <AuthContext.Provider
+      value={{ user, session, loading, signInWithGoogle, signInWithEmail, signUpWithEmail, signOut }}
+    >
       {children}
     </AuthContext.Provider>
   )

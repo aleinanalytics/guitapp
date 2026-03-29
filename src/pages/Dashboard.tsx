@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Pencil, Check, X, TrendingUp, TrendingDown, ArrowDown, Wallet, CreditCard, RotateCcw, DollarSign, Zap, Plus, PiggyBank, Shield, Store } from 'lucide-react'
+import { Pencil, Check, X, TrendingUp, TrendingDown, Wallet, CreditCard, RotateCcw, DollarSign, Zap, Plus, PiggyBank, Shield, Store, Banknote } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
@@ -16,7 +16,7 @@ import { useTarjetaConfig, countdownTarjeta, formatFechaTarjeta } from '../hooks
 import { useAnalisis } from '../hooks/useAnalisis'
 import type { Categoria, Moneda } from '../lib/types'
 import { supabase } from '../lib/supabase'
-import { convertirARS, formatARS, formatUSD, sumarPorMoneda } from '../lib/utils'
+import { convertirARS, cuentaComoSalidaDeEfectivo, formatARS, formatUSD, sumarPorMoneda } from '../lib/utils'
 import { useAuth } from '../lib/AuthContext'
 import { useBolsillos } from '../hooks/useBolsillos'
 
@@ -105,14 +105,37 @@ export default function Dashboard() {
     .filter((t) => t.tipo === 'suscripcion')
     .reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
 
-  const balance = ingresos - gastos - suscripciones
+  const salidasEfectivo = transacciones
+    .filter(cuentaComoSalidaDeEfectivo)
+    .reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
 
-  const gastosTx = transacciones.filter((t) => t.tipo === 'gasto')
-  const mayorGasto = gastosTx.length > 0
-    ? gastosTx.reduce((max, t) => (convertirARS(t.monto, t.moneda, tc) > convertirARS(max.monto, max.moneda, tc) ? t : max))
+  /** Disponible del mes: ingresos menos solo lo pagado en efectivo/débito (TC no descuenta). */
+  const balance = ingresos - salidasEfectivo
+
+  /** Gastos sin tarjeta de crédito, solo ARS (no mezcla consumos en USD). */
+  const gastosSinTcArs = transacciones.filter(
+    (t) => t.tipo === 'gasto' && t.medio_pago !== 'tarjeta' && t.moneda === 'ARS',
+  )
+  const mayorGasto = gastosSinTcArs.length > 0
+    ? gastosSinTcArs.reduce((max, t) => (t.monto > max.monto ? t : max))
     : null
-  const menorGasto = gastosTx.length > 0
-    ? gastosTx.reduce((min, t) => (convertirARS(t.monto, t.moneda, tc) < convertirARS(min.monto, min.moneda, tc) ? t : min))
+  const menorGasto = gastosSinTcArs.length > 0
+    ? gastosSinTcArs.reduce((min, t) => (t.monto < min.monto ? t : min))
+    : null
+
+  /** Gastos y suscripciones abonados con tarjeta de crédito (mismo criterio que el KPI / resumen TC). */
+  const consumosTc = transacciones.filter(
+    (t) => (t.tipo === 'gasto' || t.tipo === 'suscripcion') && t.medio_pago === 'tarjeta',
+  )
+  const mayorGastoTc = consumosTc.length > 0
+    ? consumosTc.reduce((max, t) =>
+        convertirARS(t.monto, t.moneda, tc) > convertirARS(max.monto, max.moneda, tc) ? t : max,
+      )
+    : null
+  const menorGastoTc = consumosTc.length > 0
+    ? consumosTc.reduce((min, t) =>
+        convertirARS(t.monto, t.moneda, tc) < convertirARS(min.monto, min.moneda, tc) ? t : min,
+      )
     : null
 
   /** % de gastos (solo tipo gasto) respecto a ingresos del mes */
@@ -134,7 +157,9 @@ export default function Dashboard() {
 
   // Tarjeta KPI: pagos únicos + cuotas del mes, ARS y USD por separado (sin convertir para el resumen)
   const tarjetaData = useMemo(() => {
-    const txTarjeta = transacciones.filter((t) => t.medio_pago === 'tarjeta')
+    const txTarjeta = transacciones.filter(
+      (t) => (t.tipo === 'gasto' || t.tipo === 'suscripcion') && t.medio_pago === 'tarjeta',
+    )
     const singles = sumarPorMoneda(txTarjeta.map((t) => ({ monto: t.monto, moneda: t.moneda })))
 
     let cuotasArs = 0
@@ -597,19 +622,44 @@ export default function Dashboard() {
             <KPICard
               titulo="Mayor Gasto"
               delay={0.22}
-              montoARS={mayorGasto ? convertirARS(mayorGasto.monto, mayorGasto.moneda, tc) : 0}
+              montoARS={mayorGasto?.monto ?? 0}
+              montoUSD={(mayorGasto?.monto ?? 0) / tc}
               descripcion={mayorGasto?.descripcion}
-              icon={<TrendingDown size={18} />}
+              icon={<Banknote size={18} />}
               accentColor="#f59e0b"
               mobileStatLayout
             />
             <KPICard
               titulo="Menor Gasto"
               delay={0.24}
-              montoARS={menorGasto ? convertirARS(menorGasto.monto, menorGasto.moneda, tc) : 0}
+              montoARS={menorGasto?.monto ?? 0}
+              montoUSD={(menorGasto?.monto ?? 0) / tc}
               descripcion={menorGasto?.descripcion}
-              icon={<ArrowDown size={18} />}
+              icon={<Banknote size={18} />}
               accentColor="#78716c"
+              mobileStatLayout
+            />
+          </div>
+
+          <div className="grid min-w-0 grid-cols-2 gap-3 lg:contents">
+            <KPICard
+              titulo="Mayor gasto TC"
+              delay={0.25}
+              montoARS={mayorGastoTc ? convertirARS(mayorGastoTc.monto, mayorGastoTc.moneda, tc) : 0}
+              montoUSD={mayorGastoTc ? convertirARS(mayorGastoTc.monto, mayorGastoTc.moneda, tc) / tc : 0}
+              descripcion={mayorGastoTc?.descripcion}
+              icon={<CreditCard size={18} />}
+              accentColor="#f43f5e"
+              mobileStatLayout
+            />
+            <KPICard
+              titulo="Menor gasto TC"
+              delay={0.26}
+              montoARS={menorGastoTc ? convertirARS(menorGastoTc.monto, menorGastoTc.moneda, tc) : 0}
+              montoUSD={menorGastoTc ? convertirARS(menorGastoTc.monto, menorGastoTc.moneda, tc) / tc : 0}
+              descripcion={menorGastoTc?.descripcion}
+              icon={<CreditCard size={18} />}
+              accentColor="#fb7185"
               mobileStatLayout
             />
           </div>

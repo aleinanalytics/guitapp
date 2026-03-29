@@ -36,6 +36,7 @@ export default function TarjetaCreditoMes() {
   }, [])
 
   const gastoCategorias = useMemo(() => categorias.filter((c) => c.tipo === 'gasto'), [categorias])
+  const suscripcionCategorias = useMemo(() => categorias.filter((c) => c.tipo === 'suscripcion'), [categorias])
 
   const refreshAll = () => {
     void refetchTx()
@@ -66,8 +67,12 @@ export default function TarjetaCreditoMes() {
     if (ok) setEditingConfig(false)
   }
 
-  const tarjetaGastos = useMemo(
-    () => transacciones.filter((t) => t.tipo === 'gasto' && t.medio_pago === 'tarjeta'),
+  /** Pagos únicos al cierre: gastos y suscripciones con tarjeta de crédito. */
+  const tarjetaPagosUnicos = useMemo(
+    () =>
+      transacciones.filter(
+        (t) => (t.tipo === 'gasto' || t.tipo === 'suscripcion') && t.medio_pago === 'tarjeta',
+      ),
     [transacciones],
   )
 
@@ -103,8 +108,8 @@ export default function TarjetaCreditoMes() {
   }, [cuotas, nextMes, nextAnio])
 
   const singlesPorMoneda = useMemo(
-    () => sumarPorMoneda(tarjetaGastos.map((t) => ({ monto: t.monto, moneda: t.moneda }))),
-    [tarjetaGastos],
+    () => sumarPorMoneda(tarjetaPagosUnicos.map((t) => ({ monto: t.monto, moneda: t.moneda }))),
+    [tarjetaPagosUnicos],
   )
   const cuotasPorMoneda = useMemo(
     () => sumarPorMoneda(cuotaLines.map((l) => ({ monto: l.monto, moneda: l.moneda }))),
@@ -277,16 +282,21 @@ export default function TarjetaCreditoMes() {
           </motion.div>
 
           <section className="mb-8">
-            <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3">Pagos únicos con tarjeta</h2>
-            {tarjetaGastos.length === 0 ? (
-              <p className="text-gray-500 text-sm glass-light p-4 rounded-xl">No registraste gastos con tarjeta de crédito este mes.</p>
+            <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3">
+              Pagos únicos con tarjeta
+            </h2>
+            <p className="text-[11px] text-gray-500 mb-3">Incluye gastos y suscripciones cargadas con crédito.</p>
+            {tarjetaPagosUnicos.length === 0 ? (
+              <p className="text-gray-500 text-sm glass-light p-4 rounded-xl">
+                No registraste movimientos con tarjeta de crédito este mes.
+              </p>
             ) : (
               <ul className="space-y-2">
-                {tarjetaGastos.map((t, i) => (
+                {tarjetaPagosUnicos.map((t, i) => (
                   <EditableTransaccionListRow
                     key={t.id}
                     t={t}
-                    categorias={gastoCategorias}
+                    categorias={t.tipo === 'gasto' ? gastoCategorias : suscripcionCategorias}
                     delay={i * 0.02}
                     onMutated={refreshAll}
                   />

@@ -8,7 +8,7 @@ import type { PieLabelRenderProps } from 'recharts'
 import KPICard from '../components/KPICard'
 import { useAnalisis } from '../hooks/useAnalisis'
 import { supabase } from '../lib/supabase'
-import { convertirARS, formatARS } from '../lib/utils'
+import { convertirARS, cuentaComoSalidaDeEfectivo, formatARS } from '../lib/utils'
 import type { TipoTransaccion } from '../lib/types'
 import {
   getIpcMensual,
@@ -82,6 +82,7 @@ export default function Analisis() {
       Ingresos: 0,
       Gastos: 0,
       Suscripciones: 0,
+      SalidaEfectivo: 0,
     }))
     for (const t of transacciones) {
       const m = new Date(t.fecha + 'T00:00:00').getMonth()
@@ -89,15 +90,16 @@ export default function Analisis() {
       if (t.tipo === 'ingreso') months[m].Ingresos += ars
       else if (t.tipo === 'gasto') months[m].Gastos += ars
       else months[m].Suscripciones += ars
+      if (cuentaComoSalidaDeEfectivo(t)) months[m].SalidaEfectivo += ars
     }
     return months
   }, [transacciones, tc])
 
-  // Balance area chart data
+  // Balance mensual = disponible (sin restar gastos/suscripciones solo con tarjeta de crédito)
   const balanceData = useMemo(() => {
     return barData.map((m) => ({
       mes: m.mes,
-      Balance: m.Ingresos - m.Gastos - m.Suscripciones,
+      Balance: m.Ingresos - m.SalidaEfectivo,
     }))
   }, [barData])
 
@@ -194,13 +196,24 @@ export default function Analisis() {
   }, [transacciones, mesSeleccionado, anioSeleccionado, tc])
 
   const momSaldo = useMemo(() => {
-    const g = aggregateMomRows(momGrouped.gasto)
-    const i = aggregateMomRows(momGrouped.ingreso)
-    const s = aggregateMomRows(momGrouped.suscripcion)
-    const anterior = i.anterior - g.anterior - s.anterior
-    const actual = i.actual - g.actual - s.actual
+    const saldoMes = (mes: number, anio: number) => {
+      let ing = 0
+      let salidas = 0
+      for (const t of transacciones) {
+        const d = new Date(t.fecha + 'T00:00:00')
+        if (d.getMonth() + 1 !== mes || d.getFullYear() !== anio) continue
+        const ars = convertirARS(t.monto, t.moneda, tc)
+        if (t.tipo === 'ingreso') ing += ars
+        else if (cuentaComoSalidaDeEfectivo(t)) salidas += ars
+      }
+      return ing - salidas
+    }
+    const prevMes = mesSeleccionado === 1 ? 12 : mesSeleccionado - 1
+    const prevAnio = mesSeleccionado === 1 ? anioSeleccionado - 1 : anioSeleccionado
+    const anterior = saldoMes(prevMes, prevAnio)
+    const actual = saldoMes(mesSeleccionado, anioSeleccionado)
     return { anterior, actual, delta: actual - anterior }
-  }, [momGrouped])
+  }, [transacciones, mesSeleccionado, anioSeleccionado, tc])
 
   // Section 4: Annual summary
   const annualSummary = useMemo(() => {
@@ -429,7 +442,8 @@ export default function Analisis() {
             transition={{ delay: 0.15 }}
             className="glass p-4 lg:p-6 mb-6"
           >
-            <h2 className="text-base font-semibold text-gray-200 mb-4">Balance mensual</h2>
+            <h2 className="text-base font-semibold text-gray-200 mb-1">Balance mensual</h2>
+            <p className="text-[11px] text-gray-500 mb-4">Ingresos menos gastos y suscripciones en efectivo o débito; no resta lo pagado con tarjeta de crédito.</p>
             <ResponsiveContainer width="100%" height={200}>
               <AreaChart data={balanceData}>
                 <defs>
@@ -685,7 +699,7 @@ export default function Analisis() {
                 })}
 
                 <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/[0.06] px-4 py-3">
-                  <p className="text-xs font-semibold text-indigo-200/90 mb-1">Saldo (ingresos − gastos − suscripciones)</p>
+                  <p className="text-xs font-semibold text-indigo-200/90 mb-1">Saldo disponible (sin tarjeta de crédito)</p>
                   <p className="text-sm text-gray-400">
                     Mes anterior: <span className="text-gray-200">{formatARS(momSaldo.anterior)}</span>
                     {' · '}

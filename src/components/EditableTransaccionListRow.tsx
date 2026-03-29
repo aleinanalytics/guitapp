@@ -153,7 +153,7 @@ export default function EditableTransaccionListRow({ t, categorias, delay = 0, m
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-gray-200 truncate">
           {t.descripcion}
-          {t.tipo === 'gasto' && t.medio_pago === 'tarjeta' && (
+          {(t.tipo === 'gasto' || t.tipo === 'suscripcion') && t.medio_pago === 'tarjeta' && (
             <CreditCard size={12} className="inline ml-1.5 text-rose-400/60" />
           )}
         </p>

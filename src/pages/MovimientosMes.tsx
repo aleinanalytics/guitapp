@@ -7,7 +7,7 @@ import EditableTransaccionListRow from '../components/EditableTransaccionListRow
 import MobileUserMenu from '../components/MobileUserMenu'
 import { useTransacciones } from '../hooks/useTransacciones'
 import { useTipoCambio } from '../hooks/useTipoCambio'
-import { convertirARS, formatARS, formatUSD } from '../lib/utils'
+import { convertirARS, cuentaComoSalidaDeEfectivo, formatARS, formatUSD } from '../lib/utils'
 import type { Categoria } from '../lib/types'
 
 const MESES = [
@@ -57,7 +57,10 @@ export default function MovimientosMes() {
     const ing = transacciones.filter((t) => t.tipo === 'ingreso').reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
     const gas = transacciones.filter((t) => t.tipo === 'gasto').reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
     const sus = transacciones.filter((t) => t.tipo === 'suscripcion').reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
-    return { ingresos: ing, gastos: gas, suscripciones: sus, balance: ing - gas - sus }
+    const salidasEf = transacciones
+      .filter(cuentaComoSalidaDeEfectivo)
+      .reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
+    return { ingresos: ing, gastos: gas, suscripciones: sus, balance: ing - salidasEf }
   }, [transacciones, tc])
 
   const nombreCategoriaFiltro = categoriaIdFiltro

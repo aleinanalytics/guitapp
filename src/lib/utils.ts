@@ -1,4 +1,14 @@
-import type { Moneda } from './types'
+import type { Moneda, Transaccion } from './types'
+
+/**
+ * Solo efectivo/débito (medio_pago efectivo en BD). Lo cargado con tarjeta de crédito no sale del disponible.
+ */
+export function cuentaComoSalidaDeEfectivo(t: Pick<Transaccion, 'tipo' | 'medio_pago'>): boolean {
+  return (
+    (t.tipo === 'gasto' || t.tipo === 'suscripcion') &&
+    t.medio_pago === 'efectivo'
+  )
+}
 
 export function formatARS(n: number): string {
   return '$ ' + n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })

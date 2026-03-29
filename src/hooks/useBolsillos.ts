@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import { useTipoCambio } from './useTipoCambio'
-import { convertirARS } from '../lib/utils'
-import type { BolsilloTipo, BolsilloConfig, BolsilloMovimiento } from '../lib/types'
+import { convertirARS, cuentaComoSalidaDeEfectivo } from '../lib/utils'
+import type { BolsilloTipo, BolsilloConfig, BolsilloMovimiento, Transaccion } from '../lib/types'
 
 export function useBolsillos() {
   const { user } = useAuth()
@@ -33,7 +33,7 @@ export function useBolsillos() {
         .select('*')
         .order('created_at', { ascending: false }),
       supabase.from('bolsillos_config').select('*'),
-      supabase.from('transacciones').select('monto, moneda, tipo'),
+      supabase.from('transacciones').select('monto, moneda, tipo, medio_pago'),
     ])
 
     if (movRes.error) setError(movRes.error.message)
@@ -49,15 +49,13 @@ export function useBolsillos() {
       setError(txRes.error.message)
     } else {
       let ing = 0
-      let gas = 0
-      let sus = 0
+      let salidasEf = 0
       for (const t of txRes.data ?? []) {
         const ars = convertirARS(Number(t.monto), t.moneda as 'ARS' | 'USD', tc)
         if (t.tipo === 'ingreso') ing += ars
-        else if (t.tipo === 'gasto') gas += ars
-        else if (t.tipo === 'suscripcion') sus += ars
+        else if (cuentaComoSalidaDeEfectivo(t as Pick<Transaccion, 'tipo' | 'medio_pago'>)) salidasEf += ars
       }
-      setFluidoHistorial(ing - gas - sus)
+      setFluidoHistorial(ing - salidasEf)
     }
 
     setLoading(false)
