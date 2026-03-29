@@ -14,7 +14,8 @@ import { useTipoCambio } from '../hooks/useTipoCambio'
 import { useCuotas, getCuotaForMonth } from '../hooks/useCuotas'
 import { useTarjetaConfig, countdownTarjeta, formatFechaTarjeta } from '../hooks/useTarjetaConfig'
 import { useAnalisis } from '../hooks/useAnalisis'
-import { convertirARS, formatARS, formatUSD } from '../lib/utils'
+import type { Moneda } from '../lib/types'
+import { convertirARS, formatARS, formatUSD, sumarPorMoneda } from '../lib/utils'
 import { useAuth } from '../lib/AuthContext'
 import { useBolsillos } from '../hooks/useBolsillos'
 
@@ -83,56 +84,92 @@ export default function Dashboard() {
   /** % de gastos (solo tipo gasto) respecto a ingresos del mes */
   const pctGastoDelIngreso = ingresos > 0 ? (gastos / ingresos) * 100 : null
 
-  // Tarjeta KPI: single payments + cuotas for this month
+  // Tarjeta KPI: pagos únicos + cuotas del mes, ARS y USD por separado (sin convertir para el resumen)
   const tarjetaData = useMemo(() => {
-    const tarjetaSingle = transacciones
-      .filter((t) => t.medio_pago === 'tarjeta')
-      .reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
+    const txTarjeta = transacciones.filter((t) => t.medio_pago === 'tarjeta')
+    const singles = sumarPorMoneda(txTarjeta.map((t) => ({ monto: t.monto, moneda: t.moneda })))
 
-    let cuotasThisMonth = 0
-    const cuotaDetails: { desc: string; numero: number; total: number; monto: number }[] = []
+    let cuotasArs = 0
+    let cuotasUsd = 0
+    const cuotaDetails: {
+      desc: string
+      numero: number
+      total: number
+      monto: number
+      moneda: Moneda
+    }[] = []
     for (const c of cuotas) {
       const info = getCuotaForMonth(c, mes, anio)
       if (info) {
-        cuotasThisMonth += convertirARS(info.monto, c.moneda, tc)
-        cuotaDetails.push({ desc: c.descripcion, ...info })
+        if (c.moneda === 'USD') cuotasUsd += info.monto
+        else cuotasArs += info.monto
+        cuotaDetails.push({ desc: c.descripcion, moneda: c.moneda, ...info })
       }
     }
 
-    // Next month
     const nextMes = mes === 12 ? 1 : mes + 1
     const nextAnio = mes === 12 ? anio + 1 : anio
-    let cuotasNextMonth = 0
-    const nextDetails: { desc: string; numero: number; total: number; monto: number }[] = []
+    let nextArs = 0
+    let nextUsd = 0
+    const nextDetails: {
+      desc: string
+      numero: number
+      total: number
+      monto: number
+      moneda: Moneda
+    }[] = []
     for (const c of cuotas) {
       const info = getCuotaForMonth(c, nextMes, nextAnio)
       if (info) {
-        cuotasNextMonth += convertirARS(info.monto, c.moneda, tc)
-        nextDetails.push({ desc: c.descripcion, ...info })
+        if (c.moneda === 'USD') nextUsd += info.monto
+        else nextArs += info.monto
+        nextDetails.push({ desc: c.descripcion, moneda: c.moneda, ...info })
       }
     }
 
+    const totalArs = singles.ars + cuotasArs
+    const totalUsd = singles.usd + cuotasUsd
+
     return {
-      totalMes: tarjetaSingle + cuotasThisMonth,
+      totalArs,
+      totalUsd,
       cuotaDetails,
-      nextMonthTotal: cuotasNextMonth,
+      nextMonthArs: nextArs,
+      nextMonthUsd: nextUsd,
       nextDetails,
       nextMesName: MESES[nextMes - 1],
     }
-  }, [transacciones, cuotas, mes, anio, tc])
+  }, [transacciones, cuotas, mes, anio])
 
   // Chart data — desktop only
-  const pieData = useMemo(() => {
+  type PieSlice = {
+    name: string
+    value: number
+    color: string
+    /** Si existe, el tooltip/leyenda muestran USD real; value sigue en ARS equivalente solo para el área del gráfico */
+    tarjetaUsdMonto?: number
+  }
+
+  const pieData = useMemo((): PieSlice[] => {
     const gastosEfectivo = transacciones
       .filter((t) => t.tipo === 'gasto' && t.medio_pago !== 'tarjeta')
       .reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
-    return [
+    const out: PieSlice[] = [
       { name: 'Ingresos', value: ingresos, color: '#10b981' },
       { name: 'Gastos', value: gastosEfectivo, color: '#ef4444' },
-      { name: 'Tarjeta', value: tarjetaData.totalMes, color: '#f43f5e' },
-      { name: 'Suscripciones', value: suscripciones, color: '#a855f7' },
-    ].filter((d) => d.value > 0)
-  }, [transacciones, ingresos, suscripciones, tarjetaData.totalMes, tc])
+    ]
+    if (tarjetaData.totalArs > 0) out.push({ name: 'Tarjeta ARS', value: tarjetaData.totalArs, color: '#f43f5e' })
+    if (tarjetaData.totalUsd > 0) {
+      out.push({
+        name: 'Tarjeta USD',
+        value: tarjetaData.totalUsd * tc,
+        color: '#fda4af',
+        tarjetaUsdMonto: tarjetaData.totalUsd,
+      })
+    }
+    out.push({ name: 'Suscripciones', value: suscripciones, color: '#a855f7' })
+    return out.filter((d) => d.value > 0)
+  }, [transacciones, ingresos, suscripciones, tarjetaData.totalArs, tarjetaData.totalUsd, tc])
 
   const barData = useMemo(() => {
     const byCategory: Record<string, { nombre: string; color: string; total: number }> = {}
@@ -333,8 +370,17 @@ export default function Dashboard() {
                 <CreditCard size={18} className="text-gray-500" />
               </div>
 
-              <p className="text-xl font-bold text-gray-50">{formatARS(tarjetaData.totalMes)}</p>
-              <p className="text-sm text-gray-500 mt-0.5">{formatUSD(tarjetaData.totalMes / tc)}</p>
+              <div className="mt-1 grid grid-cols-2 gap-2">
+                <div>
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wide">ARS</p>
+                  <p className="text-lg font-bold text-gray-50 tabular-nums leading-tight">{formatARS(tarjetaData.totalArs)}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wide">USD</p>
+                  <p className="text-lg font-bold text-gray-50 tabular-nums leading-tight">{formatUSD(tarjetaData.totalUsd)}</p>
+                </div>
+              </div>
+              <p className="text-[10px] text-gray-600 mt-1.5">Consumo por moneda, sin convertir.</p>
 
               {tcConfig ? (
                 <div className="mt-3 pt-3 border-t border-white/[0.06] space-y-2.5 text-[11px] sm:text-xs">
@@ -363,20 +409,27 @@ export default function Dashboard() {
                 <div className="mt-3 space-y-1">
                   {tarjetaData.cuotaDetails.map((d, i) => (
                     <p key={i} className="text-xs text-gray-400">
-                      <span className="text-gray-300">{d.desc}</span> — cuota {d.numero}/{d.total} · {formatARS(d.monto)}
+                      <span className="text-gray-300">{d.desc}</span> — cuota {d.numero}/{d.total} ·{' '}
+                      {d.moneda === 'USD' ? formatUSD(d.monto) : formatARS(d.monto)}
                     </p>
                   ))}
                 </div>
               )}
 
-              {tarjetaData.nextMonthTotal > 0 && (
+              {(tarjetaData.nextMonthArs > 0 || tarjetaData.nextMonthUsd > 0) && (
                 <div className="mt-3 pt-3 border-t border-white/[0.06]">
                   <p className="text-xs text-amber-400/80">
-                    El próximo resumen ({tarjetaData.nextMesName}) vendrán {formatARS(tarjetaData.nextMonthTotal)}
+                    El próximo resumen ({tarjetaData.nextMesName}): cuotas{' '}
+                    {tarjetaData.nextMonthArs > 0 && <span>{formatARS(tarjetaData.nextMonthArs)}</span>}
+                    {tarjetaData.nextMonthArs > 0 && tarjetaData.nextMonthUsd > 0 && (
+                      <span className="text-gray-500"> · </span>
+                    )}
+                    {tarjetaData.nextMonthUsd > 0 && <span>{formatUSD(tarjetaData.nextMonthUsd)}</span>}
                   </p>
                   {tarjetaData.nextDetails.map((d, i) => (
                     <p key={i} className="text-[11px] text-gray-500 mt-0.5">
-                      {d.desc} — cuota {d.numero}/{d.total}
+                      {d.desc} — cuota {d.numero}/{d.total} ·{' '}
+                      {d.moneda === 'USD' ? formatUSD(d.monto) : formatARS(d.monto)}
                     </p>
                   ))}
                 </div>
@@ -536,7 +589,16 @@ export default function Dashboard() {
                       ))}
                     </Pie>
                     <Tooltip
-                      formatter={(value) => formatARS(Number(value ?? 0))}
+                      formatter={(value, name, item) => {
+                        const p = item?.payload as PieSlice
+                        if (p?.tarjetaUsdMonto != null) {
+                          return [
+                            `${formatUSD(p.tarjetaUsdMonto)} (≈ ${formatARS(Number(value ?? 0))} al TC)`,
+                            name,
+                          ]
+                        }
+                        return [formatARS(Number(value ?? 0)), name]
+                      }}
                       contentStyle={{ background: '#151524', border: '1px solid #2d2d44', borderRadius: 8, fontSize: 12 }}
                       itemStyle={{ color: '#e2e8f0' }}
                       labelStyle={{ color: '#94a3b8' }}
@@ -545,12 +607,14 @@ export default function Dashboard() {
                 </ResponsiveContainer>
                 <ul className="flex-1 space-y-2">
                   {pieData.map((d, i) => (
-                    <li key={i} className="flex items-center justify-between text-xs">
-                      <span className="flex items-center gap-1.5">
+                    <li key={i} className="flex items-center justify-between gap-2 text-xs">
+                      <span className="flex items-center gap-1.5 min-w-0">
                         <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: d.color }} />
-                        <span className="text-gray-400">{d.name}</span>
+                        <span className="text-gray-400 truncate">{d.name}</span>
                       </span>
-                      <span className="text-gray-200 font-medium">{formatARS(d.value)}</span>
+                      <span className="text-gray-200 font-medium shrink-0 text-right">
+                        {d.tarjetaUsdMonto != null ? formatUSD(d.tarjetaUsdMonto) : formatARS(d.value)}
+                      </span>
                     </li>
                   ))}
                 </ul>

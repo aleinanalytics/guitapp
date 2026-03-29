@@ -8,9 +8,8 @@ import EditableCuotaCompraRow from '../components/EditableCuotaCompraRow'
 import MobileUserMenu from '../components/MobileUserMenu'
 import { useTransacciones } from '../hooks/useTransacciones'
 import { useCuotas, getCuotaForMonth } from '../hooks/useCuotas'
-import { useTipoCambio } from '../hooks/useTipoCambio'
 import { useTarjetaConfig, diasHastaFecha, formatFechaTarjeta, rangoPickerTarjeta } from '../hooks/useTarjetaConfig'
-import { convertirARS, formatARS, formatUSD } from '../lib/utils'
+import { formatARS, formatUSD, sumarPorMoneda } from '../lib/utils'
 import type { Categoria, Moneda } from '../lib/types'
 
 const MESES = [
@@ -42,9 +41,7 @@ export default function TarjetaCreditoMes() {
     void refetchTx()
     void refetchCuotas()
   }
-  const { tipoCambio } = useTipoCambio()
   const { config: tcConfig, upsert: upsertConfig } = useTarjetaConfig()
-  const tc = tipoCambio?.usd_ars ?? 1000
 
   // Config editor state
   const [editingConfig, setEditingConfig] = useState(false)
@@ -105,19 +102,24 @@ export default function TarjetaCreditoMes() {
     return out
   }, [cuotas, nextMes, nextAnio])
 
-  const totalSingles = useMemo(
-    () => tarjetaGastos.reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0),
-    [tarjetaGastos, tc],
+  const singlesPorMoneda = useMemo(
+    () => sumarPorMoneda(tarjetaGastos.map((t) => ({ monto: t.monto, moneda: t.moneda }))),
+    [tarjetaGastos],
   )
-  const totalCuotasMes = useMemo(
-    () => cuotaLines.reduce((s, l) => s + convertirARS(l.monto, l.moneda, tc), 0),
-    [cuotaLines, tc],
+  const cuotasPorMoneda = useMemo(
+    () => sumarPorMoneda(cuotaLines.map((l) => ({ monto: l.monto, moneda: l.moneda }))),
+    [cuotaLines],
   )
-  const totalMes = totalSingles + totalCuotasMes
-  const nextMonthTotal = useMemo(
-    () => nextCuotaLines.reduce((s, l) => s + convertirARS(l.monto, l.moneda, tc), 0),
-    [nextCuotaLines, tc],
+  const totalArs = singlesPorMoneda.ars + cuotasPorMoneda.ars
+  const totalUsd = singlesPorMoneda.usd + cuotasPorMoneda.usd
+
+  const nextPorMoneda = useMemo(
+    () => sumarPorMoneda(nextCuotaLines.map((l) => ({ monto: l.monto, moneda: l.moneda }))),
+    [nextCuotaLines],
   )
+
+  const fmtCuotaMonto = (monto: number, moneda: Moneda) =>
+    moneda === 'USD' ? formatUSD(monto) : formatARS(monto)
 
   const dashLink = `/?mes=${mes}&anio=${anio}`
   const loadingAny = loading || loadingCuotas
@@ -248,17 +250,28 @@ export default function TarjetaCreditoMes() {
             style={{ boxShadow: '0 0 20px rgba(244, 63, 94, 0.1)' }}
           >
             <div className="absolute top-0 left-0 right-0 h-[2px] opacity-60 bg-gradient-to-r from-transparent via-rose-500 to-transparent" />
-            <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Total del mes</p>
-            <p className="text-2xl font-bold text-gray-50 mt-1">{formatARS(totalMes)}</p>
-            <p className="text-sm text-gray-500">{formatUSD(totalMes / tc)}</p>
-            <div className="mt-3 pt-3 border-t border-white/[0.06] grid grid-cols-2 gap-2 text-xs">
+            <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Total del mes (por moneda)</p>
+            <p className="text-[11px] text-gray-600 mt-1 mb-3">Sin convertir: lo cargado en pesos y lo cargado en dólares por separado.</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-xl bg-white/[0.04] px-3 py-2.5">
+                <p className="text-[10px] text-gray-500 uppercase tracking-wide">Total ARS</p>
+                <p className="text-xl font-bold text-gray-50 tabular-nums mt-0.5">{formatARS(totalArs)}</p>
+              </div>
+              <div className="rounded-xl bg-white/[0.04] px-3 py-2.5">
+                <p className="text-[10px] text-gray-500 uppercase tracking-wide">Total USD</p>
+                <p className="text-xl font-bold text-gray-50 tabular-nums mt-0.5">{formatUSD(totalUsd)}</p>
+              </div>
+            </div>
+            <div className="mt-3 pt-3 border-t border-white/[0.06] grid grid-cols-2 gap-3 text-xs">
               <div>
-                <span className="text-gray-500">Pagos únicos</span>
-                <p className="text-gray-200 font-medium">{formatARS(totalSingles)}</p>
+                <span className="text-gray-500 block mb-1">Pagos únicos</span>
+                <p className="text-gray-200 font-medium">{formatARS(singlesPorMoneda.ars)}</p>
+                <p className="text-gray-200 font-medium">{formatUSD(singlesPorMoneda.usd)}</p>
               </div>
               <div>
-                <span className="text-gray-500">Cuotas del mes</span>
-                <p className="text-gray-200 font-medium">{formatARS(totalCuotasMes)}</p>
+                <span className="text-gray-500 block mb-1">Cuotas del mes</span>
+                <p className="text-gray-200 font-medium">{formatARS(cuotasPorMoneda.ars)}</p>
+                <p className="text-gray-200 font-medium">{formatUSD(cuotasPorMoneda.usd)}</p>
               </div>
             </div>
           </motion.div>
@@ -306,19 +319,22 @@ export default function TarjetaCreditoMes() {
             )}
           </section>
 
-          {nextMonthTotal > 0 && (
+          {(nextPorMoneda.ars > 0 || nextPorMoneda.usd > 0) && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="glass border-amber-500/15 bg-amber-500/[0.04] p-4 rounded-xl"
             >
               <p className="text-xs text-amber-400/90 font-medium mb-2">
-                Próximo mes ({MESES[nextMes - 1]} {nextAnio}): estimado en cuotas {formatARS(nextMonthTotal)}
+                Próximo mes ({MESES[nextMes - 1]} {nextAnio}): cuotas estimadas{' '}
+                {nextPorMoneda.ars > 0 && <span>{formatARS(nextPorMoneda.ars)}</span>}
+                {nextPorMoneda.ars > 0 && nextPorMoneda.usd > 0 && <span className="text-gray-500"> · </span>}
+                {nextPorMoneda.usd > 0 && <span>{formatUSD(nextPorMoneda.usd)}</span>}
               </p>
               <ul className="space-y-1">
                 {nextCuotaLines.map((d, i) => (
                   <li key={i} className="text-[11px] text-gray-500">
-                    {d.desc} — cuota {d.numero}/{d.total} · {formatARS(convertirARS(d.monto, d.moneda, tc))}
+                    {d.desc} — cuota {d.numero}/{d.total} · {fmtCuotaMonto(d.monto, d.moneda)}
                   </li>
                 ))}
               </ul>

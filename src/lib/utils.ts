@@ -12,6 +12,17 @@ export function convertirARS(monto: number, moneda: Moneda, tipoCambio: number):
   return moneda === 'USD' ? monto * tipoCambio : monto
 }
 
+/** Suma por moneda sin convertir (útil para totales de tarjeta en ARS y USD por separado). */
+export function sumarPorMoneda(items: Array<{ monto: number; moneda: Moneda }>): { ars: number; usd: number } {
+  let ars = 0
+  let usd = 0
+  for (const it of items) {
+    if (it.moneda === 'USD') usd += it.monto
+    else ars += it.monto
+  }
+  return { ars, usd }
+}
+
 export function calcularVariacion(actual: number, anterior: number): number {
   if (anterior === 0) return 0
   return ((actual - anterior) / anterior) * 100
