@@ -8,6 +8,7 @@ import {
   LineChart, Line, CartesianGrid, Legend,
 } from 'recharts'
 import KPICard from '../components/KPICard'
+import PorcentajeDelIngresoKpi from '../components/PorcentajeDelIngresoKpi'
 import MobileUserMenu from '../components/MobileUserMenu'
 import { useTransacciones } from '../hooks/useTransacciones'
 import { useTipoCambio } from '../hooks/useTipoCambio'
@@ -31,9 +32,6 @@ const now = new Date()
 const currentYear = now.getFullYear()
 
 const LS_KPI_GASTO_CATEGORIA = 'guita_dashboard_kpi_gasto_categoria_id'
-
-/** Por encima de este % del ingreso, el KPI de Suscripciones muestra una alerta */
-const UMBRAL_ALERTA_SUSCRIPCIONES_PCT = 35
 
 export default function Dashboard() {
   const { user } = useAuth()
@@ -411,13 +409,10 @@ export default function Dashboard() {
               to={toGastos}
               mobileStatLayout
             >
-              {pctGastoDelIngreso !== null ? (
-                <p className="text-center text-xs font-medium leading-snug text-rose-300/90 lg:text-left lg:text-[11px]">
-                  {pctGastoDelIngreso.toFixed(1)}% del ingreso
-                </p>
-              ) : gastos > 0 ? (
-                <p className="text-center text-xs text-gray-500 lg:text-left lg:text-[11px]">Sin ingresos en el mes</p>
-              ) : null}
+              <PorcentajeDelIngresoKpi
+                pct={pctGastoDelIngreso}
+                hayMontoSinIngreso={gastos > 0}
+              />
             </KPICard>
           </div>
 
@@ -434,23 +429,10 @@ export default function Dashboard() {
               to={toSuscripciones}
               mobileStatLayout
             >
-              {pctSuscripcionDelIngreso !== null ? (
-                <>
-                  <p className="text-center text-xs font-medium leading-snug text-violet-300/90 lg:text-left lg:text-[11px]">
-                    {pctSuscripcionDelIngreso.toFixed(1)}% del ingreso
-                  </p>
-                  {pctSuscripcionDelIngreso > UMBRAL_ALERTA_SUSCRIPCIONES_PCT ? (
-                    <p
-                      role="status"
-                      className="mt-2 rounded-lg border border-amber-500/25 bg-amber-500/10 px-2 py-1.5 text-center text-[11px] font-medium leading-snug text-amber-200/95 lg:text-left"
-                    >
-                      Tus suscripciones ya superan el {UMBRAL_ALERTA_SUSCRIPCIONES_PCT}% de lo que ingresás este mes. Conviene revisar si podés dar de baja alguna.
-                    </p>
-                  ) : null}
-                </>
-              ) : suscripciones > 0 ? (
-                <p className="text-center text-xs text-gray-500 lg:text-left lg:text-[11px]">Sin ingresos en el mes</p>
-              ) : null}
+              <PorcentajeDelIngresoKpi
+                pct={pctSuscripcionDelIngreso}
+                hayMontoSinIngreso={suscripciones > 0}
+              />
             </KPICard>
             </div>
 
@@ -512,13 +494,11 @@ export default function Dashboard() {
                   )
                 }
               >
-                {pctGastoCategoriaKpi !== null ? (
-                  <p className="text-center text-xs font-medium leading-snug text-emerald-300/90 lg:text-left lg:text-[11px]">
-                    {pctGastoCategoriaKpi.toFixed(1)}% del ingreso
-                  </p>
-                ) : gastoCategoriaKpi > 0 ? (
-                  <p className="text-center text-xs text-gray-500 lg:text-left lg:text-[11px]">Sin ingresos en el mes</p>
-                ) : null}
+                <PorcentajeDelIngresoKpi
+                  pct={pctGastoCategoriaKpi}
+                  hayMontoSinIngreso={gastoCategoriaKpi > 0}
+                  nombreCategoria={categoriaKpiSeleccionada.nombre}
+                />
               </KPICard>
             </div>
             )}
