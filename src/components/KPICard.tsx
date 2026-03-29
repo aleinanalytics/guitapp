@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { Link } from 'react-router-dom'
 import { formatARS, formatUSD } from '../lib/utils'
 
 interface KPICardProps {
@@ -12,17 +13,21 @@ interface KPICardProps {
   accentColor?: string
   children?: React.ReactNode
   delay?: number
+  /** Si está definido, la tarjeta es clicable y navega a esta ruta */
+  to?: string
 }
 
 export default function KPICard({
-  titulo, montoARS, montoUSD, variacion, descripcion, icon, glowClass, accentColor, children, delay = 0,
+  titulo, montoARS, montoUSD, variacion, descripcion, icon, glowClass, accentColor, children, delay = 0, to,
 }: KPICardProps) {
-  return (
+  const card = (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay, ease: [0.25, 0.46, 0.45, 0.94] }}
-      className={`glass p-4 relative overflow-hidden group hover:border-white/[0.12] transition-all duration-300 ${glowClass ?? ''}`}
+      className={`glass p-4 relative overflow-hidden group transition-all duration-300 ${glowClass ?? ''} ${
+        to ? 'cursor-pointer hover:border-white/[0.18] hover:bg-white/[0.02]' : 'hover:border-white/[0.12]'
+      }`}
     >
       {accentColor && (
         <div
@@ -51,4 +56,18 @@ export default function KPICard({
       {children}
     </motion.div>
   )
+
+  if (to) {
+    return (
+      <Link
+        to={to}
+        className="block rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue/40 focus-visible:ring-offset-2 focus-visible:ring-offset-dark-950"
+        aria-label={`Ver listado: ${titulo}`}
+      >
+        {card}
+      </Link>
+    )
+  }
+
+  return card
 }

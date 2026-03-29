@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './lib/AuthContext'
 import NavBar from './components/NavBar'
 import Dashboard from './pages/Dashboard'
+import MovimientosMes from './pages/MovimientosMes'
+import TarjetaCreditoMes from './pages/TarjetaCreditoMes'
 import Carga from './pages/Carga'
 import Analisis from './pages/Analisis'
 import Login from './pages/Login'
@@ -29,6 +31,8 @@ function AppRoutes() {
       <main className="pb-20 lg:pb-4 lg:pl-64 min-h-screen">
         <Routes>
           <Route path="/" element={<Dashboard />} />
+          <Route path="/movimientos" element={<MovimientosMes />} />
+          <Route path="/tarjeta-credito" element={<TarjetaCreditoMes />} />
           <Route path="/carga" element={<Carga />} />
           <Route path="/analisis" element={<Analisis />} />
           <Route path="*" element={<Navigate to="/" replace />} />

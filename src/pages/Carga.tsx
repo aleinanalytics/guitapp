@@ -51,6 +51,7 @@ export default function Carga() {
   const [editDesc, setEditDesc] = useState('')
   const [editMonto, setEditMonto] = useState('')
   const [editFecha, setEditFecha] = useState('')
+  const [editCategoriaId, setEditCategoriaId] = useState('')
 
   useEffect(() => {
     supabase.from('categorias').select('*').then(({ data }) => {
@@ -106,16 +107,23 @@ export default function Carga() {
   }
 
   const startEdit = (t: Transaccion) => {
-    setEditingId(t.id); setEditDesc(t.descripcion); setEditMonto(formatMontoFromNumber(t.monto)); setEditFecha(t.fecha)
+    setEditingId(t.id)
+    setEditDesc(t.descripcion)
+    setEditMonto(formatMontoFromNumber(t.monto))
+    setEditFecha(t.fecha)
+    setEditCategoriaId(t.categoria_id ?? '')
   }
 
   const cancelEdit = () => setEditingId(null)
 
   const saveEdit = async (id: string) => {
     const m = parseMontoInput(editMonto)
-    if (!editDesc.trim() || !Number.isFinite(m) || m <= 0 || !editFecha) return
+    if (!editDesc.trim() || !Number.isFinite(m) || m <= 0 || !editFecha || !editCategoriaId) return
     const { error } = await supabase.from('transacciones').update({
-      descripcion: editDesc.trim(), monto: m, fecha: editFecha,
+      descripcion: editDesc.trim(),
+      monto: m,
+      fecha: editFecha,
+      categoria_id: editCategoriaId,
     }).eq('id', id)
     if (error) window.alert('Error: ' + error.message)
     else { setEditingId(null); fetchRecientes() }
@@ -391,9 +399,19 @@ export default function Carga() {
                       </div>
 
                       {editingId === t.id ? (
-                        <div className="flex-1 flex flex-wrap items-center gap-2">
+                        <div className="flex-1 flex flex-wrap items-center gap-2 min-w-0">
                           <input type="text" value={editDesc} onChange={(e) => setEditDesc(e.target.value)}
-                            className="input-dark !py-1 !text-sm flex-1 min-w-[120px]" />
+                            className="input-dark !py-1 !text-sm flex-1 min-w-[min(100%,10rem)]" />
+                          <select
+                            value={editCategoriaId}
+                            onChange={(e) => setEditCategoriaId(e.target.value)}
+                            className="select-dark !py-1.5 !pl-2.5 !pr-8 !text-sm min-w-[9rem] flex-1 max-w-[13rem]"
+                          >
+                            <option value="">Categoría…</option>
+                            {categorias.filter((c) => c.tipo === t.tipo).map((c) => (
+                              <option key={c.id} value={c.id}>{c.nombre}</option>
+                            ))}
+                          </select>
                           <input
                             type="text"
                             inputMode="decimal"
@@ -403,9 +421,9 @@ export default function Carga() {
                             className="input-dark !py-1 !text-sm min-w-[6.5rem] flex-1 max-w-[9rem]"
                           />
                           <input type="date" value={editFecha} onChange={(e) => setEditFecha(e.target.value)}
-                            className="input-dark !py-1 !text-sm w-36" />
-                          <button onClick={() => saveEdit(t.id)} className="text-emerald-400 hover:text-emerald-300"><Check size={16} /></button>
-                          <button onClick={cancelEdit} className="text-red-400 hover:text-red-300"><X size={16} /></button>
+                            className="input-dark !py-1 !text-sm min-w-0 w-[9.5rem] sm:w-36 max-w-full" />
+                          <button type="button" onClick={() => saveEdit(t.id)} className="text-emerald-400 hover:text-emerald-300 shrink-0"><Check size={16} /></button>
+                          <button type="button" onClick={cancelEdit} className="text-red-400 hover:text-red-300 shrink-0"><X size={16} /></button>
                         </div>
                       ) : (
                         <>

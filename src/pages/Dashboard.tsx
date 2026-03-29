@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Pencil, Check, X, TrendingUp, TrendingDown, Wallet, CreditCard, RotateCcw, DollarSign, Zap } from 'lucide-react'
 import KPICard from '../components/KPICard'
@@ -18,8 +19,22 @@ const currentYear = now.getFullYear()
 
 export default function Dashboard() {
   const { user } = useAuth()
+  const [searchParams] = useSearchParams()
   const [mes, setMes] = useState(now.getMonth() + 1)
   const [anio, setAnio] = useState(currentYear)
+
+  useEffect(() => {
+    const m = searchParams.get('mes')
+    const a = searchParams.get('anio')
+    if (m) {
+      const mn = Number(m)
+      if (mn >= 1 && mn <= 12) setMes(mn)
+    }
+    if (a) {
+      const yr = Number(a)
+      if (yr >= 2000 && yr <= 2100) setAnio(yr)
+    }
+  }, [searchParams])
   const { transacciones, loading } = useTransacciones({ mes, anio })
   const { tipoCambio, dolarLive, upsertTipoCambio } = useTipoCambio()
   const { cuotas } = useCuotas()
@@ -96,6 +111,13 @@ export default function Dashboard() {
   const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i)
   const firstName = user?.user_metadata?.full_name?.split(' ')[0] ?? ''
 
+  const qMesAnio = `mes=${mes}&anio=${anio}`
+  const toIngresos = `/movimientos?tipo=ingreso&${qMesAnio}`
+  const toGastos = `/movimientos?tipo=gasto&${qMesAnio}`
+  const toSuscripciones = `/movimientos?tipo=suscripcion&${qMesAnio}`
+  const toBalance = `/movimientos?tipo=todos&${qMesAnio}`
+  const toTarjetaCredito = `/tarjeta-credito?${qMesAnio}`
+
   return (
     <div className="p-4 lg:p-8 max-w-5xl mx-auto">
       {/* Header */}
@@ -155,58 +177,65 @@ export default function Dashboard() {
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
           <KPICard titulo="Ingresos" montoARS={ingresos} montoUSD={ingresos / tc}
-            icon={<TrendingUp size={18} />} accentColor="#10b981" glowClass="glow-green" delay={0} />
+            icon={<TrendingUp size={18} />} accentColor="#10b981" glowClass="glow-green" delay={0} to={toIngresos} />
           <KPICard titulo="Gastos" montoARS={gastos} montoUSD={gastos / tc}
-            icon={<TrendingDown size={18} />} accentColor="#ef4444" glowClass="glow-red" delay={0.05} />
+            icon={<TrendingDown size={18} />} accentColor="#ef4444" glowClass="glow-red" delay={0.05} to={toGastos} />
           <KPICard titulo="Suscripciones" montoARS={suscripciones} montoUSD={suscripciones / tc}
-            icon={<RotateCcw size={18} />} accentColor="#a855f7" glowClass="glow-purple" delay={0.1} />
+            icon={<RotateCcw size={18} />} accentColor="#a855f7" glowClass="glow-purple" delay={0.1} to={toSuscripciones} />
           <KPICard titulo="Balance" montoARS={balance} montoUSD={balance / tc}
             icon={<Wallet size={18} />}
             accentColor={balance >= 0 ? '#10b981' : '#ef4444'}
             glowClass={balance >= 0 ? 'glow-green' : 'glow-red'}
-            delay={0.15} />
+            delay={0.15}
+            to={toBalance} />
 
           {/* Tarjeta de Crédito KPI — spans 2 cols on desktop */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
-            className="glass p-4 relative overflow-hidden col-span-2 hover:border-white/[0.12] transition-all duration-300"
-            style={{ boxShadow: '0 0 20px rgba(244, 63, 94, 0.12), 0 0 60px rgba(244, 63, 94, 0.04)' }}
+          <Link
+            to={toTarjetaCredito}
+            className="col-span-2 block rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/45 focus-visible:ring-offset-2 focus-visible:ring-offset-dark-950"
+            aria-label="Ver detalle de tarjeta de crédito"
           >
-            <div className="absolute top-0 left-0 right-0 h-[2px] opacity-60"
-              style={{ background: 'linear-gradient(90deg, transparent, #f43f5e, transparent)' }}
-            />
-            <div className="flex items-start justify-between mb-2">
-              <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">Tarjeta de Crédito</p>
-              <CreditCard size={18} className="text-gray-500" />
-            </div>
-            <p className="text-xl font-bold text-gray-50">{formatARS(tarjetaData.totalMes)}</p>
-            <p className="text-sm text-gray-500 mt-0.5">{formatUSD(tarjetaData.totalMes / tc)}</p>
-
-            {tarjetaData.cuotaDetails.length > 0 && (
-              <div className="mt-3 space-y-1">
-                {tarjetaData.cuotaDetails.map((d, i) => (
-                  <p key={i} className="text-xs text-gray-400">
-                    <span className="text-gray-300">{d.desc}</span> — cuota {d.numero}/{d.total} · {formatARS(d.monto)}
-                  </p>
-                ))}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
+              className="glass p-4 relative overflow-hidden cursor-pointer hover:border-white/[0.18] hover:bg-white/[0.02] transition-all duration-300"
+              style={{ boxShadow: '0 0 20px rgba(244, 63, 94, 0.12), 0 0 60px rgba(244, 63, 94, 0.04)' }}
+            >
+              <div className="absolute top-0 left-0 right-0 h-[2px] opacity-60"
+                style={{ background: 'linear-gradient(90deg, transparent, #f43f5e, transparent)' }}
+              />
+              <div className="flex items-start justify-between mb-2">
+                <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">Tarjeta de Crédito</p>
+                <CreditCard size={18} className="text-gray-500" />
               </div>
-            )}
+              <p className="text-xl font-bold text-gray-50">{formatARS(tarjetaData.totalMes)}</p>
+              <p className="text-sm text-gray-500 mt-0.5">{formatUSD(tarjetaData.totalMes / tc)}</p>
 
-            {tarjetaData.nextMonthTotal > 0 && (
-              <div className="mt-3 pt-3 border-t border-white/[0.06]">
-                <p className="text-xs text-amber-400/80">
-                  El próximo resumen ({tarjetaData.nextMesName}) vendrán {formatARS(tarjetaData.nextMonthTotal)}
-                </p>
-                {tarjetaData.nextDetails.map((d, i) => (
-                  <p key={i} className="text-[11px] text-gray-500 mt-0.5">
-                    {d.desc} — cuota {d.numero}/{d.total}
+              {tarjetaData.cuotaDetails.length > 0 && (
+                <div className="mt-3 space-y-1">
+                  {tarjetaData.cuotaDetails.map((d, i) => (
+                    <p key={i} className="text-xs text-gray-400">
+                      <span className="text-gray-300">{d.desc}</span> — cuota {d.numero}/{d.total} · {formatARS(d.monto)}
+                    </p>
+                  ))}
+                </div>
+              )}
+
+              {tarjetaData.nextMonthTotal > 0 && (
+                <div className="mt-3 pt-3 border-t border-white/[0.06]">
+                  <p className="text-xs text-amber-400/80">
+                    El próximo resumen ({tarjetaData.nextMesName}) vendrán {formatARS(tarjetaData.nextMonthTotal)}
                   </p>
-                ))}
-              </div>
-            )}
-          </motion.div>
+                  {tarjetaData.nextDetails.map((d, i) => (
+                    <p key={i} className="text-[11px] text-gray-500 mt-0.5">
+                      {d.desc} — cuota {d.numero}/{d.total}
+                    </p>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          </Link>
 
           <KPICard titulo="Mayor Gasto" delay={0.25}
             montoARS={mayorGasto ? convertirARS(mayorGasto.monto, mayorGasto.moneda, tc) : 0}
