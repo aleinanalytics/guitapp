@@ -250,18 +250,21 @@ export default function Dashboard() {
         </div>
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+          {/* Balance primero: fila completa en móvil, primer KPI en desktop */}
+          <div className="col-span-2 lg:col-span-1 min-w-0 h-full">
+            <KPICard titulo="Balance" montoARS={balance} montoUSD={balance / tc}
+              icon={<Wallet size={18} />}
+              accentColor={balance >= 0 ? '#10b981' : '#ef4444'}
+              glowClass={balance >= 0 ? 'glow-green' : 'glow-red'}
+              delay={0}
+              to={toBalance} />
+          </div>
           <KPICard titulo="Ingresos" montoARS={ingresos} montoUSD={ingresos / tc}
-            icon={<TrendingUp size={18} />} accentColor="#10b981" glowClass="glow-green" delay={0} to={toIngresos} />
+            icon={<TrendingUp size={18} />} accentColor="#10b981" glowClass="glow-green" delay={0.05} to={toIngresos} />
           <KPICard titulo="Gastos" montoARS={gastos} montoUSD={gastos / tc}
-            icon={<TrendingDown size={18} />} accentColor="#ef4444" glowClass="glow-red" delay={0.05} to={toGastos} />
+            icon={<TrendingDown size={18} />} accentColor="#ef4444" glowClass="glow-red" delay={0.08} to={toGastos} />
           <KPICard titulo="Suscripciones" montoARS={suscripciones} montoUSD={suscripciones / tc}
             icon={<RotateCcw size={18} />} accentColor="#a855f7" glowClass="glow-purple" delay={0.1} to={toSuscripciones} />
-          <KPICard titulo="Balance" montoARS={balance} montoUSD={balance / tc}
-            icon={<Wallet size={18} />}
-            accentColor={balance >= 0 ? '#10b981' : '#ef4444'}
-            glowClass={balance >= 0 ? 'glow-green' : 'glow-red'}
-            delay={0.15}
-            to={toBalance} />
 
           {/* Tarjeta de Crédito KPI — spans 2 cols on desktop */}
           <Link
@@ -335,16 +338,16 @@ export default function Dashboard() {
             </motion.div>
           </Link>
 
-          <KPICard titulo="Mayor Gasto" delay={0.25}
+          <KPICard titulo="Mayor Gasto" delay={0.22}
             montoARS={mayorGasto ? convertirARS(mayorGasto.monto, mayorGasto.moneda, tc) : 0}
             descripcion={mayorGasto?.descripcion} icon={<TrendingDown size={18} />} accentColor="#f59e0b" />
 
-          {/* Tipo de Cambio Card */}
+          {/* Tipo de Cambio: ancho completo en móvil (fila propia), 1 col en desktop junto a tarjeta/mayor gasto */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
-            className="glass p-4 relative overflow-hidden hover:border-white/[0.12] transition-all duration-300 glow-cyan"
+            transition={{ duration: 0.4, delay: 0.28, ease: [0.25, 0.46, 0.45, 0.94] }}
+            className="col-span-2 lg:col-span-1 glass p-4 relative overflow-hidden hover:border-white/[0.12] transition-all duration-300 glow-cyan"
           >
             <div className="absolute top-0 left-0 right-0 h-[2px] opacity-60"
               style={{ background: 'linear-gradient(90deg, transparent, #06b6d4, transparent)' }}
