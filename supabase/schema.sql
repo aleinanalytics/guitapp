@@ -106,6 +106,7 @@ create policy "Users can update own tarjeta_config"
 insert into categorias (nombre, tipo, color) values
   ('Sueldo','ingreso','#22c55e'),
   ('Freelance','ingreso','#16a34a'),
+  ('Reingreso','ingreso','#14b8a6'),
   ('Varios','ingreso','#059669'),
   ('Supermercado','gasto','#ef4444'),
   ('Verduleria','gasto','#65a30d'),

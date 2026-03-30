@@ -27,7 +27,8 @@ const GASTO_POR_TEMA: Record<string, readonly [grupo: number, dentro: number]> =
 const INGRESO_ORDEN: Record<string, number> = {
   Sueldo: 0,
   Freelance: 1,
-  Varios: 2,
+  Reingreso: 2,
+  Varios: 3,
 }
 
 export function ordenarCategoriasPorTema(categorias: Categoria[]): Categoria[] {
