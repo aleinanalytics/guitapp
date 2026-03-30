@@ -1,12 +1,13 @@
 import type { Moneda, Transaccion } from './types'
 
 /**
- * Solo efectivo/débito (medio_pago efectivo en BD). Lo cargado con tarjeta de crédito no sale del disponible.
+ * Efectivo, débito (medio_pago efectivo en BD) o transferencia: salen del disponible.
+ * Tarjeta de crédito no descuenta del disponible del mes.
  */
 export function cuentaComoSalidaDeEfectivo(t: Pick<Transaccion, 'tipo' | 'medio_pago'>): boolean {
   return (
     (t.tipo === 'gasto' || t.tipo === 'suscripcion') &&
-    t.medio_pago === 'efectivo'
+    (t.medio_pago === 'efectivo' || t.medio_pago === 'transferencia')
   )
 }
 

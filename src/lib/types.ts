@@ -1,6 +1,6 @@
 export type Moneda = 'ARS' | 'USD'
 export type TipoTransaccion = 'ingreso' | 'gasto' | 'suscripcion'
-export type MedioPago = 'efectivo' | 'tarjeta'
+export type MedioPago = 'efectivo' | 'tarjeta' | 'transferencia'
 
 export interface Categoria {
   id: string

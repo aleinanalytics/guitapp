@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { CreditCard, Pencil, Trash2, Check, X } from 'lucide-react'
+import { CreditCard, Pencil, Trash2, Check, X, ArrowLeftRight, CircleDollarSign } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { formatMontoFromNumber, montoFieldNextValue, parseMontoInput } from '../lib/utils'
 import type { Categoria, TipoTransaccion, Transaccion } from '../lib/types'
@@ -153,8 +153,14 @@ export default function EditableTransaccionListRow({ t, categorias, delay = 0, m
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-gray-200 truncate">
           {t.descripcion}
+          {(t.tipo === 'gasto' || t.tipo === 'suscripcion') && t.medio_pago === 'efectivo' && (
+            <CircleDollarSign size={12} className="inline ml-1.5 text-emerald-400/75" aria-hidden />
+          )}
           {(t.tipo === 'gasto' || t.tipo === 'suscripcion') && t.medio_pago === 'tarjeta' && (
             <CreditCard size={12} className="inline ml-1.5 text-rose-400/60" />
+          )}
+          {(t.tipo === 'gasto' || t.tipo === 'suscripcion') && t.medio_pago === 'transferencia' && (
+            <ArrowLeftRight size={12} className="inline ml-1.5 text-sky-400/70" />
           )}
         </p>
         <p className="text-xs text-gray-500">

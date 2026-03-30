@@ -71,6 +71,19 @@
     max-width: 100%;
     overflow: hidden;
   }
+  /* Fecha centrada (Chrome/Safari/iOS) */
+  .input-date-centered[type='date'] {
+    text-align: center;
+  }
+  .input-date-centered[type='date']::-webkit-datetime-edit-fields-wrapper {
+    text-align: center;
+    justify-content: center;
+  }
+  .input-date-centered[type='date']::-webkit-datetime-edit {
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
+  }
   .select-dark {
     @apply bg-dark-800/80 border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-gray-100 focus:outline-none focus:border-accent-blue/50 focus:ring-1 focus:ring-accent-blue/30 transition-all duration-200 appearance-none cursor-pointer;
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");

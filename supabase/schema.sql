@@ -16,7 +16,7 @@ create table transacciones (
   monto numeric(12,2) not null,
   moneda text not null check (moneda in ('ARS','USD')),
   tipo text not null check (tipo in ('ingreso','gasto','suscripcion')),
-  medio_pago text not null default 'efectivo' check (medio_pago in ('efectivo','tarjeta')),
+  medio_pago text not null default 'efectivo' check (medio_pago in ('efectivo','tarjeta','transferencia')),
   categoria_id uuid references categorias(id) on delete set null,
   es_gasto_fijo boolean not null default false,
   created_at timestamptz default now()
@@ -111,6 +111,7 @@ insert into categorias (nombre, tipo, color) values
   ('Supermercado','gasto','#ef4444'),
   ('Verduleria','gasto','#65a30d'),
   ('Carniceria','gasto','#be123c'),
+  ('Fiambreria','gasto','#db2777'),
   ('Alimentos','gasto','#15803d'),
   ('Helado','gasto','#7dd3fc'),
   ('Panadería','gasto','#ca8a04'),

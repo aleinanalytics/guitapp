@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Trash2, Plus, Pencil, Check, X, CreditCard, Calendar } from 'lucide-react'
+import { Trash2, Plus, Pencil, Check, X, CreditCard, Calendar, ArrowLeftRight, CircleDollarSign } from 'lucide-react'
 import MobileUserMenu from '../components/MobileUserMenu'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
@@ -19,9 +19,11 @@ const TIPO_ORDER_MOBILE: TipoTransaccion[] = ['gasto', 'ingreso', 'suscripcion']
 
 const today = new Date().toISOString().split('T')[0]
 
+type MedioPagoGastoNivel = 'efectivo' | 'transferencia' | 'plastico'
+
 type MedioPagoGastoFieldsProps = {
-  medioPagoNivel1: 'efectivo' | 'plastico'
-  setMedioPagoNivel1: (v: 'efectivo' | 'plastico') => void
+  medioPagoNivel1: MedioPagoGastoNivel
+  setMedioPagoNivel1: (v: MedioPagoGastoNivel) => void
   plasticoTipo: 'debito' | 'credito'
   setPlasticoTipo: (v: 'debito' | 'credito') => void
   esTarjetaCredito: boolean
@@ -51,21 +53,30 @@ function MedioPagoGastoFields({
   return (
     <div className="space-y-2">
       <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Medio de pago</label>
-      <div className="flex gap-2">
+      <div className="flex min-w-0 gap-1.5">
         <button
           type="button"
           onClick={() => setMedioPagoNivel1('efectivo')}
-          className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${medioPagoNivel1 === 'efectivo' ? 'bg-rose-500/10 text-rose-400 ring-1 ring-rose-500/30' : 'bg-dark-800/50 text-gray-500 hover:text-gray-300'}`}
+          className={`min-w-0 flex-1 shrink flex flex-col items-center justify-center gap-0.5 rounded-xl py-2 px-0.5 text-[10px] font-semibold leading-tight transition-all duration-200 sm:flex-row sm:gap-1.5 sm:px-2 sm:text-xs ${medioPagoNivel1 === 'efectivo' ? 'bg-rose-500/10 text-rose-400 ring-1 ring-rose-500/30' : 'bg-dark-800/50 text-gray-500 hover:text-gray-300'}`}
         >
-          Efectivo
+          <CircleDollarSign size={15} className="shrink-0 opacity-95" strokeWidth={2.25} aria-hidden />
+          <span className="text-center">Efectivo</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMedioPagoNivel1('transferencia')}
+          className={`min-w-0 flex-1 shrink flex flex-col items-center justify-center gap-0.5 rounded-xl py-2 px-0.5 text-[10px] font-semibold leading-tight transition-all duration-200 sm:flex-row sm:gap-1.5 sm:px-2 sm:text-xs ${medioPagoNivel1 === 'transferencia' ? 'bg-sky-500/10 text-sky-400 ring-1 ring-sky-500/30' : 'bg-dark-800/50 text-gray-500 hover:text-gray-300'}`}
+        >
+          <ArrowLeftRight size={15} className="shrink-0 opacity-95" strokeWidth={2.25} aria-hidden />
+          <span className="text-center">Transferencia</span>
         </button>
         <button
           type="button"
           onClick={() => setMedioPagoNivel1('plastico')}
-          className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1.5 ${medioPagoNivel1 === 'plastico' ? 'bg-rose-500/10 text-rose-400 ring-1 ring-rose-500/30' : 'bg-dark-800/50 text-gray-500 hover:text-gray-300'}`}
+          className={`min-w-0 flex-1 shrink flex flex-col items-center justify-center gap-0.5 rounded-xl py-2 px-0.5 text-[10px] font-semibold leading-tight transition-all duration-200 sm:flex-row sm:gap-1.5 sm:px-2 sm:text-xs sm:text-sm ${medioPagoNivel1 === 'plastico' ? 'bg-rose-500/10 text-rose-400 ring-1 ring-rose-500/30' : 'bg-dark-800/50 text-gray-500 hover:text-gray-300'}`}
         >
-          <CreditCard size={14} />
-          Tarjeta
+          <CreditCard size={15} className="shrink-0" strokeWidth={2.25} aria-hidden />
+          <span className="text-center">Tarjeta</span>
         </button>
       </div>
       <AnimatePresence initial={false}>
@@ -308,8 +319,8 @@ export default function Carga() {
   const [descripcion, setDescripcion] = useState('')
   const [monto, setMonto] = useState('')
   const [moneda, setMoneda] = useState<Moneda>('ARS')
-  /** efectivo = billete / efectivo; plastico = tarjeta (luego elige débito o crédito en BD) */
-  const [medioPagoNivel1, setMedioPagoNivel1] = useState<'efectivo' | 'plastico'>('efectivo')
+  /** efectivo | transferencia | plastico (débito/crédito → BD) */
+  const [medioPagoNivel1, setMedioPagoNivel1] = useState<MedioPagoGastoNivel>('efectivo')
   const [plasticoTipo, setPlasticoTipo] = useState<'debito' | 'credito'>('debito')
   const [submitting, setSubmitting] = useState(false)
   /** Solo gastos: marca el movimiento como gasto fijo (fondo de emergencia). */
@@ -327,11 +338,13 @@ export default function Carga() {
         ? plasticoTipo === 'debito'
           ? 'efectivo'
           : 'tarjeta'
-        : medioPagoNivel1 === 'efectivo'
-          ? 'efectivo'
-          : plasticoTipo === 'debito'
-            ? 'efectivo'
-            : 'tarjeta'
+        : medioPagoNivel1 === 'transferencia'
+          ? 'transferencia'
+          : medioPagoNivel1 === 'plastico'
+            ? plasticoTipo === 'debito'
+              ? 'efectivo'
+              : 'tarjeta'
+            : 'efectivo'
 
   const esTarjetaCreditoGasto = tipo === 'gasto' && medioPagoNivel1 === 'plastico' && plasticoTipo === 'credito'
   const esTarjetaCreditoSuscripcion = tipo === 'suscripcion' && plasticoTipo === 'credito'
@@ -577,9 +590,9 @@ export default function Carga() {
                     onChange={(e) => setMonto(montoFieldNextValue(monto, e.target.value))}
                     required
                     placeholder="0,00"
-                    className="min-w-0 max-w-[11rem] sm:max-w-[14rem] bg-transparent border-0 text-center text-4xl sm:text-5xl font-bold text-gray-50 placeholder:text-gray-700 focus:ring-0 focus:outline-none"
+                    className="min-w-0 max-w-[min(100%,17rem)] sm:max-w-[20rem] bg-transparent border-0 text-center text-6xl font-bold leading-[1.05] tracking-tight text-gray-50 placeholder:text-gray-700 focus:ring-0 focus:outline-none sm:text-7xl sm:leading-[1.02]"
                   />
-                  <div className="flex rounded-xl bg-dark-800/90 p-0.5 gap-0.5 ring-1 ring-white/[0.06] shrink-0 mb-1">
+                  <div className="flex rounded-xl bg-dark-800/90 p-0.5 gap-0.5 ring-1 ring-white/[0.06] shrink-0 mb-1 sm:mb-1.5">
                     {(['ARS', 'USD'] as Moneda[]).map((m) => (
                       <button
                         key={m}
@@ -597,7 +610,7 @@ export default function Carga() {
               </div>
 
               <div className="rounded-2xl bg-dark-800/50 border border-white/[0.06] px-4 py-3 min-w-0 max-w-full overflow-hidden">
-                <div className="flex items-center gap-2 text-[10px] font-medium uppercase tracking-wider text-gray-500 mb-2">
+                <div className="mb-2 flex items-center justify-center gap-2 text-[10px] font-medium uppercase tracking-wider text-gray-500">
                   <Calendar className="shrink-0" size={14} strokeWidth={2} />
                   Fecha
                 </div>
@@ -606,7 +619,7 @@ export default function Carga() {
                   value={fecha}
                   onChange={(e) => setFecha(e.target.value)}
                   required
-                  className="input-dark input-date-contained w-full min-w-0 max-w-full bg-dark-900/40 border-white/[0.06]"
+                  className="input-dark input-date-contained input-date-centered w-full min-w-0 max-w-full bg-dark-900/40 border-white/[0.06]"
                 />
               </div>
 
@@ -932,8 +945,14 @@ export default function Carga() {
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-gray-200 truncate">
                               {t.descripcion}
+                              {(t.tipo === 'gasto' || t.tipo === 'suscripcion') && t.medio_pago === 'efectivo' && (
+                                <CircleDollarSign size={12} className="inline ml-1.5 text-emerald-400/75" aria-hidden />
+                              )}
                               {t.medio_pago === 'tarjeta' && (
                                 <CreditCard size={12} className="inline ml-1.5 text-rose-400/60" />
+                              )}
+                              {t.medio_pago === 'transferencia' && (
+                                <ArrowLeftRight size={12} className="inline ml-1.5 text-sky-400/70" />
                               )}
                             </p>
                             <p className="text-xs text-gray-500">
