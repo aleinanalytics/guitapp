@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
-  PieChart, Pie, Cell, AreaChart, Area,
+  PieChart, Pie, Cell, AreaChart, Area, CartesianGrid,
 } from 'recharts'
 import type { PieLabelRenderProps } from 'recharts'
 import KPICard from '../components/KPICard'
@@ -125,6 +125,30 @@ export default function Analisis() {
     }
     return Array.from(map.values()).sort((a, b) => b.total - a.total)
   }, [transacciones, mesSeleccionado, tc])
+
+  /** Gastos del mes seleccionado acumulados por día del calendario (equivalente ARS). */
+  const gastosPorDiaData = useMemo(() => {
+    const dim = new Date(anioSeleccionado, mesSeleccionado, 0).getDate()
+    const totals = new Map<number, number>()
+    for (let d = 1; d <= dim; d++) totals.set(d, 0)
+    for (const t of transacciones) {
+      if (t.tipo !== 'gasto') continue
+      const dt = new Date(t.fecha + 'T00:00:00')
+      if (dt.getMonth() + 1 !== mesSeleccionado || dt.getFullYear() !== anioSeleccionado) continue
+      const day = dt.getDate()
+      const ars = convertirARS(t.monto, t.moneda, tc)
+      totals.set(day, (totals.get(day) ?? 0) + ars)
+    }
+    return Array.from({ length: dim }, (_, i) => {
+      const dia = i + 1
+      return { dia, Gastos: totals.get(dia) ?? 0 }
+    })
+  }, [transacciones, mesSeleccionado, anioSeleccionado, tc])
+
+  const gastosPorDiaTotal = useMemo(
+    () => gastosPorDiaData.reduce((s, d) => s + d.Gastos, 0),
+    [gastosPorDiaData],
+  )
 
   const donutTotal = donutData.reduce((s, d) => s + d.total, 0)
 
@@ -469,6 +493,63 @@ export default function Analisis() {
                 <Area type="monotone" dataKey="Balance" stroke="#6366f1" strokeWidth={2} fill="url(#balanceGrad)" dot={false} activeDot={{ r: 4, fill: '#6366f1', stroke: '#151524', strokeWidth: 2 }} />
               </AreaChart>
             </ResponsiveContainer>
+          </motion.section>
+
+          {/* Gastos por día (mes seleccionado) */}
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.18 }}
+            className="glass p-4 lg:p-6 mb-6"
+          >
+            <h2 className="text-base font-semibold text-gray-200 mb-1">
+              Gastos por día — {MESES_FULL[mesSeleccionado - 1]} {anioSeleccionado}
+            </h2>
+            <p className="text-[11px] text-gray-500 mb-4">
+              Suma diaria de movimientos tipo gasto (ARS y USD al tipo de cambio del análisis).
+              {gastosPorDiaTotal > 0 && (
+                <span className="text-gray-400"> Total del mes: {formatARS(gastosPorDiaTotal)}</span>
+              )}
+            </p>
+            {gastosPorDiaTotal <= 0 ? (
+              <p className="text-gray-500 text-sm text-center py-8">Sin gastos registrados este mes</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={gastosPorDiaData} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
+                  <CartesianGrid stroke={CHART_COLORS.grid} strokeDasharray="3 3" vertical={false} opacity={0.35} />
+                  <XAxis
+                    dataKey="dia"
+                    tick={{ fontSize: 10, fill: CHART_COLORS.axis }}
+                    axisLine={false}
+                    tickLine={false}
+                    interval={gastosPorDiaData.length > 24 ? 2 : gastosPorDiaData.length > 16 ? 1 : 0}
+                  />
+                  <YAxis
+                    tickFormatter={(v: number) => (v >= 1000 ? `$${(v / 1000).toFixed(v >= 10000 ? 0 : 1)}k` : `$${v}`)}
+                    tick={{ fontSize: 10, fill: CHART_COLORS.axis }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={44}
+                  />
+                  <Tooltip
+                    content={({ active, payload, label }) => {
+                      if (!active || !payload?.length) return null
+                      const v = Number(payload[0]?.value ?? 0)
+                      return (
+                        <div className="glass p-2.5 text-sm border border-white/[0.08]" style={{ background: CHART_COLORS.tooltipBg }}>
+                          <p className="text-gray-400 text-xs mb-0.5">
+                            {MESES_FULL[mesSeleccionado - 1]} {label}, {anioSeleccionado}
+                          </p>
+                          <p className="text-red-400 font-semibold">{formatARS(v)}</p>
+                        </div>
+                      )
+                    }}
+                    cursor={{ fill: 'rgba(239,68,68,0.08)' }}
+                  />
+                  <Bar dataKey="Gastos" fill={CHART_COLORS.gastos} radius={[3, 3, 0, 0]} maxBarSize={28} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </motion.section>
 
           {/* Section 2 — Donut */}
