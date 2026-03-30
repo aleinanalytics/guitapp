@@ -11,6 +11,7 @@ import { useCuotas, getCuotaForMonth } from '../hooks/useCuotas'
 import { useTarjetaConfig, diasHastaFecha, formatFechaTarjeta, rangoPickerTarjeta } from '../hooks/useTarjetaConfig'
 import { formatARS, formatUSD, sumarPorMoneda } from '../lib/utils'
 import type { Categoria, Moneda } from '../lib/types'
+import { ordenarCategoriasPorTema } from '../lib/categoriasOrden'
 
 const MESES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -35,7 +36,10 @@ export default function TarjetaCreditoMes() {
     })
   }, [])
 
-  const gastoCategorias = useMemo(() => categorias.filter((c) => c.tipo === 'gasto'), [categorias])
+  const gastoCategorias = useMemo(
+    () => ordenarCategoriasPorTema(categorias.filter((c) => c.tipo === 'gasto')),
+    [categorias],
+  )
   const suscripcionCategorias = useMemo(() => categorias.filter((c) => c.tipo === 'suscripcion'), [categorias])
 
   const refreshAll = () => {

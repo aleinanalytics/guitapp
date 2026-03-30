@@ -9,6 +9,7 @@ import { useTransacciones } from '../hooks/useTransacciones'
 import { useTipoCambio } from '../hooks/useTipoCambio'
 import { convertirARS, cuentaComoSalidaDeEfectivo, formatARS, formatUSD } from '../lib/utils'
 import type { Categoria } from '../lib/types'
+import { ordenarCategoriasPorTema } from '../lib/categoriasOrden'
 
 const MESES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -147,7 +148,7 @@ export default function MovimientosMes() {
                 <EditableTransaccionListRow
                   key={t.id}
                   t={t}
-                  categorias={categorias.filter((c) => c.tipo === t.tipo)}
+                  categorias={ordenarCategoriasPorTema(categorias.filter((c) => c.tipo === t.tipo))}
                   delay={i * 0.02}
                   mostrarTipo={tipo === 'todos'}
                   onMutated={() => refetch()}

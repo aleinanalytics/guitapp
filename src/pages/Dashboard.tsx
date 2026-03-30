@@ -18,6 +18,7 @@ import { useAnalisis } from '../hooks/useAnalisis'
 import type { Categoria, Moneda } from '../lib/types'
 import { supabase } from '../lib/supabase'
 import { convertirARS, cuentaComoSalidaDeEfectivo, formatARS, formatUSD, sumarPorMoneda } from '../lib/utils'
+import { ordenarCategoriasPorTema } from '../lib/categoriasOrden'
 import { useAuth } from '../lib/AuthContext'
 import { useBolsillos } from '../hooks/useBolsillos'
 
@@ -69,9 +70,8 @@ export default function Dashboard() {
       .from('categorias')
       .select('*')
       .eq('tipo', 'gasto')
-      .order('nombre')
       .then(({ data }) => {
-        if (data) setCategoriasGasto(data as Categoria[])
+        if (data) setCategoriasGasto(ordenarCategoriasPorTema(data as Categoria[]))
       })
   }, [])
 

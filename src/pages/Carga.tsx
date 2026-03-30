@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Trash2, Plus, Pencil, Check, X, CreditCard, Calendar } from 'lucide-react'
 import MobileUserMenu from '../components/MobileUserMenu'
@@ -7,6 +7,7 @@ import { useAuth } from '../lib/AuthContext'
 import { useCuotas } from '../hooks/useCuotas'
 import { formatARS, formatMontoFromNumber, montoFieldNextValue, parseMontoInput } from '../lib/utils'
 import type { Categoria, Moneda, MedioPago, TipoTransaccion, Transaccion } from '../lib/types'
+import { ordenarCategoriasPorTema } from '../lib/categoriasOrden'
 
 const TIPO_CONFIG: Record<TipoTransaccion, { label: string; color: string; bg: string; ring: string }> = {
   ingreso: { label: 'Ingreso', color: 'text-emerald-400', bg: 'bg-emerald-500/10', ring: 'ring-emerald-500/30' },
@@ -376,8 +377,14 @@ export default function Carga() {
   }
 
   useEffect(() => { fetchRecientes() }, [])
-  const filteredCategorias = categorias.filter((c) => c.tipo === tipo)
-  const gastoCategorias = categorias.filter((c) => c.tipo === 'gasto')
+  const filteredCategorias = useMemo(
+    () => ordenarCategoriasPorTema(categorias.filter((c) => c.tipo === tipo)),
+    [categorias, tipo],
+  )
+  const gastoCategorias = useMemo(
+    () => ordenarCategoriasPorTema(categorias.filter((c) => c.tipo === 'gasto')),
+    [categorias],
+  )
   useEffect(() => { setCategoriaId('') }, [tipo])
   useEffect(() => {
     setEnCuotas(false)
@@ -520,7 +527,7 @@ export default function Carga() {
   }
 
   return (
-    <div className="p-4 lg:p-8 max-w-5xl mx-auto">
+    <div className="p-4 pb-[max(1.25rem,calc(0.5rem+env(safe-area-inset-bottom,0px)))] lg:pb-8 max-w-5xl mx-auto">
       <div className="mb-4 flex justify-end lg:hidden">
         <MobileUserMenu />
       </div>
@@ -603,9 +610,15 @@ export default function Carga() {
                 />
               </div>
 
-              <div>
+              <div className="min-w-0">
                 <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-2">Categoría</p>
-                <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1 snap-x snap-mandatory [scrollbar-width:thin]">
+                <div
+                  className="-mx-1 flex gap-3 overflow-x-auto overscroll-x-contain px-1 pb-3 pt-0.5 snap-x snap-mandatory [scrollbar-width:thin]"
+                  style={{
+                    paddingLeft: 'max(0.25rem, env(safe-area-inset-left, 0px))',
+                    paddingRight: 'max(1rem, env(safe-area-inset-right, 0px))',
+                  }}
+                >
                   {filteredCategorias.map((c) => {
                     const active = categoriaId === c.id
                     return (
@@ -613,7 +626,7 @@ export default function Carga() {
                         key={c.id}
                         type="button"
                         onClick={() => setCategoriaId(c.id)}
-                        className={`flex flex-col items-center gap-1.5 shrink-0 w-[4.25rem] snap-start ${active ? 'scale-[1.02]' : ''}`}
+                        className={`flex flex-col items-center gap-1.5 shrink-0 w-[5.5rem] snap-start ${active ? 'scale-[1.02]' : ''}`}
                       >
                         <div
                           className={`w-12 h-12 rounded-full border-2 flex items-center justify-center text-sm font-bold ${
@@ -627,7 +640,9 @@ export default function Carga() {
                         >
                           {c.nombre[0]}
                         </div>
-                        <span className="text-[9px] text-gray-400 text-center leading-tight line-clamp-2 w-full">{c.nombre}</span>
+                        <span className="max-w-full px-0.5 text-center text-[8.5px] font-medium leading-[1.2] text-gray-400 break-words hyphens-auto">
+                          {c.nombre}
+                        </span>
                       </button>
                     )
                   })}
@@ -666,7 +681,7 @@ export default function Carga() {
                 disabled={submitting}
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.99 }}
-                className="w-full bg-gradient-to-r from-accent-blue to-accent-purple text-white rounded-2xl py-3.5 text-sm font-semibold hover:opacity-90 disabled:opacity-40 transition-all duration-200 flex items-center justify-center gap-2"
+                className="mt-1 w-full bg-gradient-to-r from-accent-blue to-accent-purple text-white rounded-2xl py-3.5 text-sm font-semibold hover:opacity-90 disabled:opacity-40 transition-all duration-200 flex items-center justify-center gap-2"
               >
                 {submitting ? (
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -884,7 +899,7 @@ export default function Carga() {
                             className="select-dark !py-1.5 !pl-2.5 !pr-8 !text-sm min-w-[9rem] flex-1 max-w-[13rem]"
                           >
                             <option value="">Categoría…</option>
-                            {categorias.filter((c) => c.tipo === t.tipo).map((c) => (
+                            {ordenarCategoriasPorTema(categorias.filter((c) => c.tipo === t.tipo)).map((c) => (
                               <option key={c.id} value={c.id}>{c.nombre}</option>
                             ))}
                           </select>
