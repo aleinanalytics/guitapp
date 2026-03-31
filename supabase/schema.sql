@@ -123,7 +123,8 @@ insert into categorias (nombre, tipo, color) values
   ('Auto','gasto','#57534e'),
   ('Transporte','gasto','#f97316'),
   ('Salud','gasto','#0d9488'),
-  ('Entretenimiento','gasto','#a855f7');
+  ('Entretenimiento','gasto','#a855f7'),
+  ('Compras online','gasto','#fbbf24');
 
 insert into categorias (nombre, tipo, color, parent_id)
 select s.nombre, 'gasto', s.color, p.id
@@ -164,7 +165,8 @@ cross join (values
   ('Salud', 'Medicamentos', '#f472b6'),
   ('Salud', 'Gastos Médicos', '#ec4899'),
   ('Salud', 'Otros', '#0f7669'),
-  ('Entretenimiento', 'Otros', '#8b5cf6')
+  ('Entretenimiento', 'Otros', '#8b5cf6'),
+  ('Compras online', 'MercadoLibre', '#3483fa')
 ) as s(principal, nombre, color)
 where p.tipo = 'gasto' and p.parent_id is null and p.nombre = s.principal;
 
