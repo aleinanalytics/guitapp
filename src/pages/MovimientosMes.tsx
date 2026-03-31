@@ -6,9 +6,10 @@ import { supabase } from '../lib/supabase'
 import EditableTransaccionListRow from '../components/EditableTransaccionListRow'
 import MobileUserMenu from '../components/MobileUserMenu'
 import { useTransacciones } from '../hooks/useTransacciones'
+import { useTarjetaConfig } from '../hooks/useTarjetaConfig'
 import { useSaldoAcumuladoHastaMes } from '../hooks/useSaldoAcumuladoHastaMes'
 import { useTipoCambio } from '../hooks/useTipoCambio'
-import { convertirARS, cuentaComoSalidaDeEfectivo, formatARS, formatUSD } from '../lib/utils'
+import { convertirARS, cuentaComoSalidaDeEfectivo, formatARS, formatUSD, transaccionEnMesVista } from '../lib/utils'
 import type { Categoria } from '../lib/types'
 import { ordenarCategoriasPorTema } from '../lib/categoriasOrden'
 
@@ -34,6 +35,7 @@ export default function MovimientosMes() {
   const sinTarjetaCredito = searchParams.get('sin_tc') === '1'
 
   const { transacciones, loading, error, refetch } = useTransacciones({ mes, anio })
+  const { config: tcConfig } = useTarjetaConfig()
   const { tipoCambio } = useTipoCambio()
   const tc = tipoCambio?.usd_ars ?? 1000
   const { saldoAcumulado, loading: loadingSaldoAcum } = useSaldoAcumuladoHastaMes({ mes, anio, tc })
@@ -45,8 +47,17 @@ export default function MovimientosMes() {
     })
   }, [])
 
+  const diaCierreTc =
+    tcConfig?.fecha_cierre != null
+      ? new Date(tcConfig.fecha_cierre + 'T12:00:00').getDate()
+      : null
+  const transaccionesDelMes = useMemo(
+    () => transacciones.filter((t) => transaccionEnMesVista(t, mes, anio, diaCierreTc)),
+    [transacciones, mes, anio, diaCierreTc],
+  )
+
   const filtradas = useMemo(() => {
-    let list = tipo === 'todos' ? transacciones : transacciones.filter((t) => t.tipo === tipo)
+    let list = tipo === 'todos' ? transaccionesDelMes : transaccionesDelMes.filter((t) => t.tipo === tipo)
     if (categoriaIdFiltro) {
       list = list.filter((t) => t.categoria_id === categoriaIdFiltro)
     }
@@ -58,17 +69,17 @@ export default function MovimientosMes() {
       if (fd !== 0) return fd
       return (b.created_at ?? '').localeCompare(a.created_at ?? '')
     })
-  }, [transacciones, tipo, categoriaIdFiltro, sinTarjetaCredito])
+  }, [transaccionesDelMes, tipo, categoriaIdFiltro, sinTarjetaCredito])
 
   const resumen = useMemo(() => {
-    const ing = transacciones.filter((t) => t.tipo === 'ingreso').reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
-    const gas = transacciones.filter((t) => t.tipo === 'gasto').reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
-    const sus = transacciones.filter((t) => t.tipo === 'suscripcion').reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
-    const salidasEf = transacciones
+    const ing = transaccionesDelMes.filter((t) => t.tipo === 'ingreso').reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
+    const gas = transaccionesDelMes.filter((t) => t.tipo === 'gasto').reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
+    const sus = transaccionesDelMes.filter((t) => t.tipo === 'suscripcion').reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
+    const salidasEf = transaccionesDelMes
       .filter(cuentaComoSalidaDeEfectivo)
       .reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
     return { ingresos: ing, gastos: gas, suscripciones: sus, resultadoMes: ing - salidasEf }
-  }, [transacciones, tc])
+  }, [transaccionesDelMes, tc])
 
   const nombreCategoriaFiltro = categoriaIdFiltro
     ? categorias.find((c) => c.id === categoriaIdFiltro)?.nombre

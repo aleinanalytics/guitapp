@@ -13,6 +13,55 @@ export function cuentaComoSalidaDeEfectivo(t: Pick<Transaccion, 'tipo' | 'medio_
   )
 }
 
+/** Último día del mes (mes 1–12). */
+export function ultimoDiaDelMes(anio: number, mes: number): number {
+  return new Date(anio, mes, 0).getDate()
+}
+
+/**
+ * Mes del resumen de tarjeta al que corresponde una fecha de compra:
+ * hasta el día de cierre (inclusive) cuenta en ese mes calendario; lo posterior va al mes siguiente.
+ */
+export function mesResumenTarjetaCredito(
+  fechaTx: string,
+  diaCierrePreferido: number,
+): { mes: number; anio: number } {
+  const d = new Date(fechaTx + 'T12:00:00')
+  const y = d.getFullYear()
+  const m = d.getMonth() + 1
+  const cap = ultimoDiaDelMes(y, m)
+  const diaCierre = Math.min(Math.max(1, Math.floor(diaCierrePreferido)), cap)
+  if (d.getDate() > diaCierre) {
+    if (m === 12) return { mes: 1, anio: y + 1 }
+    return { mes: m + 1, anio: y }
+  }
+  return { mes: m, anio: y }
+}
+
+export function fechaEnMesCalendario(fecha: string, mes: number, anio: number): boolean {
+  const d = new Date(fecha + 'T12:00:00')
+  return d.getFullYear() === anio && d.getMonth() + 1 === mes
+}
+
+/**
+ * Con día de cierre configurado, gastos/suscripciones en TC usan el mes de resumen;
+ * sin config o resto de movimientos, mes calendario (comportamiento anterior).
+ */
+export function transaccionEnMesVista(
+  t: Pick<Transaccion, 'fecha' | 'tipo' | 'medio_pago'>,
+  mes: number,
+  anio: number,
+  diaCierreTarjeta: number | null,
+): boolean {
+  const esTc =
+    (t.tipo === 'gasto' || t.tipo === 'suscripcion') && t.medio_pago === 'tarjeta'
+  if (esTc && diaCierreTarjeta != null) {
+    const r = mesResumenTarjetaCredito(t.fecha, diaCierreTarjeta)
+    return r.mes === mes && r.anio === anio
+  }
+  return fechaEnMesCalendario(t.fecha, mes, anio)
+}
+
 export function formatARS(n: number): string {
   return '$ ' + n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }

@@ -20,11 +20,11 @@ import type { Categoria, Moneda } from '../lib/types'
 import { supabase } from '../lib/supabase'
 import {
   convertirARS,
-  cuentaComoSalidaDeEfectivo,
   formatARS,
   formatUSD,
   montoDisplayClass,
   sumarPorMoneda,
+  transaccionEnMesVista,
 } from '../lib/utils'
 import {
   categoriasGastoElegibles,
@@ -71,6 +71,15 @@ export default function Dashboard() {
   const { transacciones: txAnio } = useAnalisis({ anio })
   const { disponible: disponibleReservas, saldo: saldoBolsillo, loading: loadingBolsillos } = useBolsillos()
 
+  const diaCierreTc =
+    tcConfig?.fecha_cierre != null
+      ? new Date(tcConfig.fecha_cierre + 'T12:00:00').getDate()
+      : null
+  const transaccionesDelMes = useMemo(
+    () => transacciones.filter((t) => transaccionEnMesVista(t, mes, anio, diaCierreTc)),
+    [transacciones, mes, anio, diaCierreTc],
+  )
+
   const [editingTC, setEditingTC] = useState(false)
   const [tcInput, setTcInput] = useState('')
   const [categoriasGasto, setCategoriasGasto] = useState<Categoria[]>([])
@@ -106,29 +115,25 @@ export default function Dashboard() {
   const tc = tipoCambio?.usd_ars ?? 1000
   const { saldoAcumulado, loading: loadingSaldoAcum } = useSaldoAcumuladoHastaMes({ mes, anio, tc })
 
-  const ingresos = transacciones
+  const ingresos = transaccionesDelMes
     .filter((t) => t.tipo === 'ingreso')
     .reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
 
-  const gastos = transacciones
+  const gastos = transaccionesDelMes
     .filter((t) => t.tipo === 'gasto')
     .reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
 
   /** Solo tipo gasto y sin tarjeta de crédito (alineado al saldo acumulado para gastos). */
-  const gastosSinTc = transacciones
+  const gastosSinTc = transaccionesDelMes
     .filter((t) => t.tipo === 'gasto' && t.medio_pago !== 'tarjeta')
     .reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
 
-  const suscripciones = transacciones
+  const suscripciones = transaccionesDelMes
     .filter((t) => t.tipo === 'suscripcion')
     .reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
 
-  const salidasEfectivo = transacciones
-    .filter(cuentaComoSalidaDeEfectivo)
-    .reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
-
   /** Gastos sin tarjeta de crédito, solo ARS (no mezcla consumos en USD). */
-  const gastosSinTcArs = transacciones.filter(
+  const gastosSinTcArs = transaccionesDelMes.filter(
     (t) => t.tipo === 'gasto' && t.medio_pago !== 'tarjeta' && t.moneda === 'ARS',
   )
   const mayorGasto = gastosSinTcArs.length > 0
@@ -139,7 +144,7 @@ export default function Dashboard() {
     : null
 
   /** Gastos y suscripciones abonados con tarjeta de crédito (mismo criterio que el KPI / resumen TC). */
-  const consumosTc = transacciones.filter(
+  const consumosTc = transaccionesDelMes.filter(
     (t) => (t.tipo === 'gasto' || t.tipo === 'suscripcion') && t.medio_pago === 'tarjeta',
   )
   const mayorGastoTc = consumosTc.length > 0
@@ -164,10 +169,10 @@ export default function Dashboard() {
 
   const gastoCategoriaKpi = useMemo(() => {
     if (!kpiCatId) return 0
-    return transacciones
+    return transaccionesDelMes
       .filter((t) => t.tipo === 'gasto' && t.categoria_id === kpiCatId)
       .reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
-  }, [transacciones, kpiCatId, tc])
+  }, [transaccionesDelMes, kpiCatId, tc])
 
   const pctGastoCategoriaKpi = ingresos > 0 ? (gastoCategoriaKpi / ingresos) * 100 : null
 
@@ -175,7 +180,7 @@ export default function Dashboard() {
 
   // Tarjeta KPI: pagos únicos + cuotas del mes, ARS y USD por separado (sin convertir para el resumen)
   const tarjetaData = useMemo(() => {
-    const txTarjeta = transacciones.filter(
+    const txTarjeta = transaccionesDelMes.filter(
       (t) => (t.tipo === 'gasto' || t.tipo === 'suscripcion') && t.medio_pago === 'tarjeta',
     )
     const singles = sumarPorMoneda(txTarjeta.map((t) => ({ monto: t.monto, moneda: t.moneda })))
@@ -230,7 +235,7 @@ export default function Dashboard() {
       nextDetails,
       nextMesName: MESES[nextMes - 1],
     }
-  }, [transacciones, cuotas, mes, anio])
+  }, [transaccionesDelMes, cuotas, mes, anio])
 
   // Chart data — desktop only
   type PieSlice = {
@@ -242,7 +247,7 @@ export default function Dashboard() {
   }
 
   const pieData = useMemo((): PieSlice[] => {
-    const gastosEfectivo = transacciones
+    const gastosEfectivo = transaccionesDelMes
       .filter((t) => t.tipo === 'gasto' && t.medio_pago !== 'tarjeta')
       .reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
     const out: PieSlice[] = [
@@ -260,11 +265,11 @@ export default function Dashboard() {
     }
     out.push({ name: 'Suscripciones', value: suscripciones, color: '#a855f7' })
     return out.filter((d) => d.value > 0)
-  }, [transacciones, ingresos, suscripciones, tarjetaData.totalArs, tarjetaData.totalUsd, tc])
+  }, [transaccionesDelMes, ingresos, suscripciones, tarjetaData.totalArs, tarjetaData.totalUsd, tc])
 
   const barData = useMemo(() => {
     const byCategory: Record<string, { nombre: string; color: string; total: number }> = {}
-    for (const t of transacciones) {
+    for (const t of transaccionesDelMes) {
       if (t.tipo !== 'gasto') continue
       const key = t.categoria_id ?? '__sin__'
       const nombre = t.categoria?.nombre ?? 'Sin categoría'
@@ -286,7 +291,7 @@ export default function Dashboard() {
       .sort((a, b) => b.total - a.total)
       .slice(0, 7)
       .map((d) => ({ nombre: d.nombre, total: Math.round(d.total), color: d.color }))
-  }, [transacciones, cuotas, mes, anio, tc])
+  }, [transaccionesDelMes, cuotas, mes, anio, tc])
 
   const lineData = useMemo(() => {
     return Array.from({ length: 12 }, (_, i) => {

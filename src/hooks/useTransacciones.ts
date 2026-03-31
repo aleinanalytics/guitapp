@@ -10,7 +10,9 @@ export function useTransacciones({ mes, anio }: { mes: number; anio: number }) {
   const refetch = useCallback(async () => {
     setLoading(true)
     setError(null)
-    const firstDay = `${anio}-${String(mes).padStart(2, '0')}-01`
+    const prevMes = mes === 1 ? 12 : mes - 1
+    const prevAnio = mes === 1 ? anio - 1 : anio
+    const firstDay = `${prevAnio}-${String(prevMes).padStart(2, '0')}-01`
     const { data, error: err } = await supabase
       .from('transacciones')
       .select('*, categoria:categorias(*)')

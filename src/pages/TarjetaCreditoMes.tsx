@@ -10,7 +10,7 @@ import MobileUserMenu from '../components/MobileUserMenu'
 import { useTransacciones } from '../hooks/useTransacciones'
 import { useCuotas, getCuotaForMonth } from '../hooks/useCuotas'
 import { useTarjetaConfig, diasHastaFecha, formatFechaTarjeta, rangoPickerTarjeta } from '../hooks/useTarjetaConfig'
-import { formatARS, formatUSD, montoDisplayClass, sumarPorMoneda } from '../lib/utils'
+import { formatARS, formatUSD, montoDisplayClass, sumarPorMoneda, transaccionEnMesVista } from '../lib/utils'
 import type { Categoria, Moneda } from '../lib/types'
 
 const MESES = [
@@ -45,6 +45,15 @@ export default function TarjetaCreditoMes() {
   }
   const { config: tcConfig, upsert: upsertConfig } = useTarjetaConfig()
 
+  const diaCierreTc =
+    tcConfig?.fecha_cierre != null
+      ? new Date(tcConfig.fecha_cierre + 'T12:00:00').getDate()
+      : null
+  const transaccionesDelMes = useMemo(
+    () => transacciones.filter((t) => transaccionEnMesVista(t, mes, anio, diaCierreTc)),
+    [transacciones, mes, anio, diaCierreTc],
+  )
+
   // Config editor state
   const [editingConfig, setEditingConfig] = useState(false)
   const [inputCierre, setInputCierre] = useState('')
@@ -72,10 +81,10 @@ export default function TarjetaCreditoMes() {
   /** Pagos únicos al cierre: gastos y suscripciones con tarjeta de crédito. */
   const tarjetaPagosUnicos = useMemo(
     () =>
-      transacciones.filter(
+      transaccionesDelMes.filter(
         (t) => (t.tipo === 'gasto' || t.tipo === 'suscripcion') && t.medio_pago === 'tarjeta',
       ),
-    [transacciones],
+    [transaccionesDelMes],
   )
 
   const cuotaLines = useMemo(() => {
@@ -148,6 +157,12 @@ export default function TarjetaCreditoMes() {
             <h1 className="text-2xl font-bold text-gray-50 lg:text-3xl">Tarjeta de crédito</h1>
           </div>
           <p className="mt-1 text-sm text-gray-500">{MESES[mes - 1]} {anio}</p>
+          {diaCierreTc != null && (
+            <p className="mt-0.5 text-[11px] text-gray-600 max-w-md">
+              Pagos con tarjeta agrupados por cierre: día {diaCierreTc} de cada mes (lo posterior cuenta en el mes
+              siguiente).
+            </p>
+          )}
         </div>
         <div className="shrink-0 lg:hidden">
           <MobileUserMenu />

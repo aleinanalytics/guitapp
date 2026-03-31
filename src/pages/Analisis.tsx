@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
-  PieChart, Pie, Cell, AreaChart, Area, CartesianGrid, ComposedChart, Line,
+  PieChart, Pie, Cell, Area, CartesianGrid, ComposedChart, Line,
 } from 'recharts'
 import type { PieLabelRenderProps } from 'recharts'
 import KPICard from '../components/KPICard'
