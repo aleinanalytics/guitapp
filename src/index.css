@@ -37,6 +37,9 @@
   .glow-red {
     box-shadow: 0 0 20px rgba(239, 68, 68, 0.15), 0 0 60px rgba(239, 68, 68, 0.05);
   }
+  .glow-orange {
+    box-shadow: 0 0 20px rgba(249, 115, 22, 0.14), 0 0 60px rgba(249, 115, 22, 0.05);
+  }
   .glow-purple {
     box-shadow: 0 0 20px rgba(168, 85, 247, 0.15), 0 0 60px rgba(168, 85, 247, 0.05);
   }

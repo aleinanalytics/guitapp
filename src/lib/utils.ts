@@ -35,7 +35,9 @@ export function montoDisplayClass(
     | 'pairUsd'
     | 'heroUsd'
     | 'saldoHero'
-    | 'saldoHeroUsd',
+    | 'saldoHeroUsd'
+    | 'kpiStatProminent'
+    | 'pairUsdProminent',
 ): string {
   const n = Math.abs(value)
   /** Saldo acumulado en inicio: más grande y fluido al ancho (clamp + vw). */
@@ -71,6 +73,16 @@ export function montoDisplayClass(
     if (n >= 100_000) return 'text-xl sm:text-2xl lg:text-xl'
     return 'text-2xl sm:text-2xl lg:text-xl'
   }
+  /** KPI con el monto como protagonista (p. ej. Gastos sin TC). */
+  if (kind === 'kpiStatProminent') {
+    if (n >= 10_000_000)
+      return 'text-xl sm:text-2xl lg:text-3xl xl:text-4xl'
+    if (n >= 1_000_000)
+      return 'text-2xl sm:text-3xl lg:text-4xl xl:text-5xl'
+    if (n >= 100_000)
+      return 'text-3xl sm:text-4xl lg:text-5xl xl:text-5xl'
+    return 'text-4xl sm:text-5xl lg:text-6xl xl:text-6xl'
+  }
   /** KPI compactos en grilla (p. ej. Análisis anual): base ~text-xl, se achica con millones. */
   if (kind === 'kpiInline') {
     if (n >= 10_000_000) return 'text-sm sm:text-base'
@@ -88,6 +100,11 @@ export function montoDisplayClass(
     if (n >= 100_000) return 'text-base sm:text-lg'
     if (n >= 10_000) return 'text-lg sm:text-xl'
     return 'text-xl sm:text-2xl'
+  }
+  if (kind === 'pairUsdProminent') {
+    if (n >= 100_000) return 'text-lg sm:text-xl'
+    if (n >= 10_000) return 'text-xl sm:text-2xl'
+    return 'text-xl sm:text-2xl lg:text-3xl'
   }
   if (kind === 'heroUsd') {
     if (n >= 100_000) return 'text-sm sm:text-base'

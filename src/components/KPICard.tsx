@@ -19,6 +19,8 @@ interface KPICardProps {
   variant?: 'default' | 'hero'
   /** Solo móvil: ARS más grande y centrado; USD y contenido debajo centrados (mismo tamaño entre USD y extra) */
   mobileStatLayout?: boolean
+  /** ARS (y USD en layout stat) más grande para dar protagonismo al monto */
+  montoProtagonista?: boolean
   /** Controles interactivos dentro del vidrio pero fuera del Link (p. ej. lápiz / select) */
   topAccessory?: React.ReactNode
 }
@@ -37,10 +39,14 @@ export default function KPICard({
   to,
   variant = 'default',
   mobileStatLayout = false,
+  montoProtagonista = false,
   topAccessory,
 }: KPICardProps) {
   const isHero = variant === 'hero'
   const ms = mobileStatLayout && !isHero
+  const montoArsKind = montoProtagonista && ms ? 'kpiStatProminent' : isHero ? 'kpiHero' : ms ? 'kpiStat' : 'kpiInline'
+  const montoUsdKind =
+    montoProtagonista && ms ? 'pairUsdProminent' : isHero ? 'heroUsd' : ms ? 'pairUsd' : 'pairUsd'
 
   const accentBar =
     accentColor != null ? (
@@ -59,27 +65,31 @@ export default function KPICard({
         </div>
       ) : (
         <div
-          className={`mb-2 flex min-w-0 items-center gap-2 ${ms ? 'justify-center lg:justify-between' : 'justify-between'} ${
+          className={`${ms && montoProtagonista ? 'mb-1' : 'mb-2'} flex min-w-0 items-center gap-2 ${ms ? 'justify-center lg:justify-between' : 'justify-between'} ${
             topAccessory ? 'pr-8 sm:pr-9' : ''
           }`}
         >
           <p
-            className={`min-w-0 text-xs font-medium uppercase tracking-wider text-gray-400 ${
-              ms ? 'text-center lg:text-left line-clamp-2 break-words leading-tight' : 'truncate'
+            className={`min-w-0 font-medium uppercase tracking-wider text-gray-400 ${
+              ms && montoProtagonista ? 'text-[10px] text-center lg:text-left line-clamp-2 break-words leading-tight' : ms ? 'text-xs text-center lg:text-left line-clamp-2 break-words leading-tight' : 'text-xs truncate'
             }`}
           >
             {titulo}
           </p>
-          {icon && <div className="text-gray-500 shrink-0">{icon}</div>}
+          {icon && (
+            <div className={`text-gray-500 shrink-0 ${ms && montoProtagonista ? 'scale-90' : ''}`}>{icon}</div>
+          )}
         </div>
       )}
       <p
-        className={`font-bold text-gray-50 tracking-tight tabular-nums leading-tight break-words ${
+        className={`font-bold text-gray-50 tracking-tight tabular-nums break-words ${
+          ms && montoProtagonista ? 'leading-none' : 'leading-tight'
+        } ${
           isHero
             ? montoDisplayClass(montoARS, 'kpiHero')
             : ms
-              ? `text-center lg:text-left ${montoDisplayClass(montoARS, 'kpiStat')}`
-              : montoDisplayClass(montoARS, 'kpiInline')
+              ? `text-center lg:text-left ${montoDisplayClass(montoARS, montoArsKind)}`
+              : montoDisplayClass(montoARS, montoArsKind)
         }`}
       >
         {formatARS(montoARS)}
@@ -90,7 +100,7 @@ export default function KPICard({
             isHero
               ? montoDisplayClass(montoUSD, 'heroUsd')
               : ms
-                ? `text-center lg:text-left ${montoDisplayClass(montoUSD, 'pairUsd')}`
+                ? `text-center lg:text-left ${montoDisplayClass(montoUSD, montoUsdKind)}`
                 : 'text-sm mt-0.5'
           }`}
         >

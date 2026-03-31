@@ -114,6 +114,11 @@ export default function Dashboard() {
     .filter((t) => t.tipo === 'gasto')
     .reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
 
+  /** Solo tipo gasto y sin tarjeta de crédito (alineado al saldo acumulado para gastos). */
+  const gastosSinTc = transacciones
+    .filter((t) => t.tipo === 'gasto' && t.medio_pago !== 'tarjeta')
+    .reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
+
   const suscripciones = transacciones
     .filter((t) => t.tipo === 'suscripcion')
     .reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
@@ -150,6 +155,9 @@ export default function Dashboard() {
 
   /** % de gastos (solo tipo gasto) respecto a ingresos del mes */
   const pctGastoDelIngreso = ingresos > 0 ? (gastos / ingresos) * 100 : null
+
+  /** % gastos sin TC sobre ingresos */
+  const pctGastoSinTcDelIngreso = ingresos > 0 ? (gastosSinTc / ingresos) * 100 : null
 
   /** % suscripciones sobre ingresos (montos ya en equivalente ARS, USD convertido con tc) */
   const pctSuscripcionDelIngreso = ingresos > 0 ? (suscripciones / ingresos) * 100 : null
@@ -317,6 +325,7 @@ export default function Dashboard() {
   const qMesAnio = `mes=${mes}&anio=${anio}`
   const toIngresos = `/movimientos?tipo=ingreso&${qMesAnio}`
   const toGastos = `/movimientos?tipo=gasto&${qMesAnio}`
+  const toGastosSinTc = `/movimientos?tipo=gasto&sin_tc=1&${qMesAnio}`
   const toSuscripciones = `/movimientos?tipo=suscripcion&${qMesAnio}`
   const toTarjetaCredito = `/tarjeta-credito?${qMesAnio}`
   const toGastoCategoriaKpi =
@@ -430,6 +439,25 @@ export default function Dashboard() {
                 hayMontoSinIngreso={gastos > 0}
               />
             </KPICard>
+            <div className="col-span-2 min-w-0 lg:col-span-1">
+              <KPICard
+                titulo="Gastos sin TC"
+                montoARS={gastosSinTc}
+                montoUSD={gastosSinTc / tc}
+                icon={<Banknote size={18} />}
+                accentColor="#f97316"
+                glowClass="glow-orange"
+                delay={0.09}
+                to={toGastosSinTc}
+                mobileStatLayout
+                montoProtagonista
+              >
+                <PorcentajeDelIngresoKpi
+                  pct={pctGastoSinTcDelIngreso}
+                  hayMontoSinIngreso={gastosSinTc > 0}
+                />
+              </KPICard>
+            </div>
           </div>
 
           <div className="grid min-h-0 min-w-0 grid-cols-2 gap-3 items-stretch lg:contents">
