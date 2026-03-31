@@ -7,6 +7,8 @@ export interface Categoria {
   nombre: string
   tipo: TipoTransaccion
   color: string
+  /** Si existe, esta categoría es subcategoría de otra (solo gasto). */
+  parent_id?: string | null
 }
 
 export interface Transaccion {

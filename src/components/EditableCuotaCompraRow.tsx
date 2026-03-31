@@ -4,6 +4,7 @@ import { Pencil, Trash2, Check, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { formatMontoFromNumber, montoFieldNextValue, parseMontoInput } from '../lib/utils'
 import type { Categoria, CompraCuotas } from '../lib/types'
+import { principalesGastoOrdenadas, subcategoriasDe } from '../lib/categoriasJerarquia'
 
 type Props = {
   compra: CompraCuotas
@@ -83,9 +84,31 @@ export default function EditableCuotaCompraRow({ compra, cuotaNumero, delay = 0,
             className="select-dark !py-1.5 !text-sm flex-1 min-w-[9rem]"
           >
             <option value="">Categoría…</option>
-            {gastoCategorias.map((c) => (
-              <option key={c.id} value={c.id}>{c.nombre}</option>
-            ))}
+            {gastoCategorias.some((c) => c.tipo === 'gasto' && !!c.parent_id) ? (
+              <>
+                {principalesGastoOrdenadas(gastoCategorias).map((p) => (
+                  <optgroup key={p.id} label={p.nombre}>
+                    {subcategoriasDe(p.id, gastoCategorias).map((s) => (
+                      <option key={s.id} value={s.id}>{s.nombre}</option>
+                    ))}
+                  </optgroup>
+                ))}
+                {gastoCategorias
+                  .filter(
+                    (c) =>
+                      c.tipo === 'gasto' &&
+                      !c.parent_id &&
+                      !gastoCategorias.some((s) => s.parent_id === c.id),
+                  )
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>{c.nombre}</option>
+                  ))}
+              </>
+            ) : (
+              gastoCategorias.map((c) => (
+                <option key={c.id} value={c.id}>{c.nombre}</option>
+              ))
+            )}
           </select>
           <input
             type="text"

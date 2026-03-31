@@ -18,7 +18,11 @@ import { useAnalisis } from '../hooks/useAnalisis'
 import type { Categoria, Moneda } from '../lib/types'
 import { supabase } from '../lib/supabase'
 import { convertirARS, cuentaComoSalidaDeEfectivo, formatARS, formatUSD, sumarPorMoneda } from '../lib/utils'
-import { ordenarCategoriasPorTema } from '../lib/categoriasOrden'
+import {
+  categoriasGastoElegibles,
+  principalesGastoOrdenadas,
+  subcategoriasDe,
+} from '../lib/categoriasJerarquia'
 import { useAuth } from '../lib/AuthContext'
 import { useBolsillos } from '../hooks/useBolsillos'
 
@@ -71,20 +75,22 @@ export default function Dashboard() {
       .select('*')
       .eq('tipo', 'gasto')
       .then(({ data }) => {
-        if (data) setCategoriasGasto(ordenarCategoriasPorTema(data as Categoria[]))
+        if (data) setCategoriasGasto(data as Categoria[])
       })
   }, [])
 
   useEffect(() => {
     if (categoriasGasto.length === 0) return
+    const eleg = categoriasGastoElegibles(categoriasGasto)
+    if (!eleg.length) return
     const stored = localStorage.getItem(LS_KPI_GASTO_CATEGORIA)
-    const valid = stored && categoriasGasto.some((c) => c.id === stored)
-    if (valid) {
-      setKpiCatId(stored!)
+    if (stored && eleg.some((c) => c.id === stored)) {
+      setKpiCatId(stored)
       return
     }
-    const sup = categoriasGasto.find((c) => c.nombre.toLowerCase() === 'supermercado')
-    const id = sup?.id ?? categoriasGasto[0].id
+    const comp = eleg.find((c) => c.nombre === 'Compra Mensual')
+    const legacySup = eleg.find((c) => c.nombre.toLowerCase() === 'supermercado')
+    const id = comp?.id ?? legacySup?.id ?? eleg[0].id
     setKpiCatId(id)
     localStorage.setItem(LS_KPI_GASTO_CATEGORIA, id)
   }, [categoriasGasto])
@@ -465,11 +471,30 @@ export default function Dashboard() {
                         className="select-dark min-w-0 flex-1 py-1 text-[11px]"
                         aria-label="Elegir categoría de gasto"
                       >
-                        {categoriasGasto.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.nombre}
-                          </option>
-                        ))}
+                        {categoriasGasto.some((c) => !!c.parent_id) ? (
+                          <>
+                            {principalesGastoOrdenadas(categoriasGasto).map((p) => (
+                              <optgroup key={p.id} label={p.nombre}>
+                                {subcategoriasDe(p.id, categoriasGasto).map((s) => (
+                                  <option key={s.id} value={s.id}>{s.nombre}</option>
+                                ))}
+                              </optgroup>
+                            ))}
+                            {categoriasGasto
+                              .filter(
+                                (c) =>
+                                  !c.parent_id &&
+                                  !categoriasGasto.some((s) => s.parent_id === c.id),
+                              )
+                              .map((c) => (
+                                <option key={c.id} value={c.id}>{c.nombre}</option>
+                              ))}
+                          </>
+                        ) : (
+                          categoriasGastoElegibles(categoriasGasto).map((c) => (
+                            <option key={c.id} value={c.id}>{c.nombre}</option>
+                          ))
+                        )}
                       </select>
                       <button
                         type="button"

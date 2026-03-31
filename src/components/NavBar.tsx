@@ -1,11 +1,13 @@
 import { NavLink } from 'react-router-dom'
-import { BarChart2, Plus, TrendingUp, LogOut } from 'lucide-react'
+import { BarChart2, Plus, TrendingUp, LogOut, Wallet, Briefcase } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
 
 const sidebarLinks = [
   { to: '/', label: 'Dashboard', icon: BarChart2 },
-  { to: '/carga', label: 'Cargar', icon: Plus },
   { to: '/analisis', label: 'Análisis', icon: TrendingUp },
+  { to: '/carga', label: 'Cargar', icon: Plus },
+  { to: '/presupuesto', label: 'Presupuesto', icon: Wallet },
+  { to: '/inversiones', label: 'Inversiones', icon: Briefcase },
 ]
 
 export default function NavBar() {
@@ -68,63 +70,99 @@ export default function NavBar() {
         </div>
       </nav>
 
-      {/* Mobile bottom nav: fondo opaco (sin ver el scroll detrás) + área segura iOS */}
+      {/* Mobile: Inicio · Análisis · + · Presup. · Inversiones */}
       <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-dark-950 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] shadow-[0_-12px_48px_rgba(0,0,0,0.92)] lg:hidden">
         <div className="relative mx-auto max-w-lg">
-          <div className="relative grid min-h-[4.25rem] grid-cols-3 items-end px-2 pb-1 pt-3">
-              <div className="flex justify-center pb-1.5">
-                <NavLink
-                  to="/"
-                  className={({ isActive }) =>
-                    `flex flex-col items-center gap-0.5 text-[10px] font-medium py-1 px-3 rounded-xl transition-all duration-300 ${
-                      isActive ? 'text-accent-blue' : 'text-gray-500 hover:text-gray-300'
-                    }`
-                  }
-                >
-                  {({ isActive }) => (
-                    <>
-                      <BarChart2 size={22} strokeWidth={isActive ? 2.4 : 1.8} />
-                      <span>Inicio</span>
-                    </>
-                  )}
-                </NavLink>
-              </div>
+          <div className="relative grid min-h-[4.25rem] grid-cols-5 items-end px-1 pb-1 pt-2">
+            <div className="flex justify-center pb-1.5">
+              <NavLink
+                to="/"
+                className={({ isActive }) =>
+                  `flex flex-col items-center gap-0.5 text-[9px] font-semibold py-1 px-1.5 rounded-xl transition-all duration-300 ${
+                    isActive ? 'text-accent-blue' : 'text-gray-500 hover:text-gray-300'
+                  }`
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    <BarChart2 size={20} strokeWidth={isActive ? 2.4 : 1.8} />
+                    <span>Inicio</span>
+                  </>
+                )}
+              </NavLink>
+            </div>
 
-              <div className="flex justify-center relative h-8">
-                <NavLink
-                  to="/carga"
-                  className="absolute left-1/2 -translate-x-1/2 -top-[2.35rem] flex flex-col items-center"
-                  aria-label="Cargar movimiento"
-                >
-                  {({ isActive }) => (
-                    <span
-                      className={`flex h-[3.75rem] w-[3.75rem] items-center justify-center rounded-full bg-gradient-to-br from-accent-blue to-accent-purple text-white shadow-lg shadow-accent-blue/35 ring-[5px] ring-dark-950 transition-transform duration-200 ${
-                        isActive ? 'scale-105 ring-accent-blue/40' : 'hover:scale-[1.03]'
-                      }`}
-                    >
-                      <Plus size={30} strokeWidth={2.5} />
-                    </span>
-                  )}
-                </NavLink>
-              </div>
+            <div className="flex justify-center pb-1.5">
+              <NavLink
+                to="/analisis"
+                className={({ isActive }) =>
+                  `flex flex-col items-center gap-0.5 text-[9px] font-semibold py-1 px-1.5 rounded-xl transition-all duration-300 ${
+                    isActive ? 'text-accent-blue' : 'text-gray-500 hover:text-gray-300'
+                  }`
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    <TrendingUp size={20} strokeWidth={isActive ? 2.4 : 1.8} />
+                    <span>Análisis</span>
+                  </>
+                )}
+              </NavLink>
+            </div>
 
-              <div className="flex justify-center pb-1.5">
-                <NavLink
-                  to="/analisis"
-                  className={({ isActive }) =>
-                    `flex flex-col items-center gap-0.5 text-[10px] font-medium py-1 px-3 rounded-xl transition-all duration-300 ${
-                      isActive ? 'text-accent-blue' : 'text-gray-500 hover:text-gray-300'
-                    }`
-                  }
-                >
-                  {({ isActive }) => (
-                    <>
-                      <TrendingUp size={22} strokeWidth={isActive ? 2.4 : 1.8} />
-                      <span>Análisis</span>
-                    </>
-                  )}
-                </NavLink>
-              </div>
+            <div className="relative flex justify-center h-8">
+              <NavLink
+                to="/carga"
+                className="absolute left-1/2 -translate-x-1/2 -top-[2.2rem] flex flex-col items-center"
+                aria-label="Cargar movimiento"
+              >
+                {({ isActive }) => (
+                  <span
+                    className={`flex h-[3.5rem] w-[3.5rem] items-center justify-center rounded-full bg-gradient-to-br from-accent-blue to-accent-purple text-white shadow-lg shadow-accent-blue/35 ring-[5px] ring-dark-950 transition-transform duration-200 ${
+                      isActive ? 'scale-105 ring-accent-blue/40' : 'hover:scale-[1.03]'
+                    }`}
+                  >
+                    <Plus size={28} strokeWidth={2.5} />
+                  </span>
+                )}
+              </NavLink>
+            </div>
+
+            <div className="flex justify-center pb-1.5">
+              <NavLink
+                to="/presupuesto"
+                className={({ isActive }) =>
+                  `flex flex-col items-center gap-0.5 text-[9px] font-semibold py-1 px-1.5 rounded-xl transition-all duration-300 ${
+                    isActive ? 'text-accent-blue' : 'text-gray-500 hover:text-gray-300'
+                  }`
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    <Wallet size={20} strokeWidth={isActive ? 2.4 : 1.8} />
+                    <span>Presup.</span>
+                  </>
+                )}
+              </NavLink>
+            </div>
+
+            <div className="flex justify-center pb-1.5">
+              <NavLink
+                to="/inversiones"
+                className={({ isActive }) =>
+                  `flex flex-col items-center gap-0.5 text-[9px] font-semibold py-1 px-1.5 rounded-xl transition-all duration-300 ${
+                    isActive ? 'text-accent-blue' : 'text-gray-500 hover:text-gray-300'
+                  }`
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    <Briefcase size={20} strokeWidth={isActive ? 2.4 : 1.8} />
+                    <span>Inv.</span>
+                  </>
+                )}
+              </NavLink>
+            </div>
           </div>
         </div>
       </nav>

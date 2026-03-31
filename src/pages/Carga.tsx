@@ -8,6 +8,11 @@ import { useCuotas } from '../hooks/useCuotas'
 import { formatARS, formatMontoFromNumber, montoFieldNextValue, parseMontoInput } from '../lib/utils'
 import type { Categoria, Moneda, MedioPago, TipoTransaccion, Transaccion } from '../lib/types'
 import { ordenarCategoriasPorTema } from '../lib/categoriasOrden'
+import {
+  categoriasGastoElegibles,
+  principalesGastoOrdenadas,
+  subcategoriasDe,
+} from '../lib/categoriasJerarquia'
 
 const TIPO_CONFIG: Record<TipoTransaccion, { label: string; color: string; bg: string; ring: string }> = {
   ingreso: { label: 'Ingreso', color: 'text-emerald-400', bg: 'bg-emerald-500/10', ring: 'ring-emerald-500/30' },
@@ -316,6 +321,8 @@ export default function Carga() {
   const [fecha, setFecha] = useState(today)
   const [tipo, setTipo] = useState<TipoTransaccion>('gasto')
   const [categoriaId, setCategoriaId] = useState('')
+  /** Gasto jerárquico: categoría principal (padre). */
+  const [principalGastoId, setPrincipalGastoId] = useState('')
   const [descripcion, setDescripcion] = useState('')
   const [monto, setMonto] = useState('')
   const [moneda, setMoneda] = useState<Moneda>('ARS')
@@ -390,15 +397,34 @@ export default function Carga() {
   }
 
   useEffect(() => { fetchRecientes() }, [])
+  const tieneJerarquiaGasto = useMemo(
+    () => categorias.some((c) => c.tipo === 'gasto' && !!c.parent_id),
+    [categorias],
+  )
+
   const filteredCategorias = useMemo(
     () => ordenarCategoriasPorTema(categorias.filter((c) => c.tipo === tipo)),
     [categorias, tipo],
   )
-  const gastoCategorias = useMemo(
-    () => ordenarCategoriasPorTema(categorias.filter((c) => c.tipo === 'gasto')),
-    [categorias],
-  )
-  useEffect(() => { setCategoriaId('') }, [tipo])
+  const gastoCategorias = useMemo(() => categoriasGastoElegibles(categorias), [categorias])
+
+  useEffect(() => {
+    if (!tieneJerarquiaGasto) return
+    const pros = principalesGastoOrdenadas(categorias)
+    if (!pros.length) return
+    setPrincipalGastoId((prev) => (prev && pros.some((p) => p.id === prev) ? prev : pros[0].id))
+  }, [categorias, tieneJerarquiaGasto])
+
+  useEffect(() => {
+    if (tipo !== 'gasto' || !tieneJerarquiaGasto || !principalGastoId) return
+    const subs = subcategoriasDe(principalGastoId, categorias)
+    if (!subs.length) {
+      setCategoriaId('')
+      return
+    }
+    setCategoriaId((prev) => (subs.some((s) => s.id === prev) ? prev : subs[0].id))
+  }, [principalGastoId, tipo, tieneJerarquiaGasto, categorias])
+
   useEffect(() => {
     setEnCuotas(false)
     setNumCuotas('')
@@ -555,7 +581,7 @@ export default function Carga() {
           <motion.form initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
             onSubmit={handleSubmit} className="glass p-4 sm:p-5 mb-6">
             {/* Móvil: layout tipo app de referencia */}
-            <div className="lg:hidden space-y-5">
+            <div className="lg:hidden space-y-5 overflow-visible">
               <h2 className="w-full text-center text-xl font-bold text-gray-50">Cargar</h2>
 
               <div className="flex rounded-2xl bg-dark-800/90 p-1 gap-0.5 ring-1 ring-white/[0.08]">
@@ -566,7 +592,10 @@ export default function Carga() {
                     <button
                       key={t}
                       type="button"
-                      onClick={() => setTipo(t)}
+                      onClick={() => {
+                        setCategoriaId('')
+                        setTipo(t)
+                      }}
                       className={`flex-1 py-3 rounded-xl text-xs font-semibold transition-all duration-200 ${
                         active
                           ? 'bg-gray-100 text-dark-950 shadow-md'
@@ -623,43 +652,124 @@ export default function Carga() {
                 />
               </div>
 
-              <div className="min-w-0">
+              <div className="min-w-0 overflow-visible">
                 <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider mb-2">Categoría</p>
-                <div
-                  className="-mx-1 flex gap-3 overflow-x-auto overscroll-x-contain px-1 pb-3 pt-0.5 snap-x snap-mandatory [scrollbar-width:thin]"
-                  style={{
-                    paddingLeft: 'max(0.25rem, env(safe-area-inset-left, 0px))',
-                    paddingRight: 'max(1rem, env(safe-area-inset-right, 0px))',
-                  }}
-                >
-                  {filteredCategorias.map((c) => {
-                    const active = categoriaId === c.id
-                    return (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => setCategoriaId(c.id)}
-                        className={`flex flex-col items-center gap-1.5 shrink-0 w-[5.5rem] snap-start ${active ? 'scale-[1.02]' : ''}`}
+                {tipo === 'gasto' && tieneJerarquiaGasto ? (
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-[9px] font-medium text-gray-500 uppercase tracking-wider mb-1.5">Principal</p>
+                      <div
+                        className="-mx-1 flex items-start gap-2 overflow-x-auto overscroll-x-contain px-1 pb-2 pt-3 snap-x snap-mandatory [scrollbar-width:thin]"
+                        style={{
+                          paddingLeft: 'max(0.25rem, env(safe-area-inset-left, 0px))',
+                          paddingRight: 'max(1rem, env(safe-area-inset-right, 0px))',
+                        }}
                       >
-                        <div
-                          className={`w-12 h-12 rounded-full border-2 flex items-center justify-center text-sm font-bold ${
-                            active ? 'ring-2 ring-accent-blue ring-offset-2 ring-offset-dark-950' : 'opacity-80'
-                          }`}
-                          style={{
-                            borderColor: c.color,
-                            backgroundColor: `${c.color}22`,
-                            color: c.color,
-                          }}
+                        {principalesGastoOrdenadas(categorias).map((c) => {
+                          const active = principalGastoId === c.id
+                          return (
+                            <button
+                              key={c.id}
+                              type="button"
+                              onClick={() => setPrincipalGastoId(c.id)}
+                              className={`flex flex-col items-center gap-1 shrink-0 w-[4.75rem] snap-start ${active ? 'scale-[1.02]' : ''}`}
+                            >
+                              <div
+                                className={`w-11 h-11 shrink-0 rounded-full border-2 flex items-center justify-center text-xs font-bold ${
+                                  active ? 'ring-2 ring-accent-blue ring-offset-2 ring-offset-dark-950' : 'opacity-80'
+                                }`}
+                                style={{
+                                  borderColor: c.color,
+                                  backgroundColor: `${c.color}22`,
+                                  color: c.color,
+                                }}
+                              >
+                                {c.nombre[0]}
+                              </div>
+                              <span className="max-w-full px-0.5 text-center text-[8px] font-medium leading-tight text-gray-400 break-words">
+                                {c.nombre}
+                              </span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-medium text-gray-500 uppercase tracking-wider mb-1.5">Subcategoría</p>
+                      <div
+                        className="-mx-1 flex items-start gap-3 overflow-x-auto overscroll-x-contain px-1 pb-3 pt-3 snap-x snap-mandatory [scrollbar-width:thin]"
+                        style={{
+                          paddingLeft: 'max(0.25rem, env(safe-area-inset-left, 0px))',
+                          paddingRight: 'max(1rem, env(safe-area-inset-right, 0px))',
+                        }}
+                      >
+                        {subcategoriasDe(principalGastoId, categorias).map((c) => {
+                          const active = categoriaId === c.id
+                          return (
+                            <button
+                              key={c.id}
+                              type="button"
+                              onClick={() => setCategoriaId(c.id)}
+                              className={`flex flex-col items-center gap-1.5 shrink-0 w-[5.5rem] snap-start ${active ? 'scale-[1.02]' : ''}`}
+                            >
+                              <div
+                                className={`w-12 h-12 shrink-0 rounded-full border-2 flex items-center justify-center text-sm font-bold ${
+                                  active ? 'ring-2 ring-accent-blue ring-offset-2 ring-offset-dark-950' : 'opacity-80'
+                                }`}
+                                style={{
+                                  borderColor: c.color,
+                                  backgroundColor: `${c.color}22`,
+                                  color: c.color,
+                                }}
+                              >
+                                {c.nombre[0]}
+                              </div>
+                              <span className="max-w-full px-0.5 text-center text-[8.5px] font-medium leading-[1.2] text-gray-400 break-words hyphens-auto">
+                                {c.nombre}
+                              </span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    className="-mx-1 flex items-start gap-3 overflow-x-auto overscroll-x-contain px-1 pb-3 pt-3 snap-x snap-mandatory [scrollbar-width:thin]"
+                    style={{
+                      paddingLeft: 'max(0.25rem, env(safe-area-inset-left, 0px))',
+                      paddingRight: 'max(1rem, env(safe-area-inset-right, 0px))',
+                    }}
+                  >
+                    {filteredCategorias.map((c) => {
+                      const active = categoriaId === c.id
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => setCategoriaId(c.id)}
+                          className={`flex flex-col items-center gap-1.5 shrink-0 w-[5.5rem] snap-start ${active ? 'scale-[1.02]' : ''}`}
                         >
-                          {c.nombre[0]}
-                        </div>
-                        <span className="max-w-full px-0.5 text-center text-[8.5px] font-medium leading-[1.2] text-gray-400 break-words hyphens-auto">
-                          {c.nombre}
-                        </span>
-                      </button>
-                    )
-                  })}
-                </div>
+                          <div
+                            className={`w-12 h-12 shrink-0 rounded-full border-2 flex items-center justify-center text-sm font-bold ${
+                              active ? 'ring-2 ring-accent-blue ring-offset-2 ring-offset-dark-950' : 'opacity-80'
+                            }`}
+                            style={{
+                              borderColor: c.color,
+                              backgroundColor: `${c.color}22`,
+                              color: c.color,
+                            }}
+                          >
+                            {c.nombre[0]}
+                          </div>
+                          <span className="max-w-full px-0.5 text-center text-[8.5px] font-medium leading-[1.2] text-gray-400 break-words hyphens-auto">
+                            {c.nombre}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
 
               <div>
@@ -713,7 +823,10 @@ export default function Carga() {
                   {(['ingreso', 'gasto', 'suscripcion'] as TipoTransaccion[]).map((t) => {
                     const cfg = TIPO_CONFIG[t]; const active = tipo === t
                     return (
-                      <button key={t} type="button" onClick={() => setTipo(t)}
+                      <button key={t} type="button" onClick={() => {
+                        setCategoriaId('')
+                        setTipo(t)
+                      }}
                         className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${active ? `${cfg.bg} ${cfg.color} ring-1 ${cfg.ring}` : 'bg-dark-800/50 text-gray-500 hover:text-gray-300'}`}>
                         {cfg.label}
                       </button>
@@ -733,12 +846,39 @@ export default function Carga() {
                     className="input-dark block w-full min-w-0 max-w-full"
                   />
                 </div>
-                <div className="min-w-0 w-full max-w-full">
+                <div className="min-w-0 w-full max-w-full space-y-2">
                   <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Categoría</label>
-                  <select value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} required className="select-dark block w-full min-w-0 max-w-full">
-                    <option value="">Seleccionar...</option>
-                    {filteredCategorias.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                  </select>
+                  {tipo === 'gasto' && tieneJerarquiaGasto ? (
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      <select
+                        value={principalGastoId}
+                        onChange={(e) => setPrincipalGastoId(e.target.value)}
+                        className="select-dark block w-full min-w-0 max-w-full"
+                        aria-label="Categoría principal"
+                      >
+                        {principalesGastoOrdenadas(categorias).map((p) => (
+                          <option key={p.id} value={p.id}>{p.nombre}</option>
+                        ))}
+                      </select>
+                      <select
+                        value={categoriaId}
+                        onChange={(e) => setCategoriaId(e.target.value)}
+                        required
+                        className="select-dark block w-full min-w-0 max-w-full"
+                        aria-label="Subcategoría"
+                      >
+                        <option value="">Subcategoría…</option>
+                        {subcategoriasDe(principalGastoId, categorias).map((s) => (
+                          <option key={s.id} value={s.id}>{s.nombre}</option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : (
+                    <select value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} required className="select-dark block w-full min-w-0 max-w-full">
+                      <option value="">Seleccionar...</option>
+                      {filteredCategorias.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                    </select>
+                  )}
                 </div>
               </div>
 
@@ -912,9 +1052,31 @@ export default function Carga() {
                             className="select-dark !py-1.5 !pl-2.5 !pr-8 !text-sm min-w-[9rem] flex-1 max-w-[13rem]"
                           >
                             <option value="">Categoría…</option>
-                            {ordenarCategoriasPorTema(categorias.filter((c) => c.tipo === t.tipo)).map((c) => (
-                              <option key={c.id} value={c.id}>{c.nombre}</option>
-                            ))}
+                            {t.tipo === 'gasto' && tieneJerarquiaGasto ? (
+                              <>
+                                {principalesGastoOrdenadas(categorias).map((p) => (
+                                  <optgroup key={p.id} label={p.nombre}>
+                                    {subcategoriasDe(p.id, categorias).map((s) => (
+                                      <option key={s.id} value={s.id}>{s.nombre}</option>
+                                    ))}
+                                  </optgroup>
+                                ))}
+                                {categorias
+                                  .filter(
+                                    (c) =>
+                                      c.tipo === 'gasto' &&
+                                      !c.parent_id &&
+                                      !categorias.some((s) => s.parent_id === c.id),
+                                  )
+                                  .map((c) => (
+                                    <option key={c.id} value={c.id}>{c.nombre}</option>
+                                  ))}
+                              </>
+                            ) : (
+                              ordenarCategoriasPorTema(categorias.filter((c) => c.tipo === t.tipo)).map((c) => (
+                                <option key={c.id} value={c.id}>{c.nombre}</option>
+                              ))
+                            )}
                           </select>
                           <input
                             type="text"

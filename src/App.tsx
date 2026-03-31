@@ -9,6 +9,7 @@ import Analisis from './pages/Analisis'
 import Ahorros from './pages/Ahorros'
 import FondoEmergencia from './pages/FondoEmergencia'
 import Inversiones from './pages/Inversiones'
+import Presupuesto from './pages/Presupuesto'
 import Login from './pages/Login'
 
 function AppRoutes() {
@@ -41,6 +42,7 @@ function AppRoutes() {
           <Route path="/ahorros" element={<Ahorros />} />
           <Route path="/fondo-emergencia" element={<FondoEmergencia />} />
           <Route path="/inversiones" element={<Inversiones />} />
+          <Route path="/presupuesto" element={<Presupuesto />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

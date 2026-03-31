@@ -5,6 +5,7 @@ create table categorias (
   nombre text not null,
   tipo text not null check (tipo in ('ingreso','gasto','suscripcion')),
   color text not null,
+  parent_id uuid references categorias(id) on delete set null,
   created_at timestamptz default now()
 );
 
@@ -102,34 +103,70 @@ create policy "Users can update own tarjeta_config"
   on tarjeta_config for update to authenticated
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
--- Seed categorias
+-- Seed categorias (ingreso / suscripción + gasto jerárquico: principal → sub)
 insert into categorias (nombre, tipo, color) values
   ('Sueldo','ingreso','#22c55e'),
   ('Freelance','ingreso','#16a34a'),
   ('Reingreso','ingreso','#14b8a6'),
   ('Varios','ingreso','#059669'),
-  ('Supermercado','gasto','#ef4444'),
-  ('Verduleria','gasto','#65a30d'),
-  ('Carniceria','gasto','#be123c'),
-  ('Fiambreria','gasto','#db2777'),
-  ('Alimentos','gasto','#15803d'),
-  ('Helado','gasto','#7dd3fc'),
-  ('Panadería','gasto','#ca8a04'),
-  ('Restaurante','gasto','#f59e0b'),
-  ('Transporte','gasto','#f97316'),
-  ('Auto','gasto','#57534e'),
-  ('Combustible','gasto','#ea580c'),
-  ('Estacionamiento','gasto','#0891b2'),
-  ('Vivienda','gasto','#1e40af'),
-  ('Alquiler','gasto','#92400e'),
-  ('Servicios','gasto','#6366f1'),
-  ('Salud','gasto','#ec4899'),
-  ('Entretenimiento','gasto','#8b5cf6'),
-  ('Otros gastos','gasto','#94a3b8'),
   ('Streaming','suscripcion','#dc2626'),
   ('Música','suscripcion','#16a34a'),
   ('IA','suscripcion','#0ea5e9'),
   ('Otras','suscripcion','#a855f7');
+
+insert into categorias (nombre, tipo, color) values
+  ('Hogar','gasto','#7c3aed'),
+  ('Servicios','gasto','#6366f1'),
+  ('Supermercado','gasto','#ef4444'),
+  ('Alimentos','gasto','#16a34a'),
+  ('Regalos','gasto','#ec4899'),
+  ('Auto','gasto','#57534e'),
+  ('Transporte','gasto','#f97316'),
+  ('Salud','gasto','#0d9488'),
+  ('Entretenimiento','gasto','#a855f7');
+
+insert into categorias (nombre, tipo, color, parent_id)
+select s.nombre, 'gasto', s.color, p.id
+from categorias p
+cross join (values
+  ('Hogar', 'Expensas', '#a78bfa'),
+  ('Hogar', 'Alquiler', '#92400e'),
+  ('Hogar', 'Otros Gastos', '#94a3b8'),
+  ('Servicios', 'Agua', '#38bdf8'),
+  ('Servicios', 'Luz', '#fbbf24'),
+  ('Servicios', 'Internet', '#818cf8'),
+  ('Servicios', 'TV', '#c084fc'),
+  ('Servicios', 'Celular', '#34d399'),
+  ('Servicios', 'Otros', '#64748b'),
+  ('Supermercado', 'Compra Mensual', '#f87171'),
+  ('Supermercado', 'Compra Semanal', '#fb923c'),
+  ('Supermercado', 'Compra Diaria', '#fcd34d'),
+  ('Alimentos', 'Panadería', '#ca8a04'),
+  ('Alimentos', 'Fiambreria', '#db2777'),
+  ('Alimentos', 'Carniceria', '#be123c'),
+  ('Alimentos', 'Heladería', '#7dd3fc'),
+  ('Alimentos', 'Verdulería', '#65a30d'),
+  ('Alimentos', 'Restaurante', '#f59e0b'),
+  ('Alimentos', 'General', '#15803d'),
+  ('Regalos', 'General', '#f472b6'),
+  ('Auto', 'Garage', '#78716c'),
+  ('Auto', 'Patente', '#44403c'),
+  ('Auto', 'Seguro', '#57534e'),
+  ('Auto', 'Modificaciones', '#a8a29e'),
+  ('Auto', 'Reparación', '#d6d3d1'),
+  ('Auto', 'Service', '#292524'),
+  ('Auto', 'Combustible', '#ea580c'),
+  ('Auto', 'Otros', '#57534e'),
+  ('Transporte', 'Colectivo', '#ea580c'),
+  ('Transporte', 'Subte', '#7c3aed'),
+  ('Transporte', 'Uber', '#18181b'),
+  ('Transporte', 'Otros', '#0891b2'),
+  ('Salud', 'Medicamentos', '#f472b6'),
+  ('Salud', 'Gastos Médicos', '#ec4899'),
+  ('Salud', 'Otros', '#0f7669'),
+  ('Entretenimiento', 'Otros', '#8b5cf6')
+) as s(principal, nombre, color)
+where p.tipo = 'gasto' and p.parent_id is null and p.nombre = s.principal;
 
 -- Bolsillos (ejecutar también migration_bolsillos.sql en proyectos existentes)
 create table bolsillos_config (

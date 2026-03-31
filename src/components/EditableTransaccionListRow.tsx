@@ -4,6 +4,7 @@ import { CreditCard, Pencil, Trash2, Check, X, ArrowLeftRight, CircleDollarSign 
 import { supabase } from '../lib/supabase'
 import { formatMontoFromNumber, montoFieldNextValue, parseMontoInput } from '../lib/utils'
 import type { Categoria, TipoTransaccion, Transaccion } from '../lib/types'
+import { principalesGastoOrdenadas, subcategoriasDe } from '../lib/categoriasJerarquia'
 
 const TIPO_STYLE: Record<TipoTransaccion, { label: string; color: string; bg: string }> = {
   ingreso: { label: 'Ingreso', color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
@@ -95,9 +96,31 @@ export default function EditableTransaccionListRow({ t, categorias, delay = 0, m
             className="select-dark !py-1.5 !pl-2.5 !pr-8 !text-sm min-w-[9rem] flex-1 max-w-[13rem]"
           >
             <option value="">Categoría…</option>
-            {categorias.map((c) => (
-              <option key={c.id} value={c.id}>{c.nombre}</option>
-            ))}
+            {t.tipo === 'gasto' && categorias.some((c) => c.tipo === 'gasto' && !!c.parent_id) ? (
+              <>
+                {principalesGastoOrdenadas(categorias).map((p) => (
+                  <optgroup key={p.id} label={p.nombre}>
+                    {subcategoriasDe(p.id, categorias).map((s) => (
+                      <option key={s.id} value={s.id}>{s.nombre}</option>
+                    ))}
+                  </optgroup>
+                ))}
+                {categorias
+                  .filter(
+                    (c) =>
+                      c.tipo === 'gasto' &&
+                      !c.parent_id &&
+                      !categorias.some((s) => s.parent_id === c.id),
+                  )
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>{c.nombre}</option>
+                  ))}
+              </>
+            ) : (
+              categorias.map((c) => (
+                <option key={c.id} value={c.id}>{c.nombre}</option>
+              ))
+            )}
           </select>
           <input
             type="text"

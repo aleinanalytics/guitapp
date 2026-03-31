@@ -78,3 +78,20 @@ export function getIpcMensual(anio: number, mes: number): number | null {
   const v = IPC_MENSUAL_VARIACION_PCT[key]
   return v !== undefined ? v : null
 }
+
+/** IPC más reciente disponible hacia atrás desde (anio, mes); 0 si no hay dato en 24 meses. */
+export function getUltimoIpcReferencia(anio: number, mes: number): number {
+  let y = anio
+  let m = mes
+  for (let i = 0; i < 24; i++) {
+    const v = getIpcMensual(y, m)
+    if (v !== null) return v
+    if (m === 1) {
+      m = 12
+      y -= 1
+    } else {
+      m -= 1
+    }
+  }
+  return 0
+}
