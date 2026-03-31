@@ -364,6 +364,8 @@ export default function Carga() {
   const [enCuotas, setEnCuotas] = useState(false)
   const [numCuotas, setNumCuotas] = useState('')
   const [cuotaFechaInline, setCuotaFechaInline] = useState(today)
+  /** Ingreso como crédito a favor en TC (reintegro/promo); guarda medio_pago tarjeta. */
+  const [ingresoReintegroTc, setIngresoReintegroTc] = useState(false)
 
   const cargaMontoClassMobile = useMemo(() => {
     const v = parseMontoInput(monto)
@@ -409,8 +411,6 @@ export default function Carga() {
   const [editCategoriaId, setEditCategoriaId] = useState('')
   const [editEsGastoFijo, setEditEsGastoFijo] = useState(false)
   const [editIngresoReintegroTc, setEditIngresoReintegroTc] = useState(false)
-  /** Ingreso como crédito a favor en TC (reintegro/promo); guarda medio_pago tarjeta. */
-  const [ingresoReintegroTc, setIngresoReintegroTc] = useState(false)
 
   useEffect(() => {
     supabase.from('categorias').select('*').then(({ data }) => {
