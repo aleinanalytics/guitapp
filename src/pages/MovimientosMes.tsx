@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowLeft } from 'lucide-react'
@@ -21,6 +21,11 @@ import {
 } from '../lib/utils'
 import type { Categoria, Transaccion } from '../lib/types'
 import { ordenarCategoriasPorTema } from '../lib/categoriasOrden'
+import {
+  idsFamiliaGastoPrincipal,
+  principalesGastoOrdenadas,
+  subcategoriasDe,
+} from '../lib/categoriasJerarquia'
 
 const MESES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -42,15 +47,68 @@ const GASTOS_MEDIO_GRUPOS: {
   { key: 'credito', titulo: 'Crédito', subtitulo: 'Tarjeta de crédito' },
 ]
 
+type FiltroGastoCategoria = {
+  principalId: string | null
+  subId: string | null
+  legacyExactId: string | null
+}
+
+/** Combina `padre`/`hijo` en la URL con enlaces viejos `categoria_id` (KPI dashboard). */
+function derivarFiltroGastoCategoria(
+  categorias: Categoria[],
+  padreQ: string,
+  hijoQ: string,
+  legacyCategoriaId: string | null,
+): FiltroGastoCategoria {
+  const padre = padreQ.trim()
+  const hijo = hijoQ.trim()
+  const legacy = legacyCategoriaId?.trim() || ''
+
+  if (padre || hijo) {
+    let principalId = padre
+    let subId = hijo
+    if (!principalId && subId) {
+      const subCat = categorias.find((c) => c.id === subId && c.tipo === 'gasto')
+      principalId = (subCat?.parent_id ?? '').trim()
+      if (!principalId) subId = ''
+    }
+    return {
+      principalId: principalId || null,
+      subId: subId || null,
+      legacyExactId: null,
+    }
+  }
+
+  if (legacy) {
+    const cat = categorias.find((c) => c.id === legacy)
+    if (!cat || cat.tipo !== 'gasto') {
+      return { principalId: null, subId: null, legacyExactId: legacy }
+    }
+    const tieneHijos = categorias.some((c) => c.parent_id === cat.id)
+    if (cat.parent_id) {
+      return { principalId: cat.parent_id, subId: cat.id, legacyExactId: null }
+    }
+    if (tieneHijos) {
+      return { principalId: cat.id, subId: null, legacyExactId: null }
+    }
+    // Hoja sin hijos: un solo id en la familia (mismo efecto que match exacto).
+    return { principalId: cat.id, subId: null, legacyExactId: null }
+  }
+
+  return { principalId: null, subId: null, legacyExactId: null }
+}
+
 export default function MovimientosMes() {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const tipo = parseTipo(searchParams.get('tipo'))
   const now = new Date()
   const mesRaw = Number(searchParams.get('mes'))
   const anioRaw = Number(searchParams.get('anio'))
   const mes = mesRaw >= 1 && mesRaw <= 12 ? mesRaw : now.getMonth() + 1
   const anio = Number.isFinite(anioRaw) && anioRaw >= 2000 && anioRaw <= 2100 ? anioRaw : now.getFullYear()
-  const categoriaIdFiltro = searchParams.get('categoria_id')
+  const padreQ = searchParams.get('padre') ?? ''
+  const hijoQ = searchParams.get('hijo') ?? ''
+  const categoriaIdLegacy = searchParams.get('categoria_id')
   const sinTarjetaCredito = searchParams.get('sin_tc') === '1'
 
   const { transacciones, loading, error, refetch } = useTransacciones({ mes, anio })
@@ -66,6 +124,51 @@ export default function MovimientosMes() {
     })
   }, [])
 
+  const filtroGastoCat = useMemo(
+    () => derivarFiltroGastoCategoria(categorias, padreQ, hijoQ, categoriaIdLegacy),
+    [categorias, padreQ, hijoQ, categoriaIdLegacy],
+  )
+
+  const principalesGasto = useMemo(() => principalesGastoOrdenadas(categorias), [categorias])
+  const padreParaListaSub = filtroGastoCat.principalId ?? ''
+  const subcategoriasOpciones = useMemo(
+    () => (padreParaListaSub ? subcategoriasDe(padreParaListaSub, categorias) : []),
+    [padreParaListaSub, categorias],
+  )
+
+  const onCambioPadreGasto = useCallback(
+    (principalId: string) => {
+      const s = new URLSearchParams(searchParams)
+      s.delete('categoria_id')
+      if (!principalId) {
+        s.delete('padre')
+        s.delete('hijo')
+      } else {
+        s.set('padre', principalId)
+        s.delete('hijo')
+      }
+      setSearchParams(s, { replace: true })
+    },
+    [searchParams, setSearchParams],
+  )
+
+  const onCambioSubGasto = useCallback(
+    (subId: string) => {
+      const s = new URLSearchParams(searchParams)
+      s.delete('categoria_id')
+      const p = filtroGastoCat.principalId ?? padreQ
+      if (!subId) {
+        s.delete('hijo')
+        if (p) s.set('padre', p)
+      } else {
+        if (p) s.set('padre', p)
+        s.set('hijo', subId)
+      }
+      setSearchParams(s, { replace: true })
+    },
+    [searchParams, setSearchParams, filtroGastoCat.principalId, padreQ],
+  )
+
   const diaCierreTc =
     tcConfig?.fecha_cierre != null
       ? new Date(tcConfig.fecha_cierre + 'T12:00:00').getDate()
@@ -77,8 +180,18 @@ export default function MovimientosMes() {
 
   const filtradas = useMemo(() => {
     let list = tipo === 'todos' ? transaccionesDelMes : transaccionesDelMes.filter((t) => t.tipo === tipo)
-    if (categoriaIdFiltro) {
-      list = list.filter((t) => t.categoria_id === categoriaIdFiltro)
+    if (tipo === 'gasto') {
+      const f = filtroGastoCat
+      if (f.legacyExactId) {
+        list = list.filter((t) => t.categoria_id === f.legacyExactId)
+      } else if (f.subId) {
+        list = list.filter((t) => t.categoria_id === f.subId)
+      } else if (f.principalId) {
+        const ids = new Set(idsFamiliaGastoPrincipal(f.principalId, categorias))
+        list = list.filter((t) => t.categoria_id != null && ids.has(t.categoria_id))
+      }
+    } else if (categoriaIdLegacy) {
+      list = list.filter((t) => t.categoria_id === categoriaIdLegacy)
     }
     if (sinTarjetaCredito && tipo === 'gasto') {
       list = list.filter((t) => t.medio_pago !== 'tarjeta')
@@ -88,7 +201,7 @@ export default function MovimientosMes() {
       if (fd !== 0) return fd
       return (b.created_at ?? '').localeCompare(a.created_at ?? '')
     })
-  }, [transaccionesDelMes, tipo, categoriaIdFiltro, sinTarjetaCredito])
+  }, [transaccionesDelMes, tipo, filtroGastoCat, categorias, categoriaIdLegacy, sinTarjetaCredito])
 
   const gastosPorGrupoMedio = useMemo(() => {
     if (tipo !== 'gasto') return null
@@ -119,18 +232,30 @@ export default function MovimientosMes() {
     return { ingresos: ing, reintegrosTc, gastos: gas, suscripciones: sus, resultadoMes: ing - salidasEf }
   }, [transaccionesDelMes, tc])
 
-  const nombreCategoriaFiltro = categoriaIdFiltro
-    ? categorias.find((c) => c.id === categoriaIdFiltro)?.nombre
-    : undefined
+  const nombreFiltroGastoTitulo = useMemo(() => {
+    if (tipo !== 'gasto') return undefined
+    const f = filtroGastoCat
+    if (f.legacyExactId) {
+      return categorias.find((c) => c.id === f.legacyExactId)?.nombre
+    }
+    if (f.subId) {
+      return categorias.find((c) => c.id === f.subId)?.nombre
+    }
+    if (f.principalId) {
+      const n = categorias.find((c) => c.id === f.principalId)?.nombre
+      return n ? `${n} (todo el rubro)` : undefined
+    }
+    return undefined
+  }, [tipo, filtroGastoCat, categorias])
 
   const titulo =
     tipo === 'ingreso'
       ? 'Ingresos del mes'
       : tipo === 'gasto'
-        ? nombreCategoriaFiltro
+        ? nombreFiltroGastoTitulo
           ? sinTarjetaCredito
-            ? `Gastos del mes — ${nombreCategoriaFiltro} (sin TC)`
-            : `Gastos del mes — ${nombreCategoriaFiltro}`
+            ? `Gastos del mes — ${nombreFiltroGastoTitulo} (sin TC)`
+            : `Gastos del mes — ${nombreFiltroGastoTitulo}`
           : sinTarjetaCredito
             ? 'Gastos del mes — sin tarjeta de crédito'
             : 'Gastos del mes'
@@ -161,6 +286,54 @@ export default function MovimientosMes() {
           <MobileUserMenu />
         </div>
       </motion.div>
+
+      {tipo === 'gasto' && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass p-3 sm:p-4 rounded-xl mb-6 space-y-3 border border-white/[0.06]"
+        >
+          <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Filtrar por categoría</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block min-w-0">
+              <span className="text-[11px] text-gray-500 mb-1 block">Categoría</span>
+              <select
+                className="w-full rounded-lg border border-white/10 bg-dark-900/80 px-3 py-2 text-sm text-gray-200"
+                value={filtroGastoCat.principalId ?? ''}
+                onChange={(e) => onCambioPadreGasto(e.target.value)}
+                disabled={loading && categorias.length === 0}
+              >
+                <option value="">Todas las categorías</option>
+                {principalesGasto.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nombre}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block min-w-0">
+              <span className="text-[11px] text-gray-500 mb-1 block">Subcategoría</span>
+              <select
+                className="w-full rounded-lg border border-white/10 bg-dark-900/80 px-3 py-2 text-sm text-gray-200 disabled:opacity-45"
+                value={filtroGastoCat.subId ?? ''}
+                onChange={(e) => onCambioSubGasto(e.target.value)}
+                disabled={!filtroGastoCat.principalId || subcategoriasOpciones.length === 0}
+              >
+                <option value="">
+                  {subcategoriasOpciones.length === 0 && filtroGastoCat.principalId
+                    ? 'Sin subcategorías (solo esta categoría)'
+                    : 'Todas las subcategorías (total del rubro)'}
+                </option>
+                {subcategoriasOpciones.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.nombre}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </motion.div>
+      )}
 
       {loading || (tipo === 'todos' && loadingSaldoAcum) ? (
         <div className="flex items-center justify-center py-20">

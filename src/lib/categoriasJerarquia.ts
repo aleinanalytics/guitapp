@@ -48,6 +48,12 @@ export function subcategoriasDe(principalId: string, categorias: Categoria[]): C
     .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
 }
 
+/** Principal más todas sus subcategorías (para filtrar “todo el rubro”). */
+export function idsFamiliaGastoPrincipal(principalId: string, categorias: Categoria[]): string[] {
+  const subs = subcategoriasDe(principalId, categorias).map((s) => s.id)
+  return [principalId, ...subs]
+}
+
 /** Hojas elegibles para transacciones: subcategorías + gastos planos legacy (sin hijos). */
 export function categoriasGastoElegibles(categorias: Categoria[]): Categoria[] {
   const subs = categorias.filter(esSubcategoriaGasto)
