@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Trash2, Plus, Pencil, Check, X, CreditCard, Calendar, ArrowLeftRight, CircleDollarSign } from 'lucide-react'
 import MobileUserMenu from '../components/MobileUserMenu'
+import EditableCuotaCompraRow from '../components/EditableCuotaCompraRow'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import { useCuotas } from '../hooks/useCuotas'
@@ -319,7 +320,7 @@ function MedioPagoSuscripcionFields({
 
 export default function Carga() {
   const { user } = useAuth()
-  const { cuotas, insertCuota, deleteCuota } = useCuotas()
+  const { cuotas, insertCuota, refetch: refetchCuotas } = useCuotas()
   const [categorias, setCategorias] = useState<Categoria[]>([])
   const [recientes, setRecientes] = useState<Transaccion[]>([])
 
@@ -419,6 +420,8 @@ export default function Carga() {
     [categorias, tipo],
   )
   const gastoCategorias = useMemo(() => categoriasGastoElegibles(categorias), [categorias])
+  /** Todas las categorías gasto (principales + subs) para selects con optgroup, p. ej. edición de cuotas. */
+  const categoriasGastoCompleta = useMemo(() => categorias.filter((c) => c.tipo === 'gasto'), [categorias])
 
   useEffect(() => {
     if (!tieneJerarquiaGasto) return
@@ -1017,23 +1020,17 @@ export default function Carga() {
             {cuotas.length === 0 ? (
               <p className="text-gray-500 text-xs">Sin compras en cuotas activas.</p>
             ) : (
-              <div className="space-y-2">
-                {cuotas.map((c) => (
-                  <div key={c.id} className="flex items-center justify-between py-1.5 text-sm group">
-                    <div>
-                      <p className="text-gray-300">{c.descripcion}</p>
-                      <p className="text-xs text-gray-500">{c.cuotas_total} cuotas · {formatARS(c.monto_cuota)}/mes</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-400">{formatARS(c.monto_total)}</span>
-                      <button onClick={() => { if (window.confirm('¿Eliminar?')) deleteCuota(c.id) }}
-                        className="text-gray-600 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100">
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </div>
+              <ul className="space-y-2">
+                {cuotas.map((c, i) => (
+                  <EditableCuotaCompraRow
+                    key={c.id}
+                    compra={c}
+                    delay={i * 0.02}
+                    gastoCategorias={categoriasGastoCompleta}
+                    onMutated={() => void refetchCuotas()}
+                  />
                 ))}
-              </div>
+              </ul>
             )}
           </motion.div>
         </div>

@@ -2,14 +2,16 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Pencil, Trash2, Check, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-import { formatMontoFromNumber, montoFieldNextValue, parseMontoInput } from '../lib/utils'
-import type { Categoria, CompraCuotas } from '../lib/types'
+import { formatARS, formatMontoFromNumber, formatUSD, montoFieldNextValue, parseMontoInput } from '../lib/utils'
+import type { Categoria, CompraCuotas, Moneda } from '../lib/types'
 import { principalesGastoOrdenadas, subcategoriasDe } from '../lib/categoriasJerarquia'
 
 type Props = {
   compra: CompraCuotas
-  cuotaNumero: number
+  /** Si se omite (p. ej. en Carga), el subtítulo muestra el plan completo (N cuotas · monto/mes). */
+  cuotaNumero?: number
   delay?: number
+  /** Todas las categorías `tipo === 'gasto'` (principales y sub). No usar solo `categoriasGastoElegibles`: el select arma optgroups con las principales. */
   gastoCategorias: Categoria[]
   onMutated: () => void
 }
@@ -18,6 +20,8 @@ export default function EditableCuotaCompraRow({ compra, cuotaNumero, delay = 0,
   const [editing, setEditing] = useState(false)
   const [editDesc, setEditDesc] = useState('')
   const [editMontoTotal, setEditMontoTotal] = useState('')
+  const [editCuotasTotal, setEditCuotasTotal] = useState('')
+  const [editMoneda, setEditMoneda] = useState<Moneda>('ARS')
   const [editCategoriaId, setEditCategoriaId] = useState('')
   const [editFechaPrimera, setEditFechaPrimera] = useState('')
   const [busy, setBusy] = useState(false)
@@ -25,6 +29,8 @@ export default function EditableCuotaCompraRow({ compra, cuotaNumero, delay = 0,
   const startEdit = () => {
     setEditDesc(compra.descripcion)
     setEditMontoTotal(formatMontoFromNumber(compra.monto_total))
+    setEditCuotasTotal(String(compra.cuotas_total))
+    setEditMoneda(compra.moneda)
     setEditCategoriaId(compra.categoria_id ?? '')
     setEditFechaPrimera(compra.fecha_primera_cuota.slice(0, 10))
     setEditing(true)
@@ -34,13 +40,20 @@ export default function EditableCuotaCompraRow({ compra, cuotaNumero, delay = 0,
 
   const save = async () => {
     const total = parseMontoInput(editMontoTotal)
+    const nCuotas = parseInt(editCuotasTotal, 10)
     if (!editDesc.trim() || !Number.isFinite(total) || total <= 0 || !editCategoriaId || !editFechaPrimera) return
-    const monto_cuota = Math.round((total / compra.cuotas_total) * 100) / 100
+    if (!Number.isFinite(nCuotas) || nCuotas < 2 || nCuotas > 48) {
+      window.alert('El número de cuotas debe estar entre 2 y 48.')
+      return
+    }
+    const monto_cuota = Math.round((total / nCuotas) * 100) / 100
     setBusy(true)
     const { error } = await supabase.from('compras_cuotas').update({
       descripcion: editDesc.trim(),
       monto_total: total,
+      cuotas_total: nCuotas,
       monto_cuota,
+      moneda: editMoneda,
       categoria_id: editCategoriaId,
       fecha_primera_cuota: editFechaPrimera,
     }).eq('id', compra.id)
@@ -72,7 +85,11 @@ export default function EditableCuotaCompraRow({ compra, cuotaNumero, delay = 0,
         transition={{ delay }}
         className="glass-light p-3 flex flex-col gap-2"
       >
-        <p className="text-[10px] text-gray-500">Cuota {cuotaNumero} de {compra.cuotas_total} · ajustás la compra completa</p>
+        <p className="text-[10px] text-gray-500">
+          {cuotaNumero != null
+            ? `Cuota ${cuotaNumero} de ${compra.cuotas_total} · ajustás la compra completa`
+            : 'Ajustá descripción, cuotas, montos y fecha de la primera cuota'}
+        </p>
         <input
           type="text"
           value={editDesc}
@@ -131,13 +148,48 @@ export default function EditableCuotaCompraRow({ compra, cuotaNumero, delay = 0,
             placeholder="Monto total"
             className="input-dark !py-1.5 !text-sm min-w-[6.5rem] flex-1 max-w-[11rem]"
           />
+          <input
+            type="number"
+            min={2}
+            max={48}
+            value={editCuotasTotal}
+            onChange={(e) => setEditCuotasTotal(e.target.value)}
+            placeholder="Nº cuotas"
+            className="input-dark !py-1.5 !text-sm w-[5.5rem]"
+          />
         </div>
         <div className="flex gap-2">
-          <button type="button" disabled={busy} onClick={save} className="text-emerald-400 hover:text-emerald-300 disabled:opacity-40">
-            <Check size={18} />
+          {(['ARS', 'USD'] as Moneda[]).map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setEditMoneda(m)}
+              className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition ${
+                editMoneda === m ? 'bg-accent-blue/10 text-accent-blue ring-1 ring-accent-blue/30' : 'bg-dark-800/50 text-gray-500'
+              }`}
+            >
+              {m}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-3 pt-1">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={cancelEdit}
+            className="flex-1 min-h-[48px] px-3 flex items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-dark-800/70 text-red-400 text-sm font-semibold hover:bg-dark-800 active:scale-[0.99] disabled:opacity-40 transition-colors"
+          >
+            <X size={22} strokeWidth={2.25} className="shrink-0" aria-hidden />
+            Cancelar
           </button>
-          <button type="button" disabled={busy} onClick={cancelEdit} className="text-red-400 hover:text-red-300 disabled:opacity-40">
-            <X size={18} />
+          <button
+            type="button"
+            disabled={busy}
+            onClick={save}
+            className="flex-1 min-h-[48px] px-3 flex items-center justify-center gap-2 rounded-xl bg-emerald-500/20 text-emerald-300 text-sm font-semibold ring-1 ring-emerald-500/35 hover:bg-emerald-500/30 active:scale-[0.99] disabled:opacity-40 transition-colors"
+          >
+            <Check size={22} strokeWidth={2.25} className="shrink-0" aria-hidden />
+            Guardar
           </button>
         </div>
       </motion.li>
@@ -154,16 +206,32 @@ export default function EditableCuotaCompraRow({ compra, cuotaNumero, delay = 0,
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium text-gray-200 truncate">{compra.descripcion}</p>
         <p className="text-xs text-gray-500">
-          Cuota {cuotaNumero} de {compra.cuotas_total}
-          {compra.categoria?.nombre && ` · ${compra.categoria.nombre}`}
+          {cuotaNumero != null ? (
+            <>
+              Cuota {cuotaNumero} de {compra.cuotas_total}
+              {compra.categoria?.nombre && ` · ${compra.categoria.nombre}`}
+            </>
+          ) : (
+            <>
+              {compra.cuotas_total} cuotas ·{' '}
+              {compra.moneda === 'ARS' ? formatARS(compra.monto_cuota) : formatUSD(compra.monto_cuota)}/mes
+              {compra.categoria?.nombre && ` · ${compra.categoria.nombre}`}
+            </>
+          )}
         </p>
       </div>
       <div className="text-right shrink-0 flex items-center gap-2">
         <div>
           <p className="text-sm font-semibold text-gray-100">
-            {compra.moneda === 'ARS' ? '$' : 'USD'} {compra.monto_cuota.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+            {cuotaNumero != null
+              ? compra.moneda === 'ARS'
+                ? formatARS(compra.monto_cuota)
+                : formatUSD(compra.monto_cuota)
+              : compra.moneda === 'ARS'
+                ? formatARS(compra.monto_total)
+                : formatUSD(compra.monto_total)}
           </p>
-          <p className="text-[10px] text-gray-500">{compra.moneda}</p>
+          <p className="text-[10px] text-gray-500">{cuotaNumero != null ? compra.moneda : 'total'}</p>
         </div>
         <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
           <button type="button" onClick={startEdit} className="text-gray-500 hover:text-accent-blue p-1" aria-label="Editar compra">
