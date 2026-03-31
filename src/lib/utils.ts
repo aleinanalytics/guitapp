@@ -13,6 +13,14 @@ export function cuentaComoSalidaDeEfectivo(t: Pick<Transaccion, 'tipo' | 'medio_
   )
 }
 
+/**
+ * Ingreso como reintegro/promo/cashback en TC (`medio_pago === 'tarjeta'`).
+ * No suma al efectivo disponible ni a “ingresos” del flujo caja; reduce el consumo TC del mes.
+ */
+export function esIngresoReintegroTarjetaCredito(t: Pick<Transaccion, 'tipo' | 'medio_pago'>): boolean {
+  return t.tipo === 'ingreso' && t.medio_pago === 'tarjeta'
+}
+
 /** Último día del mes (mes 1–12). */
 export function ultimoDiaDelMes(anio: number, mes: number): number {
   return new Date(anio, mes, 0).getDate()
@@ -62,6 +70,31 @@ export function transaccionEnMesVista(
   return fechaEnMesCalendario(t.fecha, mes, anio)
 }
 
+/** Grupos para listar movimientos por medio (Carga → Últimas transacciones). */
+export type GrupoUltimasTransacciones = 'transferencias' | 'debito' | 'credito' | 'ingresos'
+
+export function grupoUltimasTransacciones(t: Transaccion): GrupoUltimasTransacciones {
+  if (t.tipo === 'ingreso') {
+    return t.medio_pago === 'tarjeta' ? 'credito' : 'ingresos'
+  }
+  if (t.tipo === 'gasto' || t.tipo === 'suscripcion') {
+    if (t.medio_pago === 'transferencia') return 'transferencias'
+    if (t.medio_pago === 'tarjeta') return 'credito'
+    return 'debito'
+  }
+  return 'ingresos'
+}
+
+/** Solo gastos: mismo criterio que Últimas transacciones (Transferencias / Débito / Crédito). */
+export type GrupoGastoPorMedio = 'transferencias' | 'debito' | 'credito'
+
+export function grupoGastoPorMedio(t: Pick<Transaccion, 'tipo' | 'medio_pago'>): GrupoGastoPorMedio | null {
+  if (t.tipo !== 'gasto') return null
+  if (t.medio_pago === 'transferencia') return 'transferencias'
+  if (t.medio_pago === 'tarjeta') return 'credito'
+  return 'debito'
+}
+
 export function formatARS(n: number): string {
   return '$ ' + n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
@@ -81,7 +114,9 @@ export function montoDisplayClass(
     | 'kpiStat'
     | 'kpiInline'
     | 'pairArs'
+    | 'pairArsTarjeta'
     | 'pairUsd'
+    | 'pairUsdTarjeta'
     | 'heroUsd'
     | 'saldoHero'
     | 'saldoHeroUsd'
@@ -145,10 +180,22 @@ export function montoDisplayClass(
     if (n >= 100_000) return 'text-xl sm:text-2xl'
     return 'text-2xl sm:text-3xl'
   }
+  /** Home / detalle TC: un escalón más que pairArs para los montos principales. */
+  if (kind === 'pairArsTarjeta') {
+    if (n >= 10_000_000) return 'text-lg sm:text-xl'
+    if (n >= 1_000_000) return 'text-xl sm:text-2xl'
+    if (n >= 100_000) return 'text-2xl sm:text-3xl'
+    return 'text-3xl sm:text-4xl'
+  }
   if (kind === 'pairUsd') {
     if (n >= 100_000) return 'text-base sm:text-lg'
     if (n >= 10_000) return 'text-lg sm:text-xl'
     return 'text-xl sm:text-2xl'
+  }
+  if (kind === 'pairUsdTarjeta') {
+    if (n >= 100_000) return 'text-lg sm:text-xl'
+    if (n >= 10_000) return 'text-xl sm:text-2xl'
+    return 'text-2xl sm:text-3xl'
   }
   if (kind === 'pairUsdProminent') {
     if (n >= 100_000) return 'text-lg sm:text-xl'

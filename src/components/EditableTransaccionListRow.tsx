@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { CreditCard, Pencil, Trash2, Check, X, ArrowLeftRight, CircleDollarSign } from 'lucide-react'
+import { CreditCard, Pencil, Trash2, ArrowLeftRight, CircleDollarSign } from 'lucide-react'
+import FormEditGuardarCancelar from './FormEditGuardarCancelar'
 import { supabase } from '../lib/supabase'
 import { formatMontoFromNumber, montoFieldNextValue, parseMontoInput } from '../lib/utils'
 import type { Categoria, TipoTransaccion, Transaccion } from '../lib/types'
@@ -27,6 +28,7 @@ export default function EditableTransaccionListRow({ t, categorias, delay = 0, m
   const [editFecha, setEditFecha] = useState('')
   const [editCategoriaId, setEditCategoriaId] = useState('')
   const [editEsGastoFijo, setEditEsGastoFijo] = useState(false)
+  const [editIngresoReintegroTc, setEditIngresoReintegroTc] = useState(false)
   const [busy, setBusy] = useState(false)
 
   const cfg = TIPO_STYLE[t.tipo]
@@ -38,6 +40,7 @@ export default function EditableTransaccionListRow({ t, categorias, delay = 0, m
     setEditFecha(t.fecha)
     setEditCategoriaId(t.categoria_id ?? '')
     setEditEsGastoFijo(t.tipo === 'gasto' && !!t.es_gasto_fijo)
+    setEditIngresoReintegroTc(t.tipo === 'ingreso' && t.medio_pago === 'tarjeta')
     setEditing(true)
   }
 
@@ -47,13 +50,15 @@ export default function EditableTransaccionListRow({ t, categorias, delay = 0, m
     const m = parseMontoInput(editMonto)
     if (!editDesc.trim() || !Number.isFinite(m) || m <= 0 || !editFecha || !editCategoriaId) return
     setBusy(true)
-    const { error } = await supabase.from('transacciones').update({
+    const patch: Record<string, unknown> = {
       descripcion: editDesc.trim(),
       monto: m,
       fecha: editFecha,
       categoria_id: editCategoriaId,
       es_gasto_fijo: t.tipo === 'gasto' ? editEsGastoFijo : false,
-    }).eq('id', t.id)
+    }
+    if (t.tipo === 'ingreso') patch.medio_pago = editIngresoReintegroTc ? 'tarjeta' : 'efectivo'
+    const { error } = await supabase.from('transacciones').update(patch).eq('id', t.id)
     setBusy(false)
     if (error) window.alert('Error: ' + error.message)
     else {
@@ -80,7 +85,7 @@ export default function EditableTransaccionListRow({ t, categorias, delay = 0, m
         initial={{ opacity: 0, x: -12 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay }}
-        className="glass-light p-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center"
+        className="glass-light p-3 flex flex-col gap-2"
       >
         <div className="flex flex-wrap items-center gap-2 flex-1 min-w-0 w-full">
           <input
@@ -147,15 +152,19 @@ export default function EditableTransaccionListRow({ t, categorias, delay = 0, m
               Fijo
             </label>
           )}
+          {t.tipo === 'ingreso' && (
+            <label className="flex items-center gap-1.5 text-[11px] text-gray-400 w-full sm:w-auto shrink-0">
+              <input
+                type="checkbox"
+                checked={editIngresoReintegroTc}
+                onChange={(e) => setEditIngresoReintegroTc(e.target.checked)}
+                className="accent-rose-500 w-3.5 h-3.5"
+              />
+              Reintegro TC
+            </label>
+          )}
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <button type="button" disabled={busy} onClick={save} className="text-emerald-400 hover:text-emerald-300 disabled:opacity-40">
-            <Check size={18} />
-          </button>
-          <button type="button" disabled={busy} onClick={cancelEdit} className="text-red-400 hover:text-red-300 disabled:opacity-40">
-            <X size={18} />
-          </button>
-        </div>
+        <FormEditGuardarCancelar busy={busy} onCancel={cancelEdit} onSave={save} className="w-full" />
       </motion.li>
     )
   }
@@ -179,8 +188,8 @@ export default function EditableTransaccionListRow({ t, categorias, delay = 0, m
           {(t.tipo === 'gasto' || t.tipo === 'suscripcion') && t.medio_pago === 'efectivo' && (
             <CircleDollarSign size={12} className="inline ml-1.5 text-emerald-400/75" aria-hidden />
           )}
-          {(t.tipo === 'gasto' || t.tipo === 'suscripcion') && t.medio_pago === 'tarjeta' && (
-            <CreditCard size={12} className="inline ml-1.5 text-rose-400/60" />
+          {t.medio_pago === 'tarjeta' && (t.tipo === 'gasto' || t.tipo === 'suscripcion' || t.tipo === 'ingreso') && (
+            <CreditCard size={12} className="inline ml-1.5 text-rose-400/60" aria-hidden />
           )}
           {(t.tipo === 'gasto' || t.tipo === 'suscripcion') && t.medio_pago === 'transferencia' && (
             <ArrowLeftRight size={12} className="inline ml-1.5 text-sky-400/70" />

@@ -1,12 +1,21 @@
 import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Trash2, Plus, Pencil, Check, X, CreditCard, Calendar, ArrowLeftRight, CircleDollarSign } from 'lucide-react'
+import { Trash2, Plus, Pencil, CreditCard, Calendar, ArrowLeftRight, CircleDollarSign } from 'lucide-react'
 import MobileUserMenu from '../components/MobileUserMenu'
+import FormEditGuardarCancelar from '../components/FormEditGuardarCancelar'
 import EditableCuotaCompraRow from '../components/EditableCuotaCompraRow'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import { useCuotas } from '../hooks/useCuotas'
-import { formatARS, formatMontoFromNumber, montoDisplayClass, montoFieldNextValue, parseMontoInput } from '../lib/utils'
+import {
+  formatARS,
+  formatMontoFromNumber,
+  grupoUltimasTransacciones,
+  montoDisplayClass,
+  montoFieldNextValue,
+  parseMontoInput,
+  type GrupoUltimasTransacciones,
+} from '../lib/utils'
 import type { Categoria, Moneda, MedioPago, TipoTransaccion, Transaccion } from '../lib/types'
 import { ordenarCategoriasPorTema } from '../lib/categoriasOrden'
 import {
@@ -22,6 +31,17 @@ const TIPO_CONFIG: Record<TipoTransaccion, { label: string; color: string; bg: s
 }
 
 const TIPO_ORDER_MOBILE: TipoTransaccion[] = ['gasto', 'ingreso', 'suscripcion']
+
+const ULTIMAS_TX_GRUPOS: {
+  key: GrupoUltimasTransacciones
+  titulo: string
+  subtitulo: string
+}[] = [
+  { key: 'transferencias', titulo: 'Transferencias', subtitulo: 'Pagos con transferencia' },
+  { key: 'debito', titulo: 'Débito', subtitulo: 'Efectivo y compras con débito' },
+  { key: 'credito', titulo: 'Crédito', subtitulo: 'Tarjeta de crédito y reintegros / promos' },
+  { key: 'ingresos', titulo: 'Ingresos', subtitulo: 'Ingresos en efectivo' },
+]
 
 const today = new Date().toISOString().split('T')[0]
 
@@ -353,7 +373,9 @@ export default function Carga() {
 
   const medioPagoDb: MedioPago =
     tipo === 'ingreso'
-      ? 'efectivo'
+      ? ingresoReintegroTc
+        ? 'tarjeta'
+        : 'efectivo'
       : tipo === 'suscripcion'
         ? plasticoTipo === 'debito'
           ? 'efectivo'
@@ -386,6 +408,9 @@ export default function Carga() {
   const [editFecha, setEditFecha] = useState('')
   const [editCategoriaId, setEditCategoriaId] = useState('')
   const [editEsGastoFijo, setEditEsGastoFijo] = useState(false)
+  const [editIngresoReintegroTc, setEditIngresoReintegroTc] = useState(false)
+  /** Ingreso como crédito a favor en TC (reintegro/promo); guarda medio_pago tarjeta. */
+  const [ingresoReintegroTc, setIngresoReintegroTc] = useState(false)
 
   useEffect(() => {
     supabase.from('categorias').select('*').then(({ data }) => {
@@ -423,6 +448,19 @@ export default function Carga() {
   /** Todas las categorías gasto (principales + subs) para selects con optgroup, p. ej. edición de cuotas. */
   const categoriasGastoCompleta = useMemo(() => categorias.filter((c) => c.tipo === 'gasto'), [categorias])
 
+  const recientesPorGrupo = useMemo(() => {
+    const map: Record<GrupoUltimasTransacciones, Transaccion[]> = {
+      transferencias: [],
+      debito: [],
+      credito: [],
+      ingresos: [],
+    }
+    for (const t of recientes) {
+      map[grupoUltimasTransacciones(t)].push(t)
+    }
+    return ULTIMAS_TX_GRUPOS.map((g) => ({ ...g, items: map[g.key] })).filter((x) => x.items.length > 0)
+  }, [recientes])
+
   useEffect(() => {
     if (!tieneJerarquiaGasto) return
     const pros = principalesGastoOrdenadas(categorias)
@@ -443,6 +481,7 @@ export default function Carga() {
   useEffect(() => {
     setEnCuotas(false)
     setNumCuotas('')
+    setIngresoReintegroTc(false)
     if (tipo !== 'gasto') setEsGastoFijo(false)
   }, [tipo])
 
@@ -512,6 +551,7 @@ export default function Carga() {
     setEditFecha(t.fecha)
     setEditCategoriaId(t.categoria_id ?? '')
     setEditEsGastoFijo(t.tipo === 'gasto' && !!t.es_gasto_fijo)
+    setEditIngresoReintegroTc(t.tipo === 'ingreso' && t.medio_pago === 'tarjeta')
   }
 
   const cancelEdit = () => setEditingId(null)
@@ -519,13 +559,15 @@ export default function Carga() {
   const saveEdit = async (id: string, tipoTx: TipoTransaccion) => {
     const m = parseMontoInput(editMonto)
     if (!editDesc.trim() || !Number.isFinite(m) || m <= 0 || !editFecha || !editCategoriaId) return
-    const { error } = await supabase.from('transacciones').update({
+    const patch: Record<string, unknown> = {
       descripcion: editDesc.trim(),
       monto: m,
       fecha: editFecha,
       categoria_id: editCategoriaId,
       es_gasto_fijo: tipoTx === 'gasto' ? editEsGastoFijo : false,
-    }).eq('id', id)
+    }
+    if (tipoTx === 'ingreso') patch.medio_pago = editIngresoReintegroTc ? 'tarjeta' : 'efectivo'
+    const { error } = await supabase.from('transacciones').update(patch).eq('id', id)
     if (error) window.alert('Error: ' + error.message)
     else { setEditingId(null); fetchRecientes() }
   }
@@ -811,6 +853,19 @@ export default function Carga() {
                   <span className="text-xs text-gray-300 leading-snug">Gasto fijo</span>
                 </label>
               )}
+              {tipo === 'ingreso' && (
+                <label className="flex items-center gap-2.5 cursor-pointer rounded-xl border border-white/[0.08] bg-dark-800/40 px-3 py-2.5">
+                  <input
+                    type="checkbox"
+                    checked={ingresoReintegroTc}
+                    onChange={(e) => setIngresoReintegroTc(e.target.checked)}
+                    className="accent-rose-500 w-4 h-4 shrink-0"
+                  />
+                  <span className="text-xs text-gray-300 leading-snug">
+                    Reintegro o promo en tarjeta (crédito a favor del resumen TC; no suma como ingreso en efectivo)
+                  </span>
+                </label>
+              )}
               {tipo === 'gasto' && <MedioPagoGastoFields {...medioGastoProps} />}
               {tipo === 'suscripcion' && <MedioPagoSuscripcionFields {...medioSuscripcionProps} />}
 
@@ -941,6 +996,19 @@ export default function Carga() {
                   <span className="text-xs text-gray-400 leading-snug">Gasto fijo</span>
                 </label>
               )}
+              {tipo === 'ingreso' && (
+                <label className="flex items-center gap-2.5 cursor-pointer rounded-xl border border-white/[0.08] bg-dark-800/40 px-3 py-2.5">
+                  <input
+                    type="checkbox"
+                    checked={ingresoReintegroTc}
+                    onChange={(e) => setIngresoReintegroTc(e.target.checked)}
+                    className="accent-rose-500 w-4 h-4 shrink-0"
+                  />
+                  <span className="text-xs text-gray-300 leading-snug">
+                    Reintegro o promo en tarjeta (crédito a favor del resumen; no suma como efectivo)
+                  </span>
+                </label>
+              )}
               {tipo === 'gasto' && <MedioPagoGastoFields {...medioGastoProps} />}
               {tipo === 'suscripcion' && <MedioPagoSuscripcionFields {...medioSuscripcionProps} />}
 
@@ -1044,78 +1112,108 @@ export default function Carga() {
                 <p className="text-gray-500 text-sm">No hay transacciones este mes.</p>
               </div>
             ) : (
-              <div className="space-y-2">
-                <AnimatePresence>
-                  {recientes.map((t, i) => (
-                    <motion.div key={t.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 20 }} transition={{ delay: i * 0.02 }}
-                      className="glass-light p-3 flex items-center gap-3 group">
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg font-semibold shrink-0"
-                        style={{ backgroundColor: (t.categoria?.color ?? '#6366f1') + '15', color: t.categoria?.color ?? '#6366f1' }}>
-                        {t.categoria?.nombre?.[0] ?? '?'}
-                      </div>
-
-                      {editingId === t.id ? (
-                        <div className="flex-1 flex flex-wrap items-center gap-2 min-w-0">
-                          <input type="text" value={editDesc} onChange={(e) => setEditDesc(e.target.value)}
-                            className="input-dark !py-1 !text-sm flex-1 min-w-[min(100%,10rem)]" />
-                          <select
-                            value={editCategoriaId}
-                            onChange={(e) => setEditCategoriaId(e.target.value)}
-                            className="select-dark !py-1.5 !pl-2.5 !pr-8 !text-sm min-w-[9rem] flex-1 max-w-[13rem]"
+              <div className="space-y-8">
+                {recientesPorGrupo.map((grupo) => (
+                  <div key={grupo.key}>
+                    <div className="mb-2.5">
+                      <h3 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">{grupo.titulo}</h3>
+                      <p className="text-[11px] text-gray-600 mt-0.5">{grupo.subtitulo}</p>
+                    </div>
+                    <div className="space-y-2">
+                      <AnimatePresence>
+                        {grupo.items.map((t, i) => (
+                          <motion.div
+                            key={t.id}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 20 }}
+                            transition={{ delay: i * 0.02 }}
+                            className={`glass-light p-3 group ${
+                              editingId === t.id ? 'flex flex-col gap-2' : 'flex items-center gap-3'
+                            }`}
                           >
-                            <option value="">Categoría…</option>
-                            {t.tipo === 'gasto' && tieneJerarquiaGasto ? (
-                              <>
-                                {principalesGastoOrdenadas(categorias).map((p) => (
-                                  <optgroup key={p.id} label={p.nombre}>
-                                    {subcategoriasDe(p.id, categorias).map((s) => (
-                                      <option key={s.id} value={s.id}>{s.nombre}</option>
-                                    ))}
-                                  </optgroup>
-                                ))}
-                                {categorias
-                                  .filter(
-                                    (c) =>
-                                      c.tipo === 'gasto' &&
-                                      !c.parent_id &&
-                                      !categorias.some((s) => s.parent_id === c.id),
-                                  )
-                                  .map((c) => (
-                                    <option key={c.id} value={c.id}>{c.nombre}</option>
-                                  ))}
-                              </>
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg font-semibold shrink-0"
+                              style={{ backgroundColor: (t.categoria?.color ?? '#6366f1') + '15', color: t.categoria?.color ?? '#6366f1' }}>
+                              {t.categoria?.nombre?.[0] ?? '?'}
+                            </div>
+
+                            {editingId === t.id ? (
+                              <div className="flex-1 flex flex-col gap-2 min-w-0 w-full">
+                                <div className="flex flex-wrap items-center gap-2 min-w-0">
+                                  <input type="text" value={editDesc} onChange={(e) => setEditDesc(e.target.value)}
+                                    className="input-dark !py-1 !text-sm flex-1 min-w-[min(100%,10rem)]" />
+                                  <select
+                                    value={editCategoriaId}
+                                    onChange={(e) => setEditCategoriaId(e.target.value)}
+                                    className="select-dark !py-1.5 !pl-2.5 !pr-8 !text-sm min-w-[9rem] flex-1 max-w-[13rem]"
+                                  >
+                                    <option value="">Categoría…</option>
+                                    {t.tipo === 'gasto' && tieneJerarquiaGasto ? (
+                                      <>
+                                        {principalesGastoOrdenadas(categorias).map((p) => (
+                                          <optgroup key={p.id} label={p.nombre}>
+                                            {subcategoriasDe(p.id, categorias).map((s) => (
+                                              <option key={s.id} value={s.id}>{s.nombre}</option>
+                                            ))}
+                                          </optgroup>
+                                        ))}
+                                        {categorias
+                                          .filter(
+                                            (c) =>
+                                              c.tipo === 'gasto' &&
+                                              !c.parent_id &&
+                                              !categorias.some((s) => s.parent_id === c.id),
+                                          )
+                                          .map((c) => (
+                                            <option key={c.id} value={c.id}>{c.nombre}</option>
+                                          ))}
+                                      </>
+                                    ) : (
+                                      ordenarCategoriasPorTema(categorias.filter((c) => c.tipo === t.tipo)).map((c) => (
+                                        <option key={c.id} value={c.id}>{c.nombre}</option>
+                                      ))
+                                    )}
+                                  </select>
+                                  <input
+                                    type="text"
+                                    inputMode="decimal"
+                                    autoComplete="off"
+                                    value={editMonto}
+                                    onChange={(e) => setEditMonto(montoFieldNextValue(editMonto, e.target.value))}
+                                    className="input-dark !py-1 !text-sm min-w-[6.5rem] flex-1 max-w-[9rem]"
+                                  />
+                                  <input type="date" value={editFecha} onChange={(e) => setEditFecha(e.target.value)}
+                                    className="input-dark !py-1 !text-sm min-w-0 w-[9.5rem] sm:w-36 max-w-full" />
+                                  {t.tipo === 'gasto' && (
+                                    <label className="flex items-center gap-1.5 text-[11px] text-gray-400 w-full sm:w-auto">
+                                      <input
+                                        type="checkbox"
+                                        checked={editEsGastoFijo}
+                                        onChange={(e) => setEditEsGastoFijo(e.target.checked)}
+                                        className="accent-rose-500 w-3.5 h-3.5"
+                                      />
+                                      Fijo
+                                    </label>
+                                  )}
+                                  {t.tipo === 'ingreso' && (
+                                    <label className="flex items-center gap-1.5 text-[11px] text-gray-400 w-full sm:w-auto">
+                                      <input
+                                        type="checkbox"
+                                        checked={editIngresoReintegroTc}
+                                        onChange={(e) => setEditIngresoReintegroTc(e.target.checked)}
+                                        className="accent-rose-500 w-3.5 h-3.5"
+                                      />
+                                      Reintegro TC
+                                    </label>
+                                  )}
+                                </div>
+                                <FormEditGuardarCancelar
+                                  onCancel={cancelEdit}
+                                  onSave={() => saveEdit(t.id, t.tipo)}
+                                  className="w-full"
+                                />
+                              </div>
                             ) : (
-                              ordenarCategoriasPorTema(categorias.filter((c) => c.tipo === t.tipo)).map((c) => (
-                                <option key={c.id} value={c.id}>{c.nombre}</option>
-                              ))
-                            )}
-                          </select>
-                          <input
-                            type="text"
-                            inputMode="decimal"
-                            autoComplete="off"
-                            value={editMonto}
-                            onChange={(e) => setEditMonto(montoFieldNextValue(editMonto, e.target.value))}
-                            className="input-dark !py-1 !text-sm min-w-[6.5rem] flex-1 max-w-[9rem]"
-                          />
-                          <input type="date" value={editFecha} onChange={(e) => setEditFecha(e.target.value)}
-                            className="input-dark !py-1 !text-sm min-w-0 w-[9.5rem] sm:w-36 max-w-full" />
-                          {t.tipo === 'gasto' && (
-                            <label className="flex items-center gap-1.5 text-[11px] text-gray-400 w-full sm:w-auto">
-                              <input
-                                type="checkbox"
-                                checked={editEsGastoFijo}
-                                onChange={(e) => setEditEsGastoFijo(e.target.checked)}
-                                className="accent-rose-500 w-3.5 h-3.5"
-                              />
-                              Fijo
-                            </label>
-                          )}
-                          <button type="button" onClick={() => saveEdit(t.id, t.tipo)} className="text-emerald-400 hover:text-emerald-300 shrink-0"><Check size={16} /></button>
-                          <button type="button" onClick={cancelEdit} className="text-red-400 hover:text-red-300 shrink-0"><X size={16} /></button>
-                        </div>
-                      ) : (
                         <>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-gray-200 truncate">
@@ -1123,10 +1221,14 @@ export default function Carga() {
                               {(t.tipo === 'gasto' || t.tipo === 'suscripcion') && t.medio_pago === 'efectivo' && (
                                 <CircleDollarSign size={12} className="inline ml-1.5 text-emerald-400/75" aria-hidden />
                               )}
-                              {t.medio_pago === 'tarjeta' && (
-                                <CreditCard size={12} className="inline ml-1.5 text-rose-400/60" />
+                              {t.medio_pago === 'tarjeta' && (t.tipo === 'gasto' || t.tipo === 'suscripcion' || t.tipo === 'ingreso') && (
+                                <CreditCard
+                                  size={12}
+                                  className="inline ml-1.5 text-rose-400/60"
+                                  aria-label={t.tipo === 'ingreso' ? 'Reintegro o promo TC' : 'Tarjeta de crédito'}
+                                />
                               )}
-                              {t.medio_pago === 'transferencia' && (
+                              {(t.tipo === 'gasto' || t.tipo === 'suscripcion') && t.medio_pago === 'transferencia' && (
                                 <ArrowLeftRight size={12} className="inline ml-1.5 text-sky-400/70" />
                               )}
                             </p>
@@ -1155,9 +1257,12 @@ export default function Carga() {
                           </div>
                         </>
                       )}
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </motion.div>

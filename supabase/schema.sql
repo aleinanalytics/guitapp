@@ -109,6 +109,7 @@ insert into categorias (nombre, tipo, color) values
   ('Freelance','ingreso','#16a34a'),
   ('Reingreso','ingreso','#14b8a6'),
   ('Varios','ingreso','#059669'),
+  ('Reintegro / promo TC','ingreso','#f472b6'),
   ('Streaming','suscripcion','#dc2626'),
   ('Música','suscripcion','#16a34a'),
   ('IA','suscripcion','#0ea5e9'),

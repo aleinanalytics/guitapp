@@ -10,7 +10,14 @@ import MobileUserMenu from '../components/MobileUserMenu'
 import { useTransacciones } from '../hooks/useTransacciones'
 import { useCuotas, getCuotaForMonth } from '../hooks/useCuotas'
 import { useTarjetaConfig, diasHastaFecha, formatFechaTarjeta, rangoPickerTarjeta } from '../hooks/useTarjetaConfig'
-import { formatARS, formatUSD, montoDisplayClass, sumarPorMoneda, transaccionEnMesVista } from '../lib/utils'
+import {
+  esIngresoReintegroTarjetaCredito,
+  formatARS,
+  formatUSD,
+  montoDisplayClass,
+  sumarPorMoneda,
+  transaccionEnMesVista,
+} from '../lib/utils'
 import type { Categoria, Moneda } from '../lib/types'
 
 const MESES = [
@@ -38,6 +45,7 @@ export default function TarjetaCreditoMes() {
 
   const gastoCategorias = useMemo(() => categorias.filter((c) => c.tipo === 'gasto'), [categorias])
   const suscripcionCategorias = useMemo(() => categorias.filter((c) => c.tipo === 'suscripcion'), [categorias])
+  const ingresoCategorias = useMemo(() => categorias.filter((c) => c.tipo === 'ingreso'), [categorias])
 
   const refreshAll = () => {
     void refetchTx()
@@ -118,6 +126,14 @@ export default function TarjetaCreditoMes() {
     return out
   }, [cuotas, nextMes, nextAnio])
 
+  const reintegrosMes = useMemo(
+    () => transaccionesDelMes.filter(esIngresoReintegroTarjetaCredito),
+    [transaccionesDelMes],
+  )
+  const reintegrosPorMoneda = useMemo(
+    () => sumarPorMoneda(reintegrosMes.map((t) => ({ monto: t.monto, moneda: t.moneda }))),
+    [reintegrosMes],
+  )
   const singlesPorMoneda = useMemo(
     () => sumarPorMoneda(tarjetaPagosUnicos.map((t) => ({ monto: t.monto, moneda: t.moneda }))),
     [tarjetaPagosUnicos],
@@ -126,8 +142,8 @@ export default function TarjetaCreditoMes() {
     () => sumarPorMoneda(cuotaLines.map((l) => ({ monto: l.monto, moneda: l.moneda }))),
     [cuotaLines],
   )
-  const totalArs = singlesPorMoneda.ars + cuotasPorMoneda.ars
-  const totalUsd = singlesPorMoneda.usd + cuotasPorMoneda.usd
+  const totalArs = singlesPorMoneda.ars + cuotasPorMoneda.ars - reintegrosPorMoneda.ars
+  const totalUsd = singlesPorMoneda.usd + cuotasPorMoneda.usd - reintegrosPorMoneda.usd
 
   const nextPorMoneda = useMemo(
     () => sumarPorMoneda(nextCuotaLines.map((l) => ({ monto: l.monto, moneda: l.moneda }))),
@@ -273,12 +289,14 @@ export default function TarjetaCreditoMes() {
           >
             <div className="absolute top-0 left-0 right-0 h-[2px] opacity-60 bg-gradient-to-r from-transparent via-rose-500 to-transparent" />
             <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Total del mes (por moneda)</p>
-            <p className="text-[11px] text-gray-600 mt-1 mb-3">Sin convertir: lo cargado en pesos y lo cargado en dólares por separado.</p>
+            <p className="text-[11px] text-gray-600 mt-1 mb-3">
+              Neto: pagos únicos + cuotas − reintegros/promos. Sin convertir entre monedas.
+            </p>
             <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
               <div className="rounded-xl bg-white/[0.04] px-3 py-2.5 min-w-0">
                 <p className="text-[10px] text-gray-500 uppercase tracking-wide">Total ARS</p>
                 <p
-                  className={`font-bold text-gray-50 tabular-nums mt-0.5 leading-tight break-words ${montoDisplayClass(totalArs, 'pairArs')}`}
+                  className={`font-bold text-gray-50 tabular-nums mt-0.5 leading-tight break-words ${montoDisplayClass(totalArs, 'pairArsTarjeta')}`}
                 >
                   {formatARS(totalArs)}
                 </p>
@@ -286,7 +304,7 @@ export default function TarjetaCreditoMes() {
               <div className="rounded-xl bg-white/[0.04] px-3 py-2.5 min-w-0">
                 <p className="text-[10px] text-gray-500 uppercase tracking-wide">Total USD</p>
                 <p
-                  className={`font-bold text-gray-50 tabular-nums mt-0.5 leading-tight break-words ${montoDisplayClass(totalUsd, 'pairUsd')}`}
+                  className={`font-bold text-gray-50 tabular-nums mt-0.5 leading-tight break-words ${montoDisplayClass(totalUsd, 'pairUsdTarjeta')}`}
                 >
                   {formatUSD(totalUsd)}
                 </p>
@@ -303,8 +321,39 @@ export default function TarjetaCreditoMes() {
                 <p className="text-gray-200 font-medium">{formatARS(cuotasPorMoneda.ars)}</p>
                 <p className="text-gray-200 font-medium">{formatUSD(cuotasPorMoneda.usd)}</p>
               </div>
+              {(reintegrosPorMoneda.ars > 0 || reintegrosPorMoneda.usd > 0) && (
+                <div className="col-span-2">
+                  <span className="text-gray-500 block mb-1">Reintegros / promos (a favor)</span>
+                  <p className="text-emerald-400/90 font-medium">−{formatARS(reintegrosPorMoneda.ars)}</p>
+                  <p className="text-emerald-400/90 font-medium">−{formatUSD(reintegrosPorMoneda.usd)}</p>
+                </div>
+              )}
             </div>
           </motion.div>
+
+          <section className="mb-8">
+            <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3">
+              Reintegros y promos (ingreso a favor de TC)
+            </h2>
+            <p className="text-[11px] text-gray-500 mb-3">
+              Cargalos en <span className="text-gray-400">Carga</span> como ingreso y marcá &quot;Reintegro o promo en tarjeta&quot;. Acá solo ves los del mes (mes calendario).
+            </p>
+            {reintegrosMes.length === 0 ? (
+              <p className="text-gray-500 text-sm glass-light p-4 rounded-xl">No registraste reintegros ni promos este mes.</p>
+            ) : (
+              <ul className="space-y-2">
+                {reintegrosMes.map((t, i) => (
+                  <EditableTransaccionListRow
+                    key={t.id}
+                    t={t}
+                    categorias={ingresoCategorias}
+                    delay={i * 0.02}
+                    onMutated={refreshAll}
+                  />
+                ))}
+              </ul>
+            )}
+          </section>
 
           <section className="mb-8">
             <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3">
@@ -363,13 +412,13 @@ export default function TarjetaCreditoMes() {
               animate={{ opacity: 1 }}
               className="glass border-amber-500/15 bg-amber-500/[0.04] p-4 rounded-xl"
             >
-              <p className="text-xs text-amber-400/90 font-medium mb-2">
+              <p className="text-xs text-amber-400/90 font-medium mb-2 text-center">
                 Próximo mes ({MESES[nextMes - 1]} {nextAnio}): cuotas estimadas{' '}
                 {nextPorMoneda.ars > 0 && <span>{formatARS(nextPorMoneda.ars)}</span>}
                 {nextPorMoneda.ars > 0 && nextPorMoneda.usd > 0 && <span className="text-gray-500"> · </span>}
                 {nextPorMoneda.usd > 0 && <span>{formatUSD(nextPorMoneda.usd)}</span>}
               </p>
-              <ul className="space-y-1">
+              <ul className="space-y-1 text-center">
                 {nextCuotaLines.map((d, i) => (
                   <li key={i} className="text-[11px] text-gray-500">
                     {d.desc} — cuota {d.numero}/{d.total} · {fmtCuotaMonto(d.monto, d.moneda)}

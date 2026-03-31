@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Pencil, Trash2, Check, X } from 'lucide-react'
+import { Pencil, Trash2 } from 'lucide-react'
+import FormEditGuardarCancelar from './FormEditGuardarCancelar'
 import { supabase } from '../lib/supabase'
 import { formatARS, formatMontoFromNumber, formatUSD, montoFieldNextValue, parseMontoInput } from '../lib/utils'
 import type { Categoria, CompraCuotas, Moneda } from '../lib/types'
@@ -172,26 +173,7 @@ export default function EditableCuotaCompraRow({ compra, cuotaNumero, delay = 0,
             </button>
           ))}
         </div>
-        <div className="flex gap-3 pt-1">
-          <button
-            type="button"
-            disabled={busy}
-            onClick={cancelEdit}
-            className="flex-1 min-h-[48px] px-3 flex items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-dark-800/70 text-red-400 text-sm font-semibold hover:bg-dark-800 active:scale-[0.99] disabled:opacity-40 transition-colors"
-          >
-            <X size={22} strokeWidth={2.25} className="shrink-0" aria-hidden />
-            Cancelar
-          </button>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={save}
-            className="flex-1 min-h-[48px] px-3 flex items-center justify-center gap-2 rounded-xl bg-emerald-500/20 text-emerald-300 text-sm font-semibold ring-1 ring-emerald-500/35 hover:bg-emerald-500/30 active:scale-[0.99] disabled:opacity-40 transition-colors"
-          >
-            <Check size={22} strokeWidth={2.25} className="shrink-0" aria-hidden />
-            Guardar
-          </button>
-        </div>
+        <FormEditGuardarCancelar busy={busy} onCancel={cancelEdit} onSave={save} />
       </motion.li>
     )
   }

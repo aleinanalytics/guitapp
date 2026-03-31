@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import { useTipoCambio } from './useTipoCambio'
-import { convertirARS, cuentaComoSalidaDeEfectivo } from '../lib/utils'
+import { convertirARS, cuentaComoSalidaDeEfectivo, esIngresoReintegroTarjetaCredito } from '../lib/utils'
 import type { BolsilloTipo, BolsilloConfig, BolsilloMovimiento, Transaccion } from '../lib/types'
 
 export function useBolsillos() {
@@ -52,7 +52,8 @@ export function useBolsillos() {
       let salidasEf = 0
       for (const t of txRes.data ?? []) {
         const ars = convertirARS(Number(t.monto), t.moneda as 'ARS' | 'USD', tc)
-        if (t.tipo === 'ingreso') ing += ars
+        if (t.tipo === 'ingreso' && !esIngresoReintegroTarjetaCredito(t as Pick<Transaccion, 'tipo' | 'medio_pago'>))
+          ing += ars
         else if (cuentaComoSalidaDeEfectivo(t as Pick<Transaccion, 'tipo' | 'medio_pago'>)) salidasEf += ars
       }
       setFluidoHistorial(ing - salidasEf)

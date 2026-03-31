@@ -20,6 +20,7 @@ import type { Categoria, Moneda } from '../lib/types'
 import { supabase } from '../lib/supabase'
 import {
   convertirARS,
+  esIngresoReintegroTarjetaCredito,
   formatARS,
   formatUSD,
   montoDisplayClass,
@@ -116,7 +117,7 @@ export default function Dashboard() {
   const { saldoAcumulado, loading: loadingSaldoAcum } = useSaldoAcumuladoHastaMes({ mes, anio, tc })
 
   const ingresos = transaccionesDelMes
-    .filter((t) => t.tipo === 'ingreso')
+    .filter((t) => t.tipo === 'ingreso' && !esIngresoReintegroTarjetaCredito(t))
     .reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
 
   const gastos = transaccionesDelMes
@@ -223,12 +224,20 @@ export default function Dashboard() {
       }
     }
 
-    const totalArs = singles.ars + cuotasArs
-    const totalUsd = singles.usd + cuotasUsd
+    const reintegrosTx = transaccionesDelMes.filter(esIngresoReintegroTarjetaCredito)
+    const reintegrosPorMoneda = sumarPorMoneda(reintegrosTx.map((t) => ({ monto: t.monto, moneda: t.moneda })))
+    const consumoArs = singles.ars + cuotasArs
+    const consumoUsd = singles.usd + cuotasUsd
+    const totalArs = consumoArs - reintegrosPorMoneda.ars
+    const totalUsd = consumoUsd - reintegrosPorMoneda.usd
 
     return {
       totalArs,
       totalUsd,
+      consumoArs,
+      consumoUsd,
+      reintegroArs: reintegrosPorMoneda.ars,
+      reintegroUsd: reintegrosPorMoneda.usd,
       cuotaDetails,
       nextMonthArs: nextArs,
       nextMonthUsd: nextUsd,
@@ -254,13 +263,15 @@ export default function Dashboard() {
       { name: 'Ingresos', value: ingresos, color: '#10b981' },
       { name: 'Gastos', value: gastosEfectivo, color: '#ef4444' },
     ]
-    if (tarjetaData.totalArs > 0) out.push({ name: 'Tarjeta ARS', value: tarjetaData.totalArs, color: '#f43f5e' })
-    if (tarjetaData.totalUsd > 0) {
+    const pieTarjetaArs = Math.max(0, tarjetaData.totalArs)
+    const pieTarjetaUsdEq = Math.max(0, tarjetaData.totalUsd) * tc
+    if (pieTarjetaArs > 0) out.push({ name: 'Tarjeta ARS', value: pieTarjetaArs, color: '#f43f5e' })
+    if (pieTarjetaUsdEq > 0) {
       out.push({
         name: 'Tarjeta USD',
-        value: tarjetaData.totalUsd * tc,
+        value: pieTarjetaUsdEq,
         color: '#fda4af',
-        tarjetaUsdMonto: tarjetaData.totalUsd,
+        tarjetaUsdMonto: Math.max(0, tarjetaData.totalUsd),
       })
     }
     out.push({ name: 'Suscripciones', value: suscripciones, color: '#a855f7' })
@@ -300,7 +311,9 @@ export default function Dashboard() {
         const d = new Date(t.fecha + 'T00:00:00')
         return d.getMonth() + 1 === m
       })
-      const ing = txMes.filter((t) => t.tipo === 'ingreso').reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
+      const ing = txMes
+        .filter((t) => t.tipo === 'ingreso' && !esIngresoReintegroTarjetaCredito(t))
+        .reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
       const gas = txMes.filter((t) => t.tipo === 'gasto').reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
       // add cuotas for this month
       let cuotasMes = 0
@@ -599,7 +612,7 @@ export default function Dashboard() {
                 <div className="text-center min-w-0">
                   <p className="text-[10px] text-gray-500 uppercase tracking-wide">ARS</p>
                   <p
-                    className={`font-bold text-gray-50 tabular-nums leading-tight mt-0.5 break-words ${montoDisplayClass(tarjetaData.totalArs, 'pairArs')}`}
+                    className={`font-bold text-gray-50 tabular-nums leading-tight mt-0.5 break-words ${montoDisplayClass(tarjetaData.totalArs, 'pairArsTarjeta')}`}
                   >
                     {formatARS(tarjetaData.totalArs)}
                   </p>
@@ -607,13 +620,23 @@ export default function Dashboard() {
                 <div className="text-center min-w-0">
                   <p className="text-[10px] text-gray-500 uppercase tracking-wide">USD</p>
                   <p
-                    className={`font-bold text-gray-50 tabular-nums leading-tight mt-0.5 break-words ${montoDisplayClass(tarjetaData.totalUsd, 'pairUsd')}`}
+                    className={`font-bold text-gray-50 tabular-nums leading-tight mt-0.5 break-words ${montoDisplayClass(tarjetaData.totalUsd, 'pairUsdTarjeta')}`}
                   >
                     {formatUSD(tarjetaData.totalUsd)}
                   </p>
                 </div>
               </div>
-              <p className="text-[10px] text-gray-600 mt-2 text-center">Consumo por moneda, sin convertir.</p>
+              <p className="text-[10px] text-gray-600 mt-2 text-center">Neto del mes por moneda (consumo − reintegros/promos TC), sin convertir.</p>
+              {(tarjetaData.reintegroArs > 0 || tarjetaData.reintegroUsd > 0) && (
+                <p className="text-[10px] text-emerald-400/85 mt-1.5 text-center leading-snug">
+                  Reintegros/promos: −{formatARS(tarjetaData.reintegroArs)}
+                  {tarjetaData.reintegroUsd > 0 && (
+                    <>
+                      {' · '}−{formatUSD(tarjetaData.reintegroUsd)}
+                    </>
+                  )}
+                </p>
+              )}
 
               {tcConfig ? (
                 <div className="mt-3 pt-3 border-t border-white/[0.06] grid gap-x-5 gap-y-2.5 text-[11px] sm:text-xs text-center [grid-template-columns:repeat(auto-fit,minmax(11rem,1fr))]">
@@ -651,7 +674,7 @@ export default function Dashboard() {
 
               {(tarjetaData.nextMonthArs > 0 || tarjetaData.nextMonthUsd > 0) && (
                 <div className="mt-3 pt-3 border-t border-white/[0.06]">
-                  <p className="text-xs text-amber-400/80">
+                  <p className="text-xs text-amber-400/80 text-center">
                     El próximo resumen ({tarjetaData.nextMesName}): cuotas{' '}
                     {tarjetaData.nextMonthArs > 0 && <span>{formatARS(tarjetaData.nextMonthArs)}</span>}
                     {tarjetaData.nextMonthArs > 0 && tarjetaData.nextMonthUsd > 0 && (
@@ -660,7 +683,7 @@ export default function Dashboard() {
                     {tarjetaData.nextMonthUsd > 0 && <span>{formatUSD(tarjetaData.nextMonthUsd)}</span>}
                   </p>
                   {tarjetaData.nextDetails.map((d, i) => (
-                    <p key={i} className="text-[11px] text-gray-500 mt-0.5">
+                    <p key={i} className="text-[11px] text-gray-500 mt-0.5 text-center">
                       {d.desc} — cuota {d.numero}/{d.total} ·{' '}
                       {d.moneda === 'USD' ? formatUSD(d.monto) : formatARS(d.monto)}
                     </p>

@@ -8,7 +8,7 @@ import type { PieLabelRenderProps } from 'recharts'
 import KPICard from '../components/KPICard'
 import { useAnalisis } from '../hooks/useAnalisis'
 import { supabase } from '../lib/supabase'
-import { convertirARS, cuentaComoSalidaDeEfectivo, formatARS } from '../lib/utils'
+import { convertirARS, cuentaComoSalidaDeEfectivo, esIngresoReintegroTarjetaCredito, formatARS } from '../lib/utils'
 import type { Moneda, TipoTransaccion, Transaccion } from '../lib/types'
 import { ultimoDiaDelMes } from '../hooks/useSaldoAcumuladoHastaMes'
 import {
@@ -115,7 +115,7 @@ export default function Analisis() {
     for (const t of transacciones) {
       const m = new Date(t.fecha + 'T00:00:00').getMonth()
       const ars = convertirARS(t.monto, t.moneda, tc)
-      if (t.tipo === 'ingreso') months[m].Ingresos += ars
+      if (t.tipo === 'ingreso' && !esIngresoReintegroTarjetaCredito(t)) months[m].Ingresos += ars
       else if (t.tipo === 'gasto') months[m].Gastos += ars
       else months[m].Suscripciones += ars
       if (cuentaComoSalidaDeEfectivo(t)) months[m].SalidaEfectivo += ars
@@ -134,7 +134,7 @@ export default function Analisis() {
       while (ti < sorted.length && sorted[ti].fecha <= hasta) {
         const t = sorted[ti++]
         const ars = convertirARS(Number(t.monto), t.moneda as Moneda, tc)
-        if (t.tipo === 'ingreso') running += ars
+        if (t.tipo === 'ingreso' && !esIngresoReintegroTarjetaCredito(t as Transaccion)) running += ars
         else if (cuentaComoSalidaDeEfectivo(t as Transaccion)) running -= ars
       }
       return {
@@ -152,7 +152,7 @@ export default function Analisis() {
       for (const t of txSaldoHist) {
         if (t.fecha > hasta) break
         const ars = convertirARS(Number(t.monto), t.moneda as Moneda, tc)
-        if (t.tipo === 'ingreso') ing += ars
+        if (t.tipo === 'ingreso' && !esIngresoReintegroTarjetaCredito(t as Transaccion)) ing += ars
         else if (cuentaComoSalidaDeEfectivo(t as Transaccion)) sal += ars
       }
       return ing - sal
@@ -291,7 +291,7 @@ export default function Analisis() {
         const d = new Date(t.fecha + 'T00:00:00')
         if (d.getMonth() + 1 !== mes || d.getFullYear() !== anio) continue
         const ars = convertirARS(Number(t.monto), t.moneda as Moneda, tc)
-        if (t.tipo === 'ingreso') ing += ars
+        if (t.tipo === 'ingreso' && !esIngresoReintegroTarjetaCredito(t as Transaccion)) ing += ars
         else if (cuentaComoSalidaDeEfectivo(t as Transaccion)) salidas += ars
       }
       return ing - salidas
@@ -309,7 +309,7 @@ export default function Analisis() {
     const monthlyGastos = new Array(12).fill(0)
     for (const t of transacciones) {
       const ars = convertirARS(t.monto, t.moneda, tc)
-      if (t.tipo === 'ingreso') ingresos += ars
+      if (t.tipo === 'ingreso' && !esIngresoReintegroTarjetaCredito(t)) ingresos += ars
       else if (t.tipo === 'gasto') {
         gastos += ars
         monthlyGastos[new Date(t.fecha + 'T00:00:00').getMonth()] += ars

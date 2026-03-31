@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
-import { convertirARS, cuentaComoSalidaDeEfectivo } from '../lib/utils'
+import { convertirARS, cuentaComoSalidaDeEfectivo, esIngresoReintegroTarjetaCredito } from '../lib/utils'
 import type { Moneda, Transaccion } from '../lib/types'
 
 /** Último día del mes calendario (mes 1–12) en YYYY-MM-DD local. */
@@ -47,7 +47,8 @@ export function useSaldoAcumuladoHastaMes({ mes, anio, tc }: { mes: number; anio
       let sal = 0
       for (const t of data ?? []) {
         const ars = convertirARS(Number(t.monto), t.moneda as Moneda, tc)
-        if (t.tipo === 'ingreso') ing += ars
+        if (t.tipo === 'ingreso' && !esIngresoReintegroTarjetaCredito(t as Pick<Transaccion, 'tipo' | 'medio_pago'>))
+          ing += ars
         else if (cuentaComoSalidaDeEfectivo(t as Pick<Transaccion, 'tipo' | 'medio_pago'>)) sal += ars
       }
       setSaldoAcumulado(ing - sal)

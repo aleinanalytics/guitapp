@@ -9,8 +9,17 @@ import { useTransacciones } from '../hooks/useTransacciones'
 import { useTarjetaConfig } from '../hooks/useTarjetaConfig'
 import { useSaldoAcumuladoHastaMes } from '../hooks/useSaldoAcumuladoHastaMes'
 import { useTipoCambio } from '../hooks/useTipoCambio'
-import { convertirARS, cuentaComoSalidaDeEfectivo, formatARS, formatUSD, transaccionEnMesVista } from '../lib/utils'
-import type { Categoria } from '../lib/types'
+import {
+  convertirARS,
+  cuentaComoSalidaDeEfectivo,
+  esIngresoReintegroTarjetaCredito,
+  formatARS,
+  formatUSD,
+  grupoGastoPorMedio,
+  transaccionEnMesVista,
+  type GrupoGastoPorMedio,
+} from '../lib/utils'
+import type { Categoria, Transaccion } from '../lib/types'
 import { ordenarCategoriasPorTema } from '../lib/categoriasOrden'
 
 const MESES = [
@@ -22,6 +31,16 @@ function parseTipo(raw: string | null): 'ingreso' | 'gasto' | 'suscripcion' | 't
   if (raw === 'ingreso' || raw === 'gasto' || raw === 'suscripcion' || raw === 'todos') return raw
   return 'todos'
 }
+
+const GASTOS_MEDIO_GRUPOS: {
+  key: GrupoGastoPorMedio
+  titulo: string
+  subtitulo: string
+}[] = [
+  { key: 'transferencias', titulo: 'Transferencias', subtitulo: 'Pagos con transferencia' },
+  { key: 'debito', titulo: 'Débito', subtitulo: 'Efectivo y compras con débito' },
+  { key: 'credito', titulo: 'Crédito', subtitulo: 'Tarjeta de crédito' },
+]
 
 export default function MovimientosMes() {
   const [searchParams] = useSearchParams()
@@ -71,14 +90,33 @@ export default function MovimientosMes() {
     })
   }, [transaccionesDelMes, tipo, categoriaIdFiltro, sinTarjetaCredito])
 
+  const gastosPorGrupoMedio = useMemo(() => {
+    if (tipo !== 'gasto') return null
+    const map: Record<GrupoGastoPorMedio, Transaccion[]> = {
+      transferencias: [],
+      debito: [],
+      credito: [],
+    }
+    for (const t of filtradas) {
+      const g = grupoGastoPorMedio(t)
+      if (g) map[g].push(t)
+    }
+    return GASTOS_MEDIO_GRUPOS.map((def) => ({ ...def, items: map[def.key] })).filter((x) => x.items.length > 0)
+  }, [filtradas, tipo])
+
   const resumen = useMemo(() => {
-    const ing = transaccionesDelMes.filter((t) => t.tipo === 'ingreso').reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
+    const ing = transaccionesDelMes
+      .filter((t) => t.tipo === 'ingreso' && !esIngresoReintegroTarjetaCredito(t))
+      .reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
+    const reintegrosTc = transaccionesDelMes
+      .filter(esIngresoReintegroTarjetaCredito)
+      .reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
     const gas = transaccionesDelMes.filter((t) => t.tipo === 'gasto').reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
     const sus = transaccionesDelMes.filter((t) => t.tipo === 'suscripcion').reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
     const salidasEf = transaccionesDelMes
       .filter(cuentaComoSalidaDeEfectivo)
       .reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
-    return { ingresos: ing, gastos: gas, suscripciones: sus, resultadoMes: ing - salidasEf }
+    return { ingresos: ing, reintegrosTc, gastos: gas, suscripciones: sus, resultadoMes: ing - salidasEf }
   }, [transaccionesDelMes, tc])
 
   const nombreCategoriaFiltro = categoriaIdFiltro
@@ -139,9 +177,14 @@ export default function MovimientosMes() {
               className="glass p-4 grid grid-cols-2 gap-3 mb-6"
             >
               <div>
-                <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Ingresos</p>
+                <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Ingresos (efectivo)</p>
                 <p className="text-lg font-semibold text-emerald-400">{formatARS(resumen.ingresos)}</p>
                 <p className="text-xs text-gray-500">{formatUSD(resumen.ingresos / tc)}</p>
+                {resumen.reintegrosTc > 0 && (
+                  <p className="text-[10px] text-rose-400/90 mt-1 leading-snug">
+                    +{formatARS(resumen.reintegrosTc)} reintegro/promo TC (no suma acá; resta en resumen tarjeta)
+                  </p>
+                )}
               </div>
               <div>
                 <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Gastos</p>
@@ -169,7 +212,7 @@ export default function MovimientosMes() {
                 </p>
                 <p className="text-xs text-gray-500 mt-0.5">{formatUSD(saldoAcumulado / tc)}</p>
                 <p className="text-[10px] text-gray-600 mt-2 leading-snug">
-                  Suma de todo tu historial hasta el último día de este mes (mismo criterio que el dashboard: sin tarjeta de crédito). Si el mes anterior te sobró plata, acá sigue contando.
+                  Suma de todo tu historial hasta el último día de este mes (sin consumos en tarjeta de crédito ni reintegros/promos TC). Si el mes anterior te sobró plata, acá sigue contando.
                 </p>
               </div>
               <p className="col-span-2 text-[10px] text-gray-600 leading-snug -mt-1">
@@ -180,6 +223,29 @@ export default function MovimientosMes() {
 
           {filtradas.length === 0 ? (
             <div className="glass p-8 text-center text-gray-500 text-sm">No hay movimientos en este período.</div>
+          ) : tipo === 'gasto' && gastosPorGrupoMedio && gastosPorGrupoMedio.length > 0 ? (
+            <div className="space-y-8">
+              {gastosPorGrupoMedio.map((grupo) => (
+                <div key={grupo.key}>
+                  <div className="mb-2.5">
+                    <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">{grupo.titulo}</h2>
+                    <p className="text-[11px] text-gray-600 mt-0.5">{grupo.subtitulo}</p>
+                  </div>
+                  <ul className="space-y-2">
+                    {grupo.items.map((t, i) => (
+                      <EditableTransaccionListRow
+                        key={t.id}
+                        t={t}
+                        categorias={ordenarCategoriasPorTema(categorias.filter((c) => c.tipo === t.tipo))}
+                        delay={i * 0.02}
+                        mostrarTipo={false}
+                        onMutated={() => refetch()}
+                      />
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
           ) : (
             <ul className="space-y-2">
               {filtradas.map((t, i) => (
