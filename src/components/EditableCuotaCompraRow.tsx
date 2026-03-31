@@ -19,12 +19,14 @@ export default function EditableCuotaCompraRow({ compra, cuotaNumero, delay = 0,
   const [editDesc, setEditDesc] = useState('')
   const [editMontoTotal, setEditMontoTotal] = useState('')
   const [editCategoriaId, setEditCategoriaId] = useState('')
+  const [editFechaPrimera, setEditFechaPrimera] = useState('')
   const [busy, setBusy] = useState(false)
 
   const startEdit = () => {
     setEditDesc(compra.descripcion)
     setEditMontoTotal(formatMontoFromNumber(compra.monto_total))
     setEditCategoriaId(compra.categoria_id ?? '')
+    setEditFechaPrimera(compra.fecha_primera_cuota.slice(0, 10))
     setEditing(true)
   }
 
@@ -32,7 +34,7 @@ export default function EditableCuotaCompraRow({ compra, cuotaNumero, delay = 0,
 
   const save = async () => {
     const total = parseMontoInput(editMontoTotal)
-    if (!editDesc.trim() || !Number.isFinite(total) || total <= 0 || !editCategoriaId) return
+    if (!editDesc.trim() || !Number.isFinite(total) || total <= 0 || !editCategoriaId || !editFechaPrimera) return
     const monto_cuota = Math.round((total / compra.cuotas_total) * 100) / 100
     setBusy(true)
     const { error } = await supabase.from('compras_cuotas').update({
@@ -40,6 +42,7 @@ export default function EditableCuotaCompraRow({ compra, cuotaNumero, delay = 0,
       monto_total: total,
       monto_cuota,
       categoria_id: editCategoriaId,
+      fecha_primera_cuota: editFechaPrimera,
     }).eq('id', compra.id)
     setBusy(false)
     if (error) window.alert('Error: ' + error.message)
@@ -77,6 +80,15 @@ export default function EditableCuotaCompraRow({ compra, cuotaNumero, delay = 0,
           className="input-dark !py-1.5 !text-sm w-full"
           maxLength={100}
         />
+        <div>
+          <label className="block text-[10px] text-gray-500 mb-1">Primera cuota (mes en que arranca el plan; puede ser pasado)</label>
+          <input
+            type="date"
+            value={editFechaPrimera}
+            onChange={(e) => setEditFechaPrimera(e.target.value)}
+            className="input-dark !py-1.5 !text-sm w-full max-w-full"
+          />
+        </div>
         <div className="flex flex-wrap gap-2">
           <select
             value={editCategoriaId}

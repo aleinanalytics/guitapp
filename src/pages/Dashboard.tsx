@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Pencil, Check, X, TrendingUp, TrendingDown, Wallet, CreditCard, RotateCcw, DollarSign, Zap, Plus, PiggyBank, Shield, Store, Banknote } from 'lucide-react'
+import { Pencil, Check, X, TrendingUp, TrendingDown, CreditCard, RotateCcw, DollarSign, Zap, Plus, PiggyBank, Shield, Store, Banknote } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
@@ -11,13 +11,21 @@ import KPICard from '../components/KPICard'
 import PorcentajeDelIngresoKpi from '../components/PorcentajeDelIngresoKpi'
 import MobileUserMenu from '../components/MobileUserMenu'
 import { useTransacciones } from '../hooks/useTransacciones'
+import { useSaldoAcumuladoHastaMes } from '../hooks/useSaldoAcumuladoHastaMes'
 import { useTipoCambio } from '../hooks/useTipoCambio'
 import { useCuotas, getCuotaForMonth } from '../hooks/useCuotas'
 import { useTarjetaConfig, countdownTarjeta, formatFechaTarjeta } from '../hooks/useTarjetaConfig'
 import { useAnalisis } from '../hooks/useAnalisis'
 import type { Categoria, Moneda } from '../lib/types'
 import { supabase } from '../lib/supabase'
-import { convertirARS, cuentaComoSalidaDeEfectivo, formatARS, formatUSD, sumarPorMoneda } from '../lib/utils'
+import {
+  convertirARS,
+  cuentaComoSalidaDeEfectivo,
+  formatARS,
+  formatUSD,
+  montoDisplayClass,
+  sumarPorMoneda,
+} from '../lib/utils'
 import {
   categoriasGastoElegibles,
   principalesGastoOrdenadas,
@@ -96,6 +104,7 @@ export default function Dashboard() {
   }, [categoriasGasto])
 
   const tc = tipoCambio?.usd_ars ?? 1000
+  const { saldoAcumulado, loading: loadingSaldoAcum } = useSaldoAcumuladoHastaMes({ mes, anio, tc })
 
   const ingresos = transacciones
     .filter((t) => t.tipo === 'ingreso')
@@ -112,9 +121,6 @@ export default function Dashboard() {
   const salidasEfectivo = transacciones
     .filter(cuentaComoSalidaDeEfectivo)
     .reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
-
-  /** Disponible del mes: ingresos menos solo lo pagado en efectivo/débito (TC no descuenta). */
-  const balance = ingresos - salidasEfectivo
 
   /** Gastos sin tarjeta de crédito, solo ARS (no mezcla consumos en USD). */
   const gastosSinTcArs = transacciones.filter(
@@ -312,7 +318,6 @@ export default function Dashboard() {
   const toIngresos = `/movimientos?tipo=ingreso&${qMesAnio}`
   const toGastos = `/movimientos?tipo=gasto&${qMesAnio}`
   const toSuscripciones = `/movimientos?tipo=suscripcion&${qMesAnio}`
-  const toBalance = `/movimientos?tipo=todos&${qMesAnio}`
   const toTarjetaCredito = `/tarjeta-credito?${qMesAnio}`
   const toGastoCategoriaKpi =
     kpiCatId !== '' ? `/movimientos?tipo=gasto&categoria_id=${encodeURIComponent(kpiCatId)}&${qMesAnio}` : `/movimientos?tipo=gasto&${qMesAnio}`
@@ -371,25 +376,30 @@ export default function Dashboard() {
         </select>
       </motion.div>
 
-      {loading ? (
+      {loading || loadingSaldoAcum ? (
         <div className="flex items-center justify-center py-20">
           <div className="w-8 h-8 border-2 border-accent-blue/30 border-t-accent-blue rounded-full animate-spin" />
         </div>
       ) : (
         <>
-        <div className="mb-4 min-w-0 lg:mb-5">
-          <KPICard
-            variant="hero"
-            titulo="Balance"
-            montoARS={balance}
-            montoUSD={balance / tc}
-            icon={<Wallet size={24} strokeWidth={1.75} />}
-            accentColor={balance >= 0 ? '#10b981' : '#ef4444'}
-            glowClass={balance >= 0 ? 'glow-green' : 'glow-red'}
-            delay={0}
-            to={toBalance}
-          />
-        </div>
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35 }}
+          className="mb-6 min-w-0 text-center lg:mb-8"
+        >
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500 mb-3">Saldo acumulado</p>
+          <p
+            className={`font-bold tabular-nums leading-[1.05] break-words px-1 max-w-[100vw] ${saldoAcumulado >= 0 ? 'text-white' : 'text-rose-400'} ${montoDisplayClass(saldoAcumulado, 'saldoHero')}`}
+          >
+            {formatARS(saldoAcumulado)}
+          </p>
+          <p
+            className={`mt-2 text-gray-400 break-words px-2 ${montoDisplayClass(saldoAcumulado / tc, 'saldoHeroUsd')}`}
+          >
+            {formatUSD(saldoAcumulado / tc)}
+          </p>
+        </motion.div>
 
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-6 lg:gap-4">
           <div className="grid min-w-0 grid-cols-2 gap-3 lg:contents">
@@ -552,16 +562,20 @@ export default function Dashboard() {
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-3 sm:gap-4">
                 <div className="text-center min-w-0">
                   <p className="text-[10px] text-gray-500 uppercase tracking-wide">ARS</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-gray-50 tabular-nums leading-tight mt-0.5 break-words">
+                  <p
+                    className={`font-bold text-gray-50 tabular-nums leading-tight mt-0.5 break-words ${montoDisplayClass(tarjetaData.totalArs, 'pairArs')}`}
+                  >
                     {formatARS(tarjetaData.totalArs)}
                   </p>
                 </div>
                 <div className="text-center min-w-0">
                   <p className="text-[10px] text-gray-500 uppercase tracking-wide">USD</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-gray-50 tabular-nums leading-tight mt-0.5 break-words">
+                  <p
+                    className={`font-bold text-gray-50 tabular-nums leading-tight mt-0.5 break-words ${montoDisplayClass(tarjetaData.totalUsd, 'pairUsd')}`}
+                  >
                     {formatUSD(tarjetaData.totalUsd)}
                   </p>
                 </div>
@@ -715,7 +729,7 @@ export default function Dashboard() {
         >
           <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Reservas</p>
           <p className="text-[11px] text-gray-500 mb-3 leading-snug">
-            Asigná plata al margen de tus gastos.{' '}
+            Asigná plata al margen de tus gastos (cifra acumulada de todo tu historial, no solo el mes del selector).{' '}
             {!loadingBolsillos ? (
               <>
                 Disponible:{' '}

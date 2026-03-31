@@ -78,6 +78,20 @@ export function principalDeCategoria(
   return null
 }
 
+/**
+ * Gastos en categoría o principal llamada "Otros" no entran al presupuesto (imprevistos).
+ * Nombre exacto "otros" (sin distinguir mayúsculas).
+ */
+export function esGastoOtrosExcluidoDePresupuesto(
+  cat: Categoria | undefined,
+  categorias: Categoria[],
+): boolean {
+  if (!cat || cat.tipo !== 'gasto') return false
+  if (cat.nombre.trim().toLowerCase() === 'otros') return true
+  const p = principalDeCategoria(cat, categorias)
+  return !!(p && p.nombre.trim().toLowerCase() === 'otros')
+}
+
 /** Etiqueta "Principal › Sub" para selects. */
 export function etiquetaCategoriaGasto(cat: Categoria, categorias: Categoria[]): string {
   const p = principalDeCategoria(cat, categorias)

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { format, startOfDay } from 'date-fns'
 import { Link, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, CreditCard, Calendar, Pencil, Check, X } from 'lucide-react'
@@ -9,7 +10,7 @@ import MobileUserMenu from '../components/MobileUserMenu'
 import { useTransacciones } from '../hooks/useTransacciones'
 import { useCuotas, getCuotaForMonth } from '../hooks/useCuotas'
 import { useTarjetaConfig, diasHastaFecha, formatFechaTarjeta, rangoPickerTarjeta } from '../hooks/useTarjetaConfig'
-import { formatARS, formatUSD, sumarPorMoneda } from '../lib/utils'
+import { formatARS, formatUSD, montoDisplayClass, sumarPorMoneda } from '../lib/utils'
 import type { Categoria, Moneda } from '../lib/types'
 
 const MESES = [
@@ -56,8 +57,9 @@ export default function TarjetaCreditoMes() {
       setInputCierre(tcConfig.fecha_cierre)
       setInputVto(tcConfig.fecha_vencimiento)
     } else {
-      setInputCierre(pickerBounds.min)
-      setInputVto(pickerBounds.min)
+      const hoy = format(startOfDay(new Date()), 'yyyy-MM-dd')
+      setInputCierre(hoy)
+      setInputVto(hoy)
     }
     setEditingConfig(true)
   }
@@ -180,8 +182,8 @@ export default function TarjetaCreditoMes() {
               className="space-y-3"
             >
               <p className="text-xs text-gray-500 leading-relaxed">
-                Usá el calendario para elegir <strong className="text-gray-400">día y mes</strong>. Las fechas pueden ir desde hoy hasta
-                aproximadamente <strong className="text-gray-400">tres meses adelante</strong>, así podés cargar cierre en un mes y vencimiento en el siguiente.
+                Podés usar <strong className="text-gray-400">fechas pasadas</strong> si arrancás la app tarde, y un vencimiento
+                <strong className="text-gray-400"> varios meses después del cierre</strong>. Rango aproximado: 15 años atrás — 5 años adelante.
               </p>
               <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-end">
                 <div className="flex-1 min-w-0">
@@ -257,14 +259,22 @@ export default function TarjetaCreditoMes() {
             <div className="absolute top-0 left-0 right-0 h-[2px] opacity-60 bg-gradient-to-r from-transparent via-rose-500 to-transparent" />
             <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Total del mes (por moneda)</p>
             <p className="text-[11px] text-gray-600 mt-1 mb-3">Sin convertir: lo cargado en pesos y lo cargado en dólares por separado.</p>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-xl bg-white/[0.04] px-3 py-2.5">
+            <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
+              <div className="rounded-xl bg-white/[0.04] px-3 py-2.5 min-w-0">
                 <p className="text-[10px] text-gray-500 uppercase tracking-wide">Total ARS</p>
-                <p className="text-2xl sm:text-3xl font-bold text-gray-50 tabular-nums mt-0.5">{formatARS(totalArs)}</p>
+                <p
+                  className={`font-bold text-gray-50 tabular-nums mt-0.5 leading-tight break-words ${montoDisplayClass(totalArs, 'pairArs')}`}
+                >
+                  {formatARS(totalArs)}
+                </p>
               </div>
-              <div className="rounded-xl bg-white/[0.04] px-3 py-2.5">
+              <div className="rounded-xl bg-white/[0.04] px-3 py-2.5 min-w-0">
                 <p className="text-[10px] text-gray-500 uppercase tracking-wide">Total USD</p>
-                <p className="text-2xl sm:text-3xl font-bold text-gray-50 tabular-nums mt-0.5">{formatUSD(totalUsd)}</p>
+                <p
+                  className={`font-bold text-gray-50 tabular-nums mt-0.5 leading-tight break-words ${montoDisplayClass(totalUsd, 'pairUsd')}`}
+                >
+                  {formatUSD(totalUsd)}
+                </p>
               </div>
             </div>
             <div className="mt-3 pt-3 border-t border-white/[0.06] grid grid-cols-2 gap-3 text-xs">
@@ -306,7 +316,10 @@ export default function TarjetaCreditoMes() {
           </section>
 
           <section className="mb-8">
-            <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3">Cuotas que vencen este mes</h2>
+            <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-1">Cuotas que vencen este mes</h2>
+            <p className="text-[11px] text-gray-500 mb-3">
+              Para corregir el mes de inicio de un plan viejo, editá la compra y cambiá &quot;Primera cuota&quot;.
+            </p>
             {cuotaLines.length === 0 ? (
               <p className="text-gray-500 text-sm glass-light p-4 rounded-xl">Sin cuotas activas en este mes.</p>
             ) : (

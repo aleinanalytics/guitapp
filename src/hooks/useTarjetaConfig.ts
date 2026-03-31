@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { addMonths, endOfMonth, format, isBefore, parseISO, startOfDay } from 'date-fns'
+import { addMonths, format, isBefore, parseISO, startOfDay } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { supabase } from '../lib/supabase'
 import type { TarjetaConfig } from '../lib/types'
@@ -32,13 +32,15 @@ export function formatFechaTarjeta(iso: string): string {
   return format(fechaProximaCiclo(iso), "d MMM yyyy", { locale: es })
 }
 
-/** Mínimo: hoy. Máximo: fin del mes dentro de 2 meses (cubre cierre este mes / mes próximo / vencimiento más adelante). */
+/**
+ * Rango amplio para cierre/vencimiento: permite fechas pasadas (alta tardía) y vencimientos
+ * varios meses después del cierre (antes el tope ~2 meses rechazaba p. ej. junio si hoy es marzo).
+ */
 export function rangoPickerTarjeta(): { min: string; max: string } {
   const today = startOfDay(new Date())
-  const finVentana = endOfMonth(addMonths(today, 2))
   return {
-    min: format(today, 'yyyy-MM-dd'),
-    max: format(finVentana, 'yyyy-MM-dd'),
+    min: format(addMonths(today, -180), 'yyyy-MM-dd'),
+    max: format(addMonths(today, 60), 'yyyy-MM-dd'),
   }
 }
 
@@ -88,7 +90,9 @@ export function useTarjetaConfig() {
 
     const { min, max } = rangoPickerTarjeta()
     if (fecha_cierre < min || fecha_cierre > max || fecha_vencimiento < min || fecha_vencimiento > max) {
-      window.alert('Las fechas deben estar dentro del rango permitido (desde hoy hasta unos tres meses).')
+      window.alert(
+        'Las fechas deben estar entre aproximadamente 15 años atrás y 5 años adelante. Si ves este mensaje con fechas razonables, revisá el año en el calendario.',
+      )
       return false
     }
     if (fecha_vencimiento < fecha_cierre) {

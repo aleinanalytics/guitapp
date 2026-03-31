@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
-import { formatARS, formatUSD } from '../lib/utils'
+import { formatARS, formatUSD, montoDisplayClass } from '../lib/utils'
 
 interface KPICardProps {
   titulo: string
@@ -63,28 +63,34 @@ export default function KPICard({
             topAccessory ? 'pr-8 sm:pr-9' : ''
           }`}
         >
-          <p className="min-w-0 truncate text-xs font-medium uppercase tracking-wider text-gray-400">{titulo}</p>
+          <p
+            className={`min-w-0 text-xs font-medium uppercase tracking-wider text-gray-400 ${
+              ms ? 'text-center lg:text-left line-clamp-2 break-words leading-tight' : 'truncate'
+            }`}
+          >
+            {titulo}
+          </p>
           {icon && <div className="text-gray-500 shrink-0">{icon}</div>}
         </div>
       )}
       <p
-        className={`font-bold text-gray-50 tracking-tight tabular-nums ${
+        className={`font-bold text-gray-50 tracking-tight tabular-nums leading-tight break-words ${
           isHero
-            ? 'text-4xl sm:text-5xl lg:text-6xl'
+            ? montoDisplayClass(montoARS, 'kpiHero')
             : ms
-              ? 'text-center text-2xl lg:text-left lg:text-xl'
-              : 'text-xl'
+              ? `text-center lg:text-left ${montoDisplayClass(montoARS, 'kpiStat')}`
+              : montoDisplayClass(montoARS, 'kpiInline')
         }`}
       >
         {formatARS(montoARS)}
       </p>
       {montoUSD !== undefined && (
         <p
-          className={`mt-1 text-gray-500 ${
+          className={`mt-1 text-gray-500 break-words ${
             isHero
-              ? 'text-lg sm:text-xl'
+              ? montoDisplayClass(montoUSD, 'heroUsd')
               : ms
-                ? 'text-center text-xs lg:text-left lg:text-sm'
+                ? `text-center lg:text-left ${montoDisplayClass(montoUSD, 'pairUsd')}`
                 : 'text-sm mt-0.5'
           }`}
         >
@@ -102,7 +108,11 @@ export default function KPICard({
         </div>
       )}
       {descripcion && (
-        <p className={`text-xs text-gray-500 mt-2 truncate ${ms ? 'text-center lg:text-left' : ''}`}>
+        <p
+          className={`text-xs text-gray-500 mt-2 ${isHero ? 'max-w-lg mx-auto leading-snug px-1' : 'truncate'} ${
+            ms ? 'text-center lg:text-left' : ''
+          }`}
+        >
           {descripcion}
         </p>
       )}

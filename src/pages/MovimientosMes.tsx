@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase'
 import EditableTransaccionListRow from '../components/EditableTransaccionListRow'
 import MobileUserMenu from '../components/MobileUserMenu'
 import { useTransacciones } from '../hooks/useTransacciones'
+import { useSaldoAcumuladoHastaMes } from '../hooks/useSaldoAcumuladoHastaMes'
 import { useTipoCambio } from '../hooks/useTipoCambio'
 import { convertirARS, cuentaComoSalidaDeEfectivo, formatARS, formatUSD } from '../lib/utils'
 import type { Categoria } from '../lib/types'
@@ -34,6 +35,7 @@ export default function MovimientosMes() {
   const { transacciones, loading, error, refetch } = useTransacciones({ mes, anio })
   const { tipoCambio } = useTipoCambio()
   const tc = tipoCambio?.usd_ars ?? 1000
+  const { saldoAcumulado, loading: loadingSaldoAcum } = useSaldoAcumuladoHastaMes({ mes, anio, tc })
   const [categorias, setCategorias] = useState<Categoria[]>([])
 
   useEffect(() => {
@@ -61,7 +63,7 @@ export default function MovimientosMes() {
     const salidasEf = transacciones
       .filter(cuentaComoSalidaDeEfectivo)
       .reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
-    return { ingresos: ing, gastos: gas, suscripciones: sus, balance: ing - salidasEf }
+    return { ingresos: ing, gastos: gas, suscripciones: sus, resultadoMes: ing - salidasEf }
   }, [transacciones, tc])
 
   const nombreCategoriaFiltro = categoriaIdFiltro
@@ -101,7 +103,7 @@ export default function MovimientosMes() {
         </div>
       </motion.div>
 
-      {loading ? (
+      {loading || (tipo === 'todos' && loadingSaldoAcum) ? (
         <div className="flex items-center justify-center py-20">
           <div className="w-8 h-8 border-2 border-accent-blue/30 border-t-accent-blue rounded-full animate-spin" />
         </div>
@@ -131,12 +133,27 @@ export default function MovimientosMes() {
                 <p className="text-xs text-gray-500">{formatUSD(resumen.suscripciones / tc)}</p>
               </div>
               <div>
-                <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Balance</p>
-                <p className={`text-lg font-semibold ${resumen.balance >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                  {formatARS(resumen.balance)}
+                <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Resultado del mes</p>
+                <p className={`text-lg font-semibold ${resumen.resultadoMes >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {formatARS(resumen.resultadoMes)}
                 </p>
-                <p className="text-xs text-gray-500">{formatUSD(resumen.balance / tc)}</p>
+                <p className="text-xs text-gray-500">{formatUSD(resumen.resultadoMes / tc)}</p>
               </div>
+              <div className="col-span-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5">
+                <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                  Saldo acumulado hasta fin de {MESES[mes - 1]}
+                </p>
+                <p className={`text-xl font-bold tabular-nums ${saldoAcumulado >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {formatARS(saldoAcumulado)}
+                </p>
+                <p className="text-xs text-gray-500 mt-0.5">{formatUSD(saldoAcumulado / tc)}</p>
+                <p className="text-[10px] text-gray-600 mt-2 leading-snug">
+                  Suma de todo tu historial hasta el último día de este mes (mismo criterio que el dashboard: sin tarjeta de crédito). Si el mes anterior te sobró plata, acá sigue contando.
+                </p>
+              </div>
+              <p className="col-span-2 text-[10px] text-gray-600 leading-snug -mt-1">
+                Resultado del mes = ingresos del mes − gastos y suscripciones en efectivo, transferencia o débito (sin tarjeta de crédito).
+              </p>
             </motion.div>
           )}
 

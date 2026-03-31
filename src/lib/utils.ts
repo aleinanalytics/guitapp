@@ -1,8 +1,10 @@
 import type { Moneda, Transaccion } from './types'
 
 /**
- * Efectivo, débito (medio_pago efectivo en BD) o transferencia: salen del disponible.
- * Tarjeta de crédito no descuenta del disponible del mes.
+ * Salidas que restan del “balance” mensual y del disponible acumulado (useBolsillos):
+ * - Efectivo y transferencia (`medio_pago` tal cual en BD).
+ * - Tarjeta de débito: en Carga se guarda como `medio_pago === 'efectivo'`, así que también resta.
+ * Tarjeta de crédito (`medio_pago === 'tarjeta'`) no resta; va al flujo de tarjeta.
  */
 export function cuentaComoSalidaDeEfectivo(t: Pick<Transaccion, 'tipo' | 'medio_pago'>): boolean {
   return (
@@ -17,6 +19,82 @@ export function formatARS(n: number): string {
 
 export function formatUSD(n: number): string {
   return 'USD ' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+/**
+ * Escala tipografía según magnitud para que montos en millones no desborden la tarjeta o el input.
+ */
+export function montoDisplayClass(
+  value: number,
+  kind:
+    | 'cargaInput'
+    | 'kpiHero'
+    | 'kpiStat'
+    | 'kpiInline'
+    | 'pairArs'
+    | 'pairUsd'
+    | 'heroUsd'
+    | 'saldoHero'
+    | 'saldoHeroUsd',
+): string {
+  const n = Math.abs(value)
+  /** Saldo acumulado en inicio: más grande y fluido al ancho (clamp + vw). */
+  if (kind === 'saldoHero') {
+    if (n >= 10_000_000)
+      return 'text-[clamp(1.5rem,calc(4.5vw_+_0.85rem),2.65rem)] sm:text-[clamp(1.65rem,calc(5vw_+_0.9rem),3rem)] lg:text-[clamp(1.75rem,calc(3.8vw_+_1rem),3.35rem)]'
+    if (n >= 1_000_000)
+      return 'text-[clamp(1.65rem,calc(5.5vw_+_1rem),3.2rem)] sm:text-[clamp(1.85rem,calc(6vw_+_1.1rem),3.65rem)] lg:text-[clamp(2rem,calc(4.8vw_+_1.2rem),4.1rem)]'
+    if (n >= 100_000)
+      return 'text-[clamp(1.85rem,calc(6.5vw_+_1.1rem),3.5rem)] sm:text-[clamp(2.05rem,calc(7vw_+_1.2rem),4rem)] lg:text-[clamp(2.2rem,calc(5.5vw_+_1.35rem),4.5rem)]'
+    return 'text-[clamp(2rem,calc(7.5vw_+_1.2rem),3.85rem)] sm:text-[clamp(2.2rem,calc(7vw_+_1.4rem),4.35rem)] lg:text-[clamp(2.4rem,calc(5.8vw_+_1.5rem),5rem)]'
+  }
+  if (kind === 'saldoHeroUsd') {
+    if (n >= 100_000) return 'text-[clamp(0.8rem,calc(2.2vw_+_0.55rem),1rem)]'
+    if (n >= 10_000) return 'text-[clamp(0.85rem,calc(2.5vw_+_0.6rem),1.1rem)]'
+    return 'text-[clamp(0.9rem,calc(2.8vw_+_0.65rem),1.25rem)] sm:text-[clamp(1rem,calc(2.4vw_+_0.7rem),1.35rem)]'
+  }
+  if (kind === 'cargaInput') {
+    if (n >= 10_000_000) return 'text-3xl sm:text-4xl'
+    if (n >= 1_000_000) return 'text-4xl sm:text-5xl'
+    if (n >= 100_000) return 'text-5xl sm:text-6xl'
+    return 'text-6xl sm:text-7xl'
+  }
+  if (kind === 'kpiHero') {
+    if (n >= 10_000_000) return 'text-xl sm:text-2xl md:text-3xl lg:text-4xl'
+    if (n >= 1_000_000) return 'text-2xl sm:text-3xl lg:text-4xl xl:text-5xl'
+    if (n >= 100_000) return 'text-3xl sm:text-4xl lg:text-5xl xl:text-6xl'
+    return 'text-4xl sm:text-5xl lg:text-6xl'
+  }
+  if (kind === 'kpiStat') {
+    if (n >= 10_000_000) return 'text-base sm:text-lg lg:text-xl'
+    if (n >= 1_000_000) return 'text-lg sm:text-xl lg:text-2xl'
+    if (n >= 100_000) return 'text-xl sm:text-2xl lg:text-xl'
+    return 'text-2xl sm:text-2xl lg:text-xl'
+  }
+  /** KPI compactos en grilla (p. ej. Análisis anual): base ~text-xl, se achica con millones. */
+  if (kind === 'kpiInline') {
+    if (n >= 10_000_000) return 'text-sm sm:text-base'
+    if (n >= 1_000_000) return 'text-base sm:text-lg'
+    if (n >= 100_000) return 'text-lg sm:text-xl'
+    return 'text-xl'
+  }
+  if (kind === 'pairArs') {
+    if (n >= 10_000_000) return 'text-base sm:text-lg'
+    if (n >= 1_000_000) return 'text-lg sm:text-xl'
+    if (n >= 100_000) return 'text-xl sm:text-2xl'
+    return 'text-2xl sm:text-3xl'
+  }
+  if (kind === 'pairUsd') {
+    if (n >= 100_000) return 'text-base sm:text-lg'
+    if (n >= 10_000) return 'text-lg sm:text-xl'
+    return 'text-xl sm:text-2xl'
+  }
+  if (kind === 'heroUsd') {
+    if (n >= 100_000) return 'text-sm sm:text-base'
+    if (n >= 10_000) return 'text-base sm:text-lg'
+    return 'text-lg sm:text-xl'
+  }
+  return ''
 }
 
 export function convertirARS(monto: number, moneda: Moneda, tipoCambio: number): number {

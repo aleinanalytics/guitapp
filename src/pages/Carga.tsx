@@ -5,7 +5,7 @@ import MobileUserMenu from '../components/MobileUserMenu'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import { useCuotas } from '../hooks/useCuotas'
-import { formatARS, formatMontoFromNumber, montoFieldNextValue, parseMontoInput } from '../lib/utils'
+import { formatARS, formatMontoFromNumber, montoDisplayClass, montoFieldNextValue, parseMontoInput } from '../lib/utils'
 import type { Categoria, Moneda, MedioPago, TipoTransaccion, Transaccion } from '../lib/types'
 import { ordenarCategoriasPorTema } from '../lib/categoriasOrden'
 import {
@@ -166,6 +166,9 @@ function MedioPagoGastoFields({
                       />
                     </div>
                   </div>
+                  <p className="text-[10px] text-gray-600 leading-snug">
+                    Podés usar una fecha pasada si la compra ya venía en cuotas antes de usar la app.
+                  </p>
                   {(() => {
                     const montoNum = parseMontoInput(monto)
                     const nC = parseInt(numCuotas)
@@ -288,6 +291,9 @@ function MedioPagoSuscripcionFields({
                       />
                     </div>
                   </div>
+                  <p className="text-[10px] text-gray-600 leading-snug">
+                    Podés usar una fecha pasada si la compra ya venía en cuotas antes de usar la app.
+                  </p>
                   {(() => {
                     const montoNum = parseMontoInput(monto)
                     const nC = parseInt(numCuotas)
@@ -337,6 +343,12 @@ export default function Carga() {
   const [enCuotas, setEnCuotas] = useState(false)
   const [numCuotas, setNumCuotas] = useState('')
   const [cuotaFechaInline, setCuotaFechaInline] = useState(today)
+
+  const cargaMontoClassMobile = useMemo(() => {
+    const v = parseMontoInput(monto)
+    if (!Number.isFinite(v) || v <= 0) return 'text-6xl sm:text-7xl'
+    return montoDisplayClass(v, 'cargaInput')
+  }, [monto])
 
   const medioPagoDb: MedioPago =
     tipo === 'ingreso'
@@ -619,7 +631,7 @@ export default function Carga() {
                     onChange={(e) => setMonto(montoFieldNextValue(monto, e.target.value))}
                     required
                     placeholder="0,00"
-                    className="min-w-0 max-w-[min(100%,17rem)] sm:max-w-[20rem] bg-transparent border-0 text-center text-6xl font-bold leading-[1.05] tracking-tight text-gray-50 placeholder:text-gray-700 focus:ring-0 focus:outline-none sm:text-7xl sm:leading-[1.02]"
+                    className={`min-w-0 max-w-full w-full sm:max-w-[min(100%,22rem)] bg-transparent border-0 text-center font-bold leading-[1.05] tracking-tight text-gray-50 placeholder:text-gray-700 focus:ring-0 focus:outline-none sm:leading-[1.02] ${cargaMontoClassMobile}`}
                   />
                   <div className="flex rounded-xl bg-dark-800/90 p-0.5 gap-0.5 ring-1 ring-white/[0.06] shrink-0 mb-1 sm:mb-1.5">
                     {(['ARS', 'USD'] as Moneda[]).map((m) => (
@@ -941,8 +953,9 @@ export default function Carga() {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
             className="glass p-5 mb-6">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-base font-semibold text-gray-200 flex items-center gap-2">
-                <CreditCard size={18} className="text-rose-400" /> Compras en Cuotas
+              <h2 className="text-base font-semibold text-gray-200 flex items-center gap-2 min-w-0">
+                <CreditCard size={18} className="text-rose-400 shrink-0" />{' '}
+                <span className="truncate min-w-0">Compras en cuotas</span>
               </h2>
               <button onClick={() => setShowCuotaForm(!showCuotaForm)}
                 className="text-xs text-accent-blue hover:text-accent-blue/80 transition-colors">
@@ -970,6 +983,9 @@ export default function Carga() {
                     <input type="number" value={cuotasTotal} onChange={(e) => setCuotasTotal(e.target.value)}
                       placeholder="Nº cuotas" min="2" max="48" required className="input-dark" />
                   </div>
+                  <p className="text-[10px] text-gray-600 leading-snug -mt-1">
+                    La primera cuota puede ser en el pasado para cargar planes que ya tenías.
+                  </p>
                   <div className="grid grid-cols-2 gap-2">
                     <input type="date" value={cuotaFecha} onChange={(e) => setCuotaFecha(e.target.value)}
                       required className="input-dark" />

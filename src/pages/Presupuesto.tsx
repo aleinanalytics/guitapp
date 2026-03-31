@@ -7,7 +7,7 @@ import { useAuth } from '../lib/AuthContext'
 import { convertirARS, formatARS } from '../lib/utils'
 import type { Categoria, Transaccion } from '../lib/types'
 import { getUltimoIpcReferencia } from '../lib/ipcArgentinaMensual'
-import { principalDeCategoria } from '../lib/categoriasJerarquia'
+import { esGastoOtrosExcluidoDePresupuesto, principalDeCategoria } from '../lib/categoriasJerarquia'
 
 const MESES_FULL = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -92,6 +92,8 @@ export default function Presupuesto() {
 
     const porCat = new Map<string, { var: number; fijo: number }>()
     for (const t of transaccionesBase) {
+      const catTx = t.categoria ?? categorias.find((c) => c.id === t.categoria_id)
+      if (esGastoOtrosExcluidoDePresupuesto(catTx, categorias)) continue
       const id = t.categoria_id ?? '__sin__'
       const ars = convertirARS(t.monto, t.moneda, tc)
       const cur = porCat.get(id) ?? { var: 0, fijo: 0 }
@@ -175,7 +177,9 @@ export default function Presupuesto() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-50 lg:text-3xl">Presupuesto</h1>
-            <p className="text-sm text-gray-500">Proyección sobre tu gasto del mes anterior</p>
+            <p className="text-sm text-gray-500">
+              Proyección sobre tu gasto del mes anterior (sin categoría ni principal &quot;Otros&quot;).
+            </p>
           </div>
         </div>
         <div className="lg:hidden">

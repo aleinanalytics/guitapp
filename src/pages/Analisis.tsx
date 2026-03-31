@@ -2,14 +2,15 @@ import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
-  PieChart, Pie, Cell, AreaChart, Area, CartesianGrid,
+  PieChart, Pie, Cell, AreaChart, Area, CartesianGrid, ComposedChart, Line,
 } from 'recharts'
 import type { PieLabelRenderProps } from 'recharts'
 import KPICard from '../components/KPICard'
 import { useAnalisis } from '../hooks/useAnalisis'
 import { supabase } from '../lib/supabase'
 import { convertirARS, cuentaComoSalidaDeEfectivo, formatARS } from '../lib/utils'
-import type { TipoTransaccion } from '../lib/types'
+import type { Moneda, TipoTransaccion, Transaccion } from '../lib/types'
+import { ultimoDiaDelMes } from '../hooks/useSaldoAcumuladoHastaMes'
 import {
   getIpcMensual,
   writeIpcOverride,
@@ -40,6 +41,8 @@ const CHART_COLORS = {
 
 type MomCatRow = { catId: string; nombre: string; tipo: TipoTransaccion; anterior: number; actual: number }
 
+type TxSaldoMin = { fecha: string; monto: number; moneda: string; tipo: string; medio_pago: string }
+
 function aggregateMomRows(rows: MomCatRow[]) {
   const anterior = rows.reduce((s, r) => s + r.anterior, 0)
   const actual = rows.reduce((s, r) => s + r.actual, 0)
@@ -60,6 +63,31 @@ export default function Analisis() {
   const [tipoCambio, setTipoCambio] = useState(1000)
 
   const { transacciones, loading } = useAnalisis({ anio: anioSeleccionado })
+
+  /** Historial completo (mínimo) para saldo acumulado por mes, alineado con Inicio. */
+  const [txSaldoHist, setTxSaldoHist] = useState<TxSaldoMin[]>([])
+  const [loadingSaldoHist, setLoadingSaldoHist] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    setLoadingSaldoHist(true)
+    void supabase
+      .from('transacciones')
+      .select('fecha,monto,moneda,tipo,medio_pago')
+      .order('fecha', { ascending: true })
+      .then(({ data, error }) => {
+        if (cancelled) return
+        if (error) {
+          setTxSaldoHist([])
+        } else {
+          setTxSaldoHist((data as TxSaldoMin[]) ?? [])
+        }
+        setLoadingSaldoHist(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     supabase
@@ -95,13 +123,49 @@ export default function Analisis() {
     return months
   }, [transacciones, tc])
 
-  // Balance mensual = disponible (sin restar gastos/suscripciones solo con tarjeta de crédito)
-  const balanceData = useMemo(() => {
-    return barData.map((m) => ({
-      mes: m.mes,
-      Balance: m.Ingresos - m.SalidaEfectivo,
-    }))
-  }, [barData])
+  /** Balance solo del mes + saldo acumulado hasta fin de cada mes (todo el historial; sin TC). */
+  const balanceDualData = useMemo(() => {
+    let ti = 0
+    let running = 0
+    const sorted = txSaldoHist
+    return barData.map((row, idx) => {
+      const m = idx + 1
+      const hasta = ultimoDiaDelMes(anioSeleccionado, m)
+      while (ti < sorted.length && sorted[ti].fecha <= hasta) {
+        const t = sorted[ti++]
+        const ars = convertirARS(Number(t.monto), t.moneda as Moneda, tc)
+        if (t.tipo === 'ingreso') running += ars
+        else if (cuentaComoSalidaDeEfectivo(t as Transaccion)) running -= ars
+      }
+      return {
+        mes: row.mes,
+        BalanceMes: row.Ingresos - row.SalidaEfectivo,
+        SaldoAcumulado: running,
+      }
+    })
+  }, [txSaldoHist, barData, anioSeleccionado, tc])
+
+  const saldosAcumuladosMom = useMemo(() => {
+    const acumHasta = (hasta: string) => {
+      let ing = 0
+      let sal = 0
+      for (const t of txSaldoHist) {
+        if (t.fecha > hasta) break
+        const ars = convertirARS(Number(t.monto), t.moneda as Moneda, tc)
+        if (t.tipo === 'ingreso') ing += ars
+        else if (cuentaComoSalidaDeEfectivo(t as Transaccion)) sal += ars
+      }
+      return ing - sal
+    }
+    const prevMes = mesSeleccionado === 1 ? 12 : mesSeleccionado - 1
+    const prevAnio = mesSeleccionado === 1 ? anioSeleccionado - 1 : anioSeleccionado
+    const hastaAct = ultimoDiaDelMes(anioSeleccionado, mesSeleccionado)
+    const hastaPrev = ultimoDiaDelMes(prevAnio, prevMes)
+    return {
+      finMesActual: acumHasta(hastaAct),
+      finMesAnterior: acumHasta(hastaPrev),
+    }
+  }, [txSaldoHist, tc, anioSeleccionado, mesSeleccionado])
 
   // Section 2: Category donut
   const donutData = useMemo(() => {
@@ -223,12 +287,12 @@ export default function Analisis() {
     const saldoMes = (mes: number, anio: number) => {
       let ing = 0
       let salidas = 0
-      for (const t of transacciones) {
+      for (const t of txSaldoHist) {
         const d = new Date(t.fecha + 'T00:00:00')
         if (d.getMonth() + 1 !== mes || d.getFullYear() !== anio) continue
-        const ars = convertirARS(t.monto, t.moneda, tc)
+        const ars = convertirARS(Number(t.monto), t.moneda as Moneda, tc)
         if (t.tipo === 'ingreso') ing += ars
-        else if (cuentaComoSalidaDeEfectivo(t)) salidas += ars
+        else if (cuentaComoSalidaDeEfectivo(t as Transaccion)) salidas += ars
       }
       return ing - salidas
     }
@@ -237,7 +301,7 @@ export default function Analisis() {
     const anterior = saldoMes(prevMes, prevAnio)
     const actual = saldoMes(mesSeleccionado, anioSeleccionado)
     return { anterior, actual, delta: actual - anterior }
-  }, [transacciones, mesSeleccionado, anioSeleccionado, tc])
+  }, [txSaldoHist, mesSeleccionado, anioSeleccionado, tc])
 
   // Section 4: Annual summary
   const annualSummary = useMemo(() => {
@@ -429,7 +493,7 @@ export default function Analisis() {
         </select>
       </motion.div>
 
-      {loading ? (
+      {loading || loadingSaldoHist ? (
         <div className="flex items-center justify-center py-20">
           <div className="w-8 h-8 border-2 border-accent-blue/30 border-t-accent-blue rounded-full animate-spin" />
         </div>
@@ -459,39 +523,97 @@ export default function Analisis() {
             </ResponsiveContainer>
           </motion.section>
 
-          {/* Balance area chart */}
+          {/* Balance del mes + saldo acumulado (misma lógica que Inicio) */}
           <motion.section
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
             className="glass p-4 lg:p-6 mb-6"
           >
-            <h2 className="text-base font-semibold text-gray-200 mb-1">Balance mensual</h2>
-            <p className="text-[11px] text-gray-500 mb-4">Ingresos menos gastos y suscripciones en efectivo o débito; no resta lo pagado con tarjeta de crédito.</p>
-            <ResponsiveContainer width="100%" height={200}>
-              <AreaChart data={balanceData}>
+            <h2 className="text-base font-semibold text-gray-200 mb-1">Balance del mes y saldo acumulado</h2>
+            <p className="text-[11px] text-gray-500 mb-4 leading-relaxed">
+              <strong className="text-gray-400">Balance del mes</strong> (área): solo ese mes, ingresos menos salidas en efectivo, transferencia o débito; sin tarjeta de crédito.{' '}
+              <strong className="text-gray-400">Saldo acumulado</strong> (línea): todo tu historial hasta el último día de cada mes — el superávit de meses previos se arrastra, igual que en el inicio.
+            </p>
+            <ResponsiveContainer width="100%" height={260}>
+              <ComposedChart data={balanceDualData} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
                 <defs>
                   <linearGradient id="balanceGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#6366f1" stopOpacity={0.3} />
+                    <stop offset="0%" stopColor="#6366f1" stopOpacity={0.35} />
                     <stop offset="100%" stopColor="#6366f1" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <XAxis dataKey="mes" tick={{ fontSize: 11, fill: CHART_COLORS.axis }} axisLine={false} tickLine={false} />
-                <YAxis tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11, fill: CHART_COLORS.axis }} axisLine={false} tickLine={false} />
+                <YAxis
+                  yAxisId="left"
+                  tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`}
+                  tick={{ fontSize: 10, fill: '#818cf8' }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={44}
+                />
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`}
+                  tick={{ fontSize: 10, fill: '#34d399' }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={44}
+                />
                 <Tooltip
                   content={({ active, payload, label }) => {
                     if (!active || !payload?.length) return null
+                    const bal = payload.find((p) => p.dataKey === 'BalanceMes')
+                    const acu = payload.find((p) => p.dataKey === 'SaldoAcumulado')
                     return (
-                      <div className="glass p-2 text-sm" style={{ background: CHART_COLORS.tooltipBg }}>
-                        <p className="text-gray-400 text-xs">{label}</p>
-                        <p className="text-accent-blue font-semibold">{formatARS(Number(payload[0].value))}</p>
+                      <div className="glass p-2.5 text-sm border border-white/[0.08]" style={{ background: CHART_COLORS.tooltipBg }}>
+                        <p className="text-gray-400 text-xs mb-1">{label} {anioSeleccionado}</p>
+                        {bal != null && (
+                          <p className="text-indigo-300 text-xs">
+                            Balance del mes: <span className="font-semibold">{formatARS(Number(bal.value))}</span>
+                          </p>
+                        )}
+                        {acu != null && (
+                          <p className="text-emerald-400/90 text-xs mt-0.5">
+                            Saldo acumulado: <span className="font-semibold">{formatARS(Number(acu.value))}</span>
+                          </p>
+                        )}
                       </div>
                     )
                   }}
-                  cursor={false}
+                  cursor={{ stroke: 'rgba(255,255,255,0.06)' }}
                 />
-                <Area type="monotone" dataKey="Balance" stroke="#6366f1" strokeWidth={2} fill="url(#balanceGrad)" dot={false} activeDot={{ r: 4, fill: '#6366f1', stroke: '#151524', strokeWidth: 2 }} />
-              </AreaChart>
+                <Legend
+                  wrapperStyle={{ paddingTop: 8 }}
+                  formatter={(value: string) => (
+                    <span className="text-xs text-gray-400">
+                      {value === 'BalanceMes' ? 'Balance del mes' : value === 'SaldoAcumulado' ? 'Saldo acumulado' : value}
+                    </span>
+                  )}
+                />
+                <Area
+                  yAxisId="left"
+                  type="monotone"
+                  dataKey="BalanceMes"
+                  name="BalanceMes"
+                  stroke="#818cf8"
+                  strokeWidth={2}
+                  fill="url(#balanceGrad)"
+                  dot={false}
+                  activeDot={{ r: 4, fill: '#818cf8', stroke: '#151524', strokeWidth: 2 }}
+                />
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="SaldoAcumulado"
+                  name="SaldoAcumulado"
+                  stroke="#34d399"
+                  strokeWidth={2}
+                  dot={{ r: 2, fill: '#34d399', strokeWidth: 0 }}
+                  activeDot={{ r: 5, fill: '#34d399', stroke: '#151524', strokeWidth: 2 }}
+                />
+              </ComposedChart>
             </ResponsiveContainer>
           </motion.section>
 
@@ -779,21 +901,34 @@ export default function Analisis() {
                   )
                 })}
 
-                <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/[0.06] px-4 py-3">
-                  <p className="text-xs font-semibold text-indigo-200/90 mb-1">Saldo disponible (sin tarjeta de crédito)</p>
-                  <p className="text-sm text-gray-400">
-                    Mes anterior: <span className="text-gray-200">{formatARS(momSaldo.anterior)}</span>
-                    {' · '}
-                    Mes actual: <span className="text-gray-200">{formatARS(momSaldo.actual)}</span>
-                    {' · '}
-                    <span className={momSaldo.delta >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
-                      Cambio: {momSaldo.delta >= 0 ? '+' : ''}
-                      {formatARS(momSaldo.delta)}
-                    </span>
-                  </p>
-                  <p className="text-[10px] text-gray-600 mt-1.5 leading-snug">
-                    Es la diferencia de flujo entre los dos meses, no la suma de categorías.
-                  </p>
+                <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/[0.06] px-4 py-3 space-y-2">
+                  <div>
+                    <p className="text-xs font-semibold text-indigo-200/90 mb-1">Flujo del mes (sin tarjeta de crédito)</p>
+                    <p className="text-sm text-gray-400">
+                      Mes anterior: <span className="text-gray-200">{formatARS(momSaldo.anterior)}</span>
+                      {' · '}
+                      Mes actual: <span className="text-gray-200">{formatARS(momSaldo.actual)}</span>
+                      {' · '}
+                      <span className={momSaldo.delta >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                        Cambio: {momSaldo.delta >= 0 ? '+' : ''}
+                        {formatARS(momSaldo.delta)}
+                      </span>
+                    </p>
+                    <p className="text-[10px] text-gray-600 mt-1 leading-snug">
+                      Solo ingresos y salidas en efectivo / transferencia / débito de cada mes.
+                    </p>
+                  </div>
+                  <div className="pt-2 border-t border-indigo-500/15">
+                    <p className="text-xs font-semibold text-emerald-200/85 mb-1">Saldo acumulado (como en Inicio)</p>
+                    <p className="text-sm text-gray-400">
+                      Fin mes anterior: <span className="text-gray-200">{formatARS(saldosAcumuladosMom.finMesAnterior)}</span>
+                      {' · '}
+                      Fin mes seleccionado: <span className="text-gray-200">{formatARS(saldosAcumuladosMom.finMesActual)}</span>
+                    </p>
+                    <p className="text-[10px] text-gray-600 mt-1 leading-snug">
+                      Suma de todo tu historial hasta el último día de cada mes; el superávit previo se mantiene al cambiar de mes.
+                    </p>
+                  </div>
                 </div>
               </div>
             )}
