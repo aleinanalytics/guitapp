@@ -438,6 +438,9 @@ export default function MovimientosMes() {
               >
                 {formatARS(totalGastoMostrado)}
               </p>
+              <p className="mt-2 text-base sm:text-lg text-gray-400 tabular-nums">
+                {formatUSD(totalGastoMostrado / tc)}
+              </p>
             </motion.div>
           )}
 
