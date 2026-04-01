@@ -16,6 +16,7 @@ import {
   formatARS,
   formatUSD,
   grupoGastoPorMedio,
+  montoDisplayClass,
   transaccionEnMesVista,
   type GrupoGastoPorMedio,
 } from '../lib/utils'
@@ -117,6 +118,8 @@ export default function MovimientosMes() {
   const tc = tipoCambio?.usd_ars ?? 1000
   const { saldoAcumulado, loading: loadingSaldoAcum } = useSaldoAcumuladoHastaMes({ mes, anio, tc })
   const [categorias, setCategorias] = useState<Categoria[]>([])
+  /** Total mostrado: con check suma TC; sin check solo efectivo/transf./débito (misma lista filtrada). */
+  const [totalIncluyeTc, setTotalIncluyeTc] = useState(true)
 
   useEffect(() => {
     supabase.from('categorias').select('*').then(({ data }) => {
@@ -203,6 +206,15 @@ export default function MovimientosMes() {
     })
   }, [transaccionesDelMes, tipo, filtroGastoCat, categorias, categoriaIdLegacy, sinTarjetaCredito])
 
+  const totalGastoMostrado = useMemo(() => {
+    if (tipo !== 'gasto') return 0
+    const lista =
+      sinTarjetaCredito || totalIncluyeTc
+        ? filtradas
+        : filtradas.filter((t) => t.medio_pago !== 'tarjeta')
+    return lista.reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
+  }, [filtradas, tipo, tc, totalIncluyeTc, sinTarjetaCredito])
+
   const gastosPorGrupoMedio = useMemo(() => {
     if (tipo !== 'gasto') return null
     const map: Record<GrupoGastoPorMedio, Transaccion[]> = {
@@ -229,7 +241,13 @@ export default function MovimientosMes() {
     const salidasEf = transaccionesDelMes
       .filter(cuentaComoSalidaDeEfectivo)
       .reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
-    return { ingresos: ing, reintegrosTc, gastos: gas, suscripciones: sus, resultadoMes: ing - salidasEf }
+    return {
+      ingresos: ing,
+      reintegrosTc,
+      gastos: gas,
+      suscripciones: sus,
+      resultadoMes: ing - salidasEf,
+    }
   }, [transaccionesDelMes, tc])
 
   const nombreFiltroGastoTitulo = useMemo(() => {
@@ -293,7 +311,22 @@ export default function MovimientosMes() {
           animate={{ opacity: 1, y: 0 }}
           className="glass p-3 sm:p-4 rounded-xl mb-6 space-y-3 border border-white/[0.06]"
         >
-          <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Filtrar por categoría</p>
+          <div className="flex flex-col items-center gap-3 text-center">
+            <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+              Filtrar por categoría
+            </p>
+            {!sinTarjetaCredito && (
+              <label className="inline-flex items-center justify-center gap-2.5 cursor-pointer select-none text-sm text-gray-400 hover:text-gray-300 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={totalIncluyeTc}
+                  onChange={(e) => setTotalIncluyeTc(e.target.checked)}
+                  className="h-4 w-4 shrink-0 rounded border-white/25 bg-dark-900/80 accent-rose-500 text-rose-500 focus:ring-rose-500/40 focus:ring-offset-0 focus:ring-2"
+                />
+                <span>Con tarjeta de crédito</span>
+              </label>
+            )}
+          </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block min-w-0">
               <span className="text-[11px] text-gray-500 mb-1 block">Categoría</span>
@@ -390,6 +423,20 @@ export default function MovimientosMes() {
               </div>
               <p className="col-span-2 text-[10px] text-gray-600 leading-snug -mt-1">
                 Resultado del mes = ingresos del mes − gastos y suscripciones en efectivo, transferencia o débito (sin tarjeta de crédito).
+              </p>
+            </motion.div>
+          )}
+
+          {tipo === 'gasto' && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-10 text-center"
+            >
+              <p
+                className={`font-bold tabular-nums text-red-400 break-words px-1 ${montoDisplayClass(totalGastoMostrado, 'kpiStatProminent')}`}
+              >
+                {formatARS(totalGastoMostrado)}
               </p>
             </motion.div>
           )}
