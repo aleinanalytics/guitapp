@@ -9,7 +9,6 @@ interface KPICardProps {
   variacion?: number
   descripcion?: string
   icon?: React.ReactNode
-  accentColor?: string
   children?: React.ReactNode
   delay?: number
   /** Si está definido, la tarjeta es clicable y navega a esta ruta */
@@ -31,7 +30,6 @@ export default function KPICard({
   variacion,
   descripcion,
   icon,
-  accentColor,
   children,
   delay = 0,
   to,
@@ -44,9 +42,8 @@ export default function KPICard({
   const ms = mobileStatLayout && !isHero
   const arsStr = formatARS(montoARS)
   const usdStr = montoUSD !== undefined ? formatUSD(montoUSD) : ''
-  /** Tipografía fluida en móvil para KPIs en grilla; Gastos sin TC (protagonista) solo si el texto es largo. */
-  const arsFluidMobile =
-    ms && (!montoProtagonista || arsStr.length >= 11)
+  /** Tipografía fluida en móvil para KPIs en grilla; no achica el monto protagonista (p. ej. Gastos sin TC). */
+  const arsFluidMobile = ms && !montoProtagonista && arsStr.length >= 11
   const usdFluidMobile = ms && !montoProtagonista
   const montoArsKind =
     montoProtagonista && ms
@@ -64,14 +61,6 @@ export default function KPICard({
         : ms
           ? 'pairUsd'
           : 'pairUsd'
-
-  const accentBar =
-    accentColor != null ? (
-      <div
-        className="absolute top-0 left-0 right-0 h-[2px] opacity-60"
-        style={{ background: `linear-gradient(90deg, transparent, ${accentColor}, transparent)` }}
-      />
-    ) : null
 
   const innerBody = (
     <>
@@ -191,12 +180,14 @@ export default function KPICard({
   const linkFocusClass =
     'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background'
 
-  /** Accesorio flotante: no ocupa fila en el flujo, título y montos alinean como el resto de KPIs */
+  /** Accesorio flotante: el cuerpo se centra en vertical para no quedar pegado arriba en celdas altas de la grilla. */
   if (topAccessory) {
     const shellOverflow = ms ? 'overflow-x-auto overflow-y-hidden' : 'overflow-hidden'
-    const shellClass = `glass h-full w-full min-w-0 relative ${shellOverflow} group transition-all duration-300 ${motionPad} ${roundedClass} ${
+    const shellClass = `glass flex min-h-0 h-full w-full min-w-0 flex-col relative ${shellOverflow} group transition-all duration-300 ${motionPad} ${roundedClass} ${
       to ? 'cursor-pointer hover:border-white/[0.18] hover:bg-white/[0.02]' : 'hover:border-white/[0.12]'
     }`
+
+    const centeredBodyClass = `flex min-h-0 flex-1 flex-col justify-center ${to ? `rounded-xl hover:bg-white/[0.02] ${linkFocusClass}` : ''} w-full`
 
     return (
       <motion.div
@@ -205,18 +196,13 @@ export default function KPICard({
         transition={{ duration: 0.4, delay, ease: [0.25, 0.46, 0.45, 0.94] }}
         className={shellClass}
       >
-        {accentBar}
         <div className="pointer-events-auto absolute left-2 right-2 top-2 z-20">{topAccessory}</div>
         {to ? (
-          <Link
-            to={to}
-            className={`block min-h-0 w-full rounded-xl hover:bg-white/[0.02] ${linkFocusClass}`}
-            aria-label={`Ver listado: ${titulo}`}
-          >
+          <Link to={to} className={centeredBodyClass} aria-label={`Ver listado: ${titulo}`}>
             {innerBody}
           </Link>
         ) : (
-          innerBody
+          <div className={`${centeredBodyClass} rounded-xl`}>{innerBody}</div>
         )}
       </motion.div>
     )
@@ -229,7 +215,6 @@ export default function KPICard({
       transition={{ duration: 0.4, delay, ease: [0.25, 0.46, 0.45, 0.94] }}
       className={`${motionBase} ${roundedClass}`}
     >
-      {accentBar}
       {innerBody}
     </motion.div>
   )

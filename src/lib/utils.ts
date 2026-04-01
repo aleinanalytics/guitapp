@@ -179,15 +179,15 @@ export function montoDisplayClass(
       return 'text-3xl sm:text-4xl lg:text-5xl xl:text-5xl'
     return 'text-4xl sm:text-5xl lg:text-6xl xl:text-6xl'
   }
-  /** Igual que kpiStatProminent en móvil/tablet; en desktop (`lg+`) alineado a `kpiStat` (tarjetas angostas en grilla). */
+  /** Igual que kpiStatProminent en móvil/tablet; en desktop (`lg+`) un escalón más que kpiStat para legibilidad. */
   if (kind === 'kpiStatProminentResponsive') {
     if (n >= 10_000_000)
-      return 'text-2xl sm:text-3xl lg:text-base xl:text-xl'
+      return 'text-2xl sm:text-3xl lg:text-lg xl:text-xl'
     if (n >= 1_000_000)
-      return 'text-3xl sm:text-4xl lg:text-lg xl:text-2xl'
+      return 'text-3xl sm:text-4xl lg:text-xl xl:text-2xl'
     if (n >= 100_000)
-      return 'text-4xl sm:text-5xl lg:text-xl xl:text-xl'
-    return 'text-5xl sm:text-6xl lg:text-xl xl:text-xl'
+      return 'text-4xl sm:text-5xl lg:text-2xl xl:text-2xl'
+    return 'text-5xl sm:text-6xl lg:text-2xl xl:text-2xl'
   }
   /** KPI compactos en grilla (p. ej. Análisis anual): base ~text-xl, se achica con millones. */
   if (kind === 'kpiInline') {
@@ -224,11 +224,11 @@ export function montoDisplayClass(
     if (n >= 10_000) return 'text-xl sm:text-2xl'
     return 'text-xl sm:text-2xl lg:text-3xl'
   }
-  /** USD bajo monto ARS protagonista: grande en móvil, compacto en `lg+` como `pairUsd`. */
+  /** USD bajo monto ARS protagonista: grande en móvil; en `lg+` un poco más que pairUsd estándar. */
   if (kind === 'pairUsdProminentResponsive') {
-    if (n >= 100_000) return 'text-xl sm:text-2xl lg:text-base'
-    if (n >= 10_000) return 'text-2xl sm:text-3xl lg:text-lg'
-    return 'text-2xl sm:text-3xl lg:text-lg'
+    if (n >= 100_000) return 'text-xl sm:text-2xl lg:text-lg'
+    if (n >= 10_000) return 'text-2xl sm:text-3xl lg:text-xl'
+    return 'text-2xl sm:text-3xl lg:text-xl'
   }
   if (kind === 'heroUsd') {
     if (n >= 100_000) return 'text-sm sm:text-base'

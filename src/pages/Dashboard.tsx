@@ -896,7 +896,7 @@ export default function Dashboard() {
                             <div className="min-w-0 flex-1">
                               <p className="text-sm font-medium leading-snug text-white">{d.desc}</p>
                               <p className="mt-1 text-[11px] leading-snug text-gray-500">
-                                <span>(Cuota {d.numero}/{d.total})</span>
+                                <span>Cuota {d.numero}/{d.total}</span>
                                 {cuotasRest > 0 && (
                                   <>
                                     {' '}
@@ -946,7 +946,7 @@ export default function Dashboard() {
                                 </p>
                                 <p className="text-sm font-medium leading-snug text-amber-50/95">{d.desc}</p>
                                 <p className="text-[11px] leading-snug text-amber-200/50">
-                                  <span>(Cuota {d.numero}/{d.total})</span>
+                                  <span>Cuota {d.numero}/{d.total}</span>
                                   {cuotasRest > 0 && (
                                     <>
                                       {' '}

@@ -72,6 +72,20 @@ export function categoriasGastoElegibles(categorias: Categoria[]): Categoria[] {
   return categorias.filter((c) => c.tipo === 'gasto').sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
 }
 
+/**
+ * ID guardado en el KPI de categoría del home: subcategoría, categoría plana legacy,
+ * o principal con hijos (opción "Todo el rubro" del select).
+ */
+export function esIdValidoParaKpiGastoHome(id: string, categorias: Categoria[]): boolean {
+  if (!id) return false
+  const cat = categorias.find((c) => c.tipo === 'gasto' && c.id === id)
+  if (!cat) return false
+  if (categoriasGastoElegibles(categorias).some((c) => c.id === id)) return true
+  const esPrincipalConHijos =
+    !cat.parent_id && categorias.some((c) => c.tipo === 'gasto' && c.parent_id === cat.id)
+  return esPrincipalConHijos
+}
+
 export function principalDeCategoria(
   cat: Categoria | undefined,
   categorias: Categoria[],

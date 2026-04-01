@@ -17,7 +17,7 @@ import {
   ipcMonthKey,
   IPC_MENSUAL_VARIACION_PCT,
 } from '../lib/ipcArgentinaMensual'
-import { TrendingUp, TrendingDown, RotateCcw, CalendarDays, Download } from 'lucide-react'
+import { TrendingUp, TrendingDown, RotateCcw, CalendarDays } from 'lucide-react'
 import MobileUserMenu from '../components/MobileUserMenu'
 
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
@@ -956,10 +956,10 @@ export default function Analisis() {
           >
             <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-4">Resumen anual {anioSeleccionado}</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <KPICard titulo="Total Ingresos" montoARS={annualSummary.ingresos} montoUSD={annualSummary.ingresos / tc} icon={<TrendingUp size={16} />} accentColor="#10b981" delay={0.35} />
-              <KPICard titulo="Total Gastos" montoARS={annualSummary.gastos} montoUSD={annualSummary.gastos / tc} icon={<TrendingDown size={16} />} accentColor="#ef4444" delay={0.4} />
-              <KPICard titulo="Total Suscripciones" montoARS={annualSummary.suscripciones} montoUSD={annualSummary.suscripciones / tc} icon={<RotateCcw size={16} />} accentColor="#a855f7" delay={0.45} />
-              <KPICard titulo="Mes mayor gasto" montoARS={annualSummary.maxVal} descripcion={annualSummary.maxVal > 0 ? MESES_FULL[annualSummary.maxMonth] : 'Sin gastos'} icon={<CalendarDays size={16} />} accentColor="#f59e0b" delay={0.5} />
+              <KPICard titulo="Total Ingresos" montoARS={annualSummary.ingresos} montoUSD={annualSummary.ingresos / tc} icon={<TrendingUp size={16} />} delay={0.35} />
+              <KPICard titulo="Total Gastos" montoARS={annualSummary.gastos} montoUSD={annualSummary.gastos / tc} icon={<TrendingDown size={16} />} delay={0.4} />
+              <KPICard titulo="Total Suscripciones" montoARS={annualSummary.suscripciones} montoUSD={annualSummary.suscripciones / tc} icon={<RotateCcw size={16} />} delay={0.45} />
+              <KPICard titulo="Mes mayor gasto" montoARS={annualSummary.maxVal} descripcion={annualSummary.maxVal > 0 ? MESES_FULL[annualSummary.maxMonth] : 'Sin gastos'} icon={<CalendarDays size={16} />} delay={0.5} />
             </div>
           </motion.section>
         </>
