@@ -41,7 +41,14 @@ const CHART_COLORS = {
 
 type MomCatRow = { catId: string; nombre: string; tipo: TipoTransaccion; anterior: number; actual: number }
 
-type TxSaldoMin = { fecha: string; monto: number; moneda: string; tipo: string; medio_pago: string }
+type TxSaldoMin = {
+  fecha: string
+  monto: number
+  moneda: string
+  tipo: string
+  medio_pago: string
+  excluye_saldo?: boolean | null
+}
 
 function aggregateMomRows(rows: MomCatRow[]) {
   const anterior = rows.reduce((s, r) => s + r.anterior, 0)
@@ -73,7 +80,7 @@ export default function Analisis() {
     setLoadingSaldoHist(true)
     void supabase
       .from('transacciones')
-      .select('fecha,monto,moneda,tipo,medio_pago')
+      .select('fecha,monto,moneda,tipo,medio_pago,excluye_saldo')
       .order('fecha', { ascending: true })
       .then(({ data, error }) => {
         if (cancelled) return

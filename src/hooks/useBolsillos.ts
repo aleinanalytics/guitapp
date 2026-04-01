@@ -33,7 +33,7 @@ export function useBolsillos() {
         .select('*')
         .order('created_at', { ascending: false }),
       supabase.from('bolsillos_config').select('*'),
-      supabase.from('transacciones').select('monto, moneda, tipo, medio_pago'),
+      supabase.from('transacciones').select('monto, moneda, tipo, medio_pago, excluye_saldo'),
     ])
 
     if (movRes.error) setError(movRes.error.message)
@@ -54,7 +54,7 @@ export function useBolsillos() {
         const ars = convertirARS(Number(t.monto), t.moneda as 'ARS' | 'USD', tc)
         if (t.tipo === 'ingreso' && !esIngresoReintegroTarjetaCredito(t as Pick<Transaccion, 'tipo' | 'medio_pago'>))
           ing += ars
-        else if (cuentaComoSalidaDeEfectivo(t as Pick<Transaccion, 'tipo' | 'medio_pago'>)) salidasEf += ars
+        else if (cuentaComoSalidaDeEfectivo(t as Pick<Transaccion, 'tipo' | 'medio_pago' | 'excluye_saldo'>)) salidasEf += ars
       }
       setFluidoHistorial(ing - salidasEf)
     }

@@ -44,9 +44,22 @@ export default function KPICard({
 }: KPICardProps) {
   const isHero = variant === 'hero'
   const ms = mobileStatLayout && !isHero
-  const montoArsKind = montoProtagonista && ms ? 'kpiStatProminent' : isHero ? 'kpiHero' : ms ? 'kpiStat' : 'kpiInline'
+  const montoArsKind =
+    montoProtagonista && ms
+      ? 'kpiStatProminentResponsive'
+      : isHero
+        ? 'kpiHero'
+        : ms
+          ? 'kpiStat'
+          : 'kpiInline'
   const montoUsdKind =
-    montoProtagonista && ms ? 'pairUsdProminent' : isHero ? 'heroUsd' : ms ? 'pairUsd' : 'pairUsd'
+    montoProtagonista && ms
+      ? 'pairUsdProminentResponsive'
+      : isHero
+        ? 'heroUsd'
+        : ms
+          ? 'pairUsd'
+          : 'pairUsd'
 
   const accentBar =
     accentColor != null ? (
@@ -71,7 +84,11 @@ export default function KPICard({
         >
           <p
             className={`min-w-0 font-medium uppercase tracking-wider text-gray-400 ${
-              ms && montoProtagonista ? 'text-[10px] text-center lg:text-left line-clamp-2 break-words leading-tight' : ms ? 'text-xs text-center lg:text-left line-clamp-2 break-words leading-tight' : 'text-xs truncate'
+              ms && montoProtagonista
+                ? 'text-[10px] text-center lg:text-left lg:text-xs line-clamp-2 break-words leading-tight'
+                : ms
+                  ? 'text-xs text-center lg:text-left line-clamp-2 break-words leading-tight'
+                  : 'text-xs truncate'
             }`}
           >
             {titulo}
@@ -81,32 +98,49 @@ export default function KPICard({
           )}
         </div>
       )}
-      <p
-        className={`font-bold text-gray-50 tracking-tight tabular-nums break-words ${
-          ms && montoProtagonista ? 'leading-none' : 'leading-tight'
-        } ${
-          isHero
-            ? montoDisplayClass(montoARS, 'kpiHero')
-            : ms
-              ? `text-center lg:text-left ${montoDisplayClass(montoARS, montoArsKind)}`
-              : montoDisplayClass(montoARS, montoArsKind)
-        }`}
-      >
-        {formatARS(montoARS)}
-      </p>
-      {montoUSD !== undefined && (
+      {ms ? (
+        <div className="flex w-full max-w-full min-w-0 justify-center overflow-x-auto lg:justify-start [scrollbar-width:thin]">
+          <p
+            className={`font-bold text-gray-50 tracking-tight tabular-nums whitespace-nowrap ${
+              montoProtagonista ? 'leading-none lg:leading-tight' : 'leading-tight'
+            } text-center lg:text-left ${montoDisplayClass(montoARS, montoArsKind)}`}
+          >
+            {formatARS(montoARS)}
+          </p>
+        </div>
+      ) : (
         <p
-          className={`mt-1 text-gray-500 break-words ${
+          className={`font-bold text-gray-50 tracking-tight tabular-nums break-words lg:break-normal ${
+            montoProtagonista ? 'leading-none lg:leading-tight' : 'leading-tight'
+          } ${
             isHero
-              ? montoDisplayClass(montoUSD, 'heroUsd')
-              : ms
-                ? `text-center lg:text-left ${montoDisplayClass(montoUSD, montoUsdKind)}`
-                : 'text-sm mt-0.5'
+              ? montoDisplayClass(montoARS, 'kpiHero')
+              : montoDisplayClass(montoARS, montoArsKind)
           }`}
         >
-          {formatUSD(montoUSD)}
+          {formatARS(montoARS)}
         </p>
       )}
+      {montoUSD !== undefined &&
+        (ms ? (
+          <div className="mt-1 flex w-full max-w-full min-w-0 justify-center overflow-x-auto lg:justify-start [scrollbar-width:thin]">
+            <p
+              className={`text-gray-500 whitespace-nowrap text-center lg:text-left ${montoDisplayClass(montoUSD, montoUsdKind)}`}
+            >
+              {formatUSD(montoUSD)}
+            </p>
+          </div>
+        ) : (
+          <p
+            className={`mt-1 text-gray-500 break-words lg:break-normal ${
+              isHero
+                ? montoDisplayClass(montoUSD, 'heroUsd')
+                : 'text-sm mt-0.5'
+            }`}
+          >
+            {formatUSD(montoUSD)}
+          </p>
+        ))}
       {variacion !== undefined && (
         <div
           className={`flex items-center gap-1 mt-2 px-2 py-0.5 rounded-lg text-xs font-semibold ${

@@ -5,8 +5,17 @@ import type { Moneda, Transaccion } from './types'
  * - Efectivo y transferencia (`medio_pago` tal cual en BD).
  * - Tarjeta de débito: en Carga se guarda como `medio_pago === 'efectivo'`, así que también resta.
  * Tarjeta de crédito (`medio_pago === 'tarjeta'`) no resta; va al flujo de tarjeta.
+ * Con `excluye_saldo === true` no resta (solo registro / lo pagó un tercero).
  */
-export function cuentaComoSalidaDeEfectivo(t: Pick<Transaccion, 'tipo' | 'medio_pago'>): boolean {
+export function cuentaComoSalidaDeEfectivo(
+  t: Pick<Transaccion, 'tipo' | 'medio_pago'> & { excluye_saldo?: boolean | null },
+): boolean {
+  if (
+    (t.tipo === 'gasto' || t.tipo === 'suscripcion') &&
+    t.excluye_saldo === true
+  ) {
+    return false
+  }
   return (
     (t.tipo === 'gasto' || t.tipo === 'suscripcion') &&
     (t.medio_pago === 'efectivo' || t.medio_pago === 'transferencia')
@@ -96,11 +105,12 @@ export function grupoGastoPorMedio(t: Pick<Transaccion, 'tipo' | 'medio_pago'>):
 }
 
 export function formatARS(n: number): string {
-  return '$ ' + n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  // NBSP: evita que el símbolo quede solo en una línea al hacer wrap (KPIs angostas, montos grandes).
+  return '$\u00a0' + n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 export function formatUSD(n: number): string {
-  return 'USD ' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return 'USD\u00a0' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 /**
@@ -121,7 +131,9 @@ export function montoDisplayClass(
     | 'saldoHero'
     | 'saldoHeroUsd'
     | 'kpiStatProminent'
-    | 'pairUsdProminent',
+    | 'kpiStatProminentResponsive'
+    | 'pairUsdProminent'
+    | 'pairUsdProminentResponsive',
 ): string {
   const n = Math.abs(value)
   /** Saldo acumulado en inicio: más grande y fluido al ancho (clamp + vw). */
@@ -152,10 +164,10 @@ export function montoDisplayClass(
     return 'text-4xl sm:text-5xl lg:text-6xl'
   }
   if (kind === 'kpiStat') {
-    if (n >= 10_000_000) return 'text-base sm:text-lg lg:text-xl'
-    if (n >= 1_000_000) return 'text-lg sm:text-xl lg:text-2xl'
-    if (n >= 100_000) return 'text-xl sm:text-2xl lg:text-xl'
-    return 'text-2xl sm:text-2xl lg:text-xl'
+    if (n >= 10_000_000) return 'text-lg sm:text-xl lg:text-xl'
+    if (n >= 1_000_000) return 'text-xl sm:text-2xl lg:text-2xl'
+    if (n >= 100_000) return 'text-2xl sm:text-2xl lg:text-xl'
+    return 'text-3xl sm:text-3xl lg:text-xl'
   }
   /** KPI con el monto como protagonista (p. ej. Gastos sin TC). */
   if (kind === 'kpiStatProminent') {
@@ -166,6 +178,16 @@ export function montoDisplayClass(
     if (n >= 100_000)
       return 'text-3xl sm:text-4xl lg:text-5xl xl:text-5xl'
     return 'text-4xl sm:text-5xl lg:text-6xl xl:text-6xl'
+  }
+  /** Igual que kpiStatProminent en móvil/tablet; en desktop (`lg+`) alineado a `kpiStat` (tarjetas angostas en grilla). */
+  if (kind === 'kpiStatProminentResponsive') {
+    if (n >= 10_000_000)
+      return 'text-2xl sm:text-3xl lg:text-base xl:text-xl'
+    if (n >= 1_000_000)
+      return 'text-3xl sm:text-4xl lg:text-lg xl:text-2xl'
+    if (n >= 100_000)
+      return 'text-4xl sm:text-5xl lg:text-xl xl:text-xl'
+    return 'text-5xl sm:text-6xl lg:text-xl xl:text-xl'
   }
   /** KPI compactos en grilla (p. ej. Análisis anual): base ~text-xl, se achica con millones. */
   if (kind === 'kpiInline') {
@@ -188,9 +210,9 @@ export function montoDisplayClass(
     return 'text-3xl sm:text-4xl'
   }
   if (kind === 'pairUsd') {
-    if (n >= 100_000) return 'text-base sm:text-lg'
-    if (n >= 10_000) return 'text-lg sm:text-xl'
-    return 'text-xl sm:text-2xl'
+    if (n >= 100_000) return 'text-lg sm:text-xl lg:text-lg'
+    if (n >= 10_000) return 'text-xl sm:text-2xl lg:text-xl'
+    return 'text-2xl sm:text-3xl lg:text-2xl'
   }
   if (kind === 'pairUsdTarjeta') {
     if (n >= 100_000) return 'text-lg sm:text-xl'
@@ -201,6 +223,12 @@ export function montoDisplayClass(
     if (n >= 100_000) return 'text-lg sm:text-xl'
     if (n >= 10_000) return 'text-xl sm:text-2xl'
     return 'text-xl sm:text-2xl lg:text-3xl'
+  }
+  /** USD bajo monto ARS protagonista: grande en móvil, compacto en `lg+` como `pairUsd`. */
+  if (kind === 'pairUsdProminentResponsive') {
+    if (n >= 100_000) return 'text-xl sm:text-2xl lg:text-base'
+    if (n >= 10_000) return 'text-2xl sm:text-3xl lg:text-lg'
+    return 'text-2xl sm:text-3xl lg:text-lg'
   }
   if (kind === 'heroUsd') {
     if (n >= 100_000) return 'text-sm sm:text-base'

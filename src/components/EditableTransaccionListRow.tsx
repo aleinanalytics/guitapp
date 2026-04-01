@@ -28,6 +28,7 @@ export default function EditableTransaccionListRow({ t, categorias, delay = 0, m
   const [editFecha, setEditFecha] = useState('')
   const [editCategoriaId, setEditCategoriaId] = useState('')
   const [editEsGastoFijo, setEditEsGastoFijo] = useState(false)
+  const [editExcluyeSaldo, setEditExcluyeSaldo] = useState(false)
   const [editIngresoReintegroTc, setEditIngresoReintegroTc] = useState(false)
   const [busy, setBusy] = useState(false)
 
@@ -40,6 +41,7 @@ export default function EditableTransaccionListRow({ t, categorias, delay = 0, m
     setEditFecha(t.fecha)
     setEditCategoriaId(t.categoria_id ?? '')
     setEditEsGastoFijo(t.tipo === 'gasto' && !!t.es_gasto_fijo)
+    setEditExcluyeSaldo(t.tipo === 'gasto' && !!t.excluye_saldo)
     setEditIngresoReintegroTc(t.tipo === 'ingreso' && t.medio_pago === 'tarjeta')
     setEditing(true)
   }
@@ -56,6 +58,7 @@ export default function EditableTransaccionListRow({ t, categorias, delay = 0, m
       fecha: editFecha,
       categoria_id: editCategoriaId,
       es_gasto_fijo: t.tipo === 'gasto' ? editEsGastoFijo : false,
+      excluye_saldo: t.tipo === 'gasto' ? editExcluyeSaldo : false,
     }
     if (t.tipo === 'ingreso') patch.medio_pago = editIngresoReintegroTc ? 'tarjeta' : 'efectivo'
     const { error } = await supabase.from('transacciones').update(patch).eq('id', t.id)
@@ -152,6 +155,17 @@ export default function EditableTransaccionListRow({ t, categorias, delay = 0, m
               Fijo
             </label>
           )}
+          {t.tipo === 'gasto' && (
+            <label className="flex items-center gap-1.5 text-[11px] text-gray-400 w-full sm:w-auto shrink-0">
+              <input
+                type="checkbox"
+                checked={editExcluyeSaldo}
+                onChange={(e) => setEditExcluyeSaldo(e.target.checked)}
+                className="accent-sky-500 w-3.5 h-3.5"
+              />
+              Sin caja
+            </label>
+          )}
           {t.tipo === 'ingreso' && (
             <label className="flex items-center gap-1.5 text-[11px] text-gray-400 w-full sm:w-auto shrink-0">
               <input
@@ -199,6 +213,9 @@ export default function EditableTransaccionListRow({ t, categorias, delay = 0, m
           {t.categoria?.nombre ?? '—'} · {t.fecha}
           {t.tipo === 'gasto' && t.es_gasto_fijo && (
             <span className="ml-1 text-[10px] font-medium text-sky-400/90">· Fijo</span>
+          )}
+          {t.tipo === 'gasto' && t.excluye_saldo && (
+            <span className="ml-1 text-[10px] font-medium text-cyan-400/90">· Solo seguimiento</span>
           )}
           {mostrarTipo && (
             <span className={`ml-2 px-1.5 py-0.5 rounded-md text-[10px] font-medium ${cfg.bg} ${cfg.color}`}>

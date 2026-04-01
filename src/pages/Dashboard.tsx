@@ -9,6 +9,7 @@ import {
 } from 'recharts'
 import KPICard from '../components/KPICard'
 import PorcentajeDelIngresoKpi from '../components/PorcentajeDelIngresoKpi'
+import VariacionIngresosMesAnteriorKpi from '../components/VariacionIngresosMesAnteriorKpi'
 import MobileUserMenu from '../components/MobileUserMenu'
 import { useTransacciones } from '../hooks/useTransacciones'
 import { useSaldoAcumuladoHastaMes } from '../hooks/useSaldoAcumuladoHastaMes'
@@ -16,7 +17,12 @@ import { useTipoCambio } from '../hooks/useTipoCambio'
 import { useCuotas, getCuotaForMonth } from '../hooks/useCuotas'
 import { useTarjetaConfig, countdownTarjeta, formatFechaTarjeta } from '../hooks/useTarjetaConfig'
 import { useAnalisis } from '../hooks/useAnalisis'
-import type { Categoria, Moneda } from '../lib/types'
+import type { Categoria, Moneda, Transaccion } from '../lib/types'
+
+/** Gastos que suman en KPIs del home (excluye “solo seguimiento” / `excluye_saldo`). */
+function esGastoEnKpisDelMes(t: Pick<Transaccion, 'tipo' | 'excluye_saldo'>): boolean {
+  return t.tipo === 'gasto' && t.excluye_saldo !== true
+}
 import { supabase } from '../lib/supabase'
 import {
   convertirARS,
@@ -87,6 +93,16 @@ export default function Dashboard() {
     [transacciones, mes, anio, diaCierreTc],
   )
 
+  const mesAnteriorKpi = mes === 1 ? 12 : mes - 1
+  const anioAnteriorKpi = mes === 1 ? anio - 1 : anio
+  const transaccionesMesAnteriorIngresos = useMemo(
+    () =>
+      transacciones.filter((t) =>
+        transaccionEnMesVista(t, mesAnteriorKpi, anioAnteriorKpi, diaCierreTc),
+      ),
+    [transacciones, mes, anio, diaCierreTc, mesAnteriorKpi, anioAnteriorKpi],
+  )
+
   const [editingTC, setEditingTC] = useState(false)
   const [tcInput, setTcInput] = useState('')
   const [categoriasGasto, setCategoriasGasto] = useState<Categoria[]>([])
@@ -122,17 +138,25 @@ export default function Dashboard() {
   const tc = tipoCambio?.usd_ars ?? 1000
   const { saldoAcumulado, loading: loadingSaldoAcum } = useSaldoAcumuladoHastaMes({ mes, anio, tc })
 
+  const ingresosMesAnterior = useMemo(
+    () =>
+      transaccionesMesAnteriorIngresos
+        .filter((t) => t.tipo === 'ingreso' && !esIngresoReintegroTarjetaCredito(t))
+        .reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0),
+    [transaccionesMesAnteriorIngresos, tc],
+  )
+
   const ingresos = transaccionesDelMes
     .filter((t) => t.tipo === 'ingreso' && !esIngresoReintegroTarjetaCredito(t))
     .reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
 
   const gastos = transaccionesDelMes
-    .filter((t) => t.tipo === 'gasto')
+    .filter(esGastoEnKpisDelMes)
     .reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
 
   /** Solo tipo gasto y sin tarjeta de crédito (alineado al saldo acumulado para gastos). */
   const gastosSinTc = transaccionesDelMes
-    .filter((t) => t.tipo === 'gasto' && t.medio_pago !== 'tarjeta')
+    .filter((t) => esGastoEnKpisDelMes(t) && t.medio_pago !== 'tarjeta')
     .reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
 
   const suscripciones = transaccionesDelMes
@@ -148,7 +172,7 @@ export default function Dashboard() {
 
   /** Gastos sin tarjeta de crédito, solo ARS (no mezcla consumos en USD). */
   const gastosSinTcArs = transaccionesDelMes.filter(
-    (t) => t.tipo === 'gasto' && t.medio_pago !== 'tarjeta' && t.moneda === 'ARS',
+    (t) => esGastoEnKpisDelMes(t) && t.medio_pago !== 'tarjeta' && t.moneda === 'ARS',
   )
   const mayorGasto = gastosSinTcArs.length > 0
     ? gastosSinTcArs.reduce((max, t) => (t.monto > max.monto ? t : max))
@@ -198,7 +222,9 @@ export default function Dashboard() {
       }
     }
     return transaccionesDelMes
-      .filter((t) => t.tipo === 'gasto' && t.categoria_id && idsCategoria.has(t.categoria_id))
+      .filter(
+        (t) => esGastoEnKpisDelMes(t) && t.categoria_id && idsCategoria.has(t.categoria_id),
+      )
       .reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
   }, [transaccionesDelMes, kpiCatId, tc, categoriasGasto])
 
@@ -284,7 +310,7 @@ export default function Dashboard() {
 
   const pieData = useMemo((): PieSlice[] => {
     const gastosEfectivo = transaccionesDelMes
-      .filter((t) => t.tipo === 'gasto' && t.medio_pago !== 'tarjeta')
+      .filter((t) => esGastoEnKpisDelMes(t) && t.medio_pago !== 'tarjeta')
       .reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
     const out: PieSlice[] = [
       { name: 'Ingresos', value: ingresos, color: '#10b981' },
@@ -308,7 +334,7 @@ export default function Dashboard() {
   const barData = useMemo(() => {
     const byCategory: Record<string, { nombre: string; color: string; total: number }> = {}
     for (const t of transaccionesDelMes) {
-      if (t.tipo !== 'gasto') continue
+      if (!esGastoEnKpisDelMes(t)) continue
       const key = t.categoria_id ?? '__sin__'
       const nombre = t.categoria?.nombre ?? 'Sin categoría'
       const color = t.categoria?.color ?? '#94a3b8'
@@ -341,7 +367,9 @@ export default function Dashboard() {
       const ing = txMes
         .filter((t) => t.tipo === 'ingreso' && !esIngresoReintegroTarjetaCredito(t))
         .reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
-      const gas = txMes.filter((t) => t.tipo === 'gasto').reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
+      const gas = txMes
+        .filter(esGastoEnKpisDelMes)
+        .reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
       // add cuotas for this month
       let cuotasMes = 0
       for (const c of cuotas) {
@@ -487,8 +515,13 @@ export default function Dashboard() {
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-6 lg:gap-4">
-          <div className="grid min-w-0 grid-cols-2 gap-3 lg:contents">
+        {/* Móvil: misma grilla 2+2 que antes. Escritorio: fila de KPI con columnas amplias (evita tarjetas de ~1/6 de pantalla). */}
+        <div className="flex min-w-0 flex-col gap-3 lg:gap-4">
+          <div
+            className={`grid min-w-0 grid-cols-2 gap-3 lg:gap-4 ${
+              kpiCatId !== '' && categoriaKpiSeleccionada ? 'lg:grid-cols-5' : 'lg:grid-cols-4'
+            }`}
+          >
             <KPICard
               titulo="Ingresos"
               montoARS={ingresos}
@@ -499,7 +532,13 @@ export default function Dashboard() {
               delay={0.05}
               to={toIngresos}
               mobileStatLayout
-            />
+            >
+              <VariacionIngresosMesAnteriorKpi
+                ingresosActual={ingresos}
+                ingresosAnterior={ingresosMesAnterior}
+                nombreMesAnterior={MESES[mesAnteriorKpi - 1]}
+              />
+            </KPICard>
             <KPICard
               titulo="Gastos"
               montoARS={gastos}
@@ -535,130 +574,156 @@ export default function Dashboard() {
                 />
               </KPICard>
             </div>
-          </div>
-
-          <div className="grid min-h-0 min-w-0 grid-cols-2 gap-3 items-stretch lg:contents">
-            <div className="flex h-full min-h-0 w-full min-w-0">
-            <KPICard
-              titulo="Suscripciones"
-              montoARS={suscripciones}
-              montoUSD={suscripciones / tc}
-              icon={<RotateCcw size={18} />}
-              accentColor="#a855f7"
-              glowClass="glow-purple"
-              delay={0.1}
-              to={toSuscripciones}
-              mobileStatLayout
-            >
-              <div className="mt-1 w-full space-y-1 border-t border-white/[0.06] pt-2 text-center">
-                <p className="text-[11px] text-gray-500">
-                  En ARS{' '}
-                  <span className="font-medium tabular-nums text-purple-200/90">{formatARS(suscripcionesNativoArsUsd.ars)}</span>
-                </p>
-                <p className="text-[11px] text-gray-500">
-                  En USD{' '}
-                  <span className="font-medium tabular-nums text-purple-200/90">{formatUSD(suscripcionesNativoArsUsd.usd)}</span>
-                </p>
-              </div>
-              <PorcentajeDelIngresoKpi
-                pct={pctSuscripcionDelIngreso}
-                hayMontoSinIngreso={suscripciones > 0}
-              />
-            </KPICard>
-            </div>
-
-            {kpiCatId !== '' && categoriaKpiSeleccionada && (
-            <div className="flex h-full min-h-0 w-full min-w-0">
-              <KPICard
-                titulo={categoriaKpiSeleccionada.nombre}
-                montoARS={gastoCategoriaKpi}
-                montoUSD={gastoCategoriaKpi / tc}
-                icon={<Store size={18} />}
-                accentColor={categoriaKpiSeleccionada.color}
-                delay={0.11}
-                to={toGastoCategoriaKpi}
-                mobileStatLayout
-                topAccessory={
-                  kpiCatSelectorAbierto ? (
-                    <div className="flex min-w-0 items-center gap-1">
-                      <label className="sr-only" htmlFor="kpi-gasto-categoria">
-                        Categoría de gasto para este indicador
-                      </label>
-                      <select
-                        id="kpi-gasto-categoria"
-                        value={kpiCatId}
-                        onChange={(e) => {
-                          const v = e.target.value
-                          setKpiCatId(v)
-                          localStorage.setItem(LS_KPI_GASTO_CATEGORIA, v)
-                          setKpiCatSelectorAbierto(false)
-                        }}
-                        className="select-dark min-w-0 flex-1 py-1 text-[11px]"
-                        aria-label="Elegir categoría de gasto"
-                      >
-                        {categoriasGasto.some((c) => !!c.parent_id) ? (
-                          <>
-                            {principalesGastoOrdenadas(categoriasGasto).map((p) => (
-                              <optgroup key={p.id} label={p.nombre}>
-                                <option value={p.id}>Todo el rubro</option>
-                                {subcategoriasDe(p.id, categoriasGasto).map((s) => (
-                                  <option key={s.id} value={s.id}>{s.nombre}</option>
+            {kpiCatId !== '' && categoriaKpiSeleccionada ? (
+              <div className="col-span-2 grid min-w-0 grid-cols-2 gap-3 lg:contents">
+                <div className="flex h-full min-h-0 w-full min-w-0">
+                  <KPICard
+                    titulo="Suscripciones"
+                    montoARS={suscripciones}
+                    montoUSD={suscripciones / tc}
+                    icon={<RotateCcw size={18} />}
+                    accentColor="#a855f7"
+                    glowClass="glow-purple"
+                    delay={0.1}
+                    to={toSuscripciones}
+                    mobileStatLayout
+                  >
+                    <div className="mt-1 w-full space-y-1 border-t border-white/[0.06] pt-2 text-center">
+                      <p className="text-[11px] text-gray-500">
+                        En ARS{' '}
+                        <span className="font-medium tabular-nums text-purple-200/90">{formatARS(suscripcionesNativoArsUsd.ars)}</span>
+                      </p>
+                      <p className="text-[11px] text-gray-500">
+                        En USD{' '}
+                        <span className="font-medium tabular-nums text-purple-200/90">{formatUSD(suscripcionesNativoArsUsd.usd)}</span>
+                      </p>
+                    </div>
+                    <PorcentajeDelIngresoKpi
+                      pct={pctSuscripcionDelIngreso}
+                      hayMontoSinIngreso={suscripciones > 0}
+                    />
+                  </KPICard>
+                </div>
+                <div className="flex h-full min-h-0 w-full min-w-0">
+                  <KPICard
+                    titulo={categoriaKpiSeleccionada.nombre}
+                    montoARS={gastoCategoriaKpi}
+                    montoUSD={gastoCategoriaKpi / tc}
+                    icon={<Store size={18} />}
+                    accentColor={categoriaKpiSeleccionada.color}
+                    delay={0.11}
+                    to={toGastoCategoriaKpi}
+                    mobileStatLayout
+                    topAccessory={
+                      kpiCatSelectorAbierto ? (
+                        <div className="flex min-w-0 items-center gap-1">
+                          <label className="sr-only" htmlFor="kpi-gasto-categoria">
+                            Categoría de gasto para este indicador
+                          </label>
+                          <select
+                            id="kpi-gasto-categoria"
+                            value={kpiCatId}
+                            onChange={(e) => {
+                              const v = e.target.value
+                              setKpiCatId(v)
+                              localStorage.setItem(LS_KPI_GASTO_CATEGORIA, v)
+                              setKpiCatSelectorAbierto(false)
+                            }}
+                            className="select-dark min-w-0 flex-1 py-1 text-[11px]"
+                            aria-label="Elegir categoría de gasto"
+                          >
+                            {categoriasGasto.some((c) => !!c.parent_id) ? (
+                              <>
+                                {principalesGastoOrdenadas(categoriasGasto).map((p) => (
+                                  <optgroup key={p.id} label={p.nombre}>
+                                    <option value={p.id}>Todo el rubro</option>
+                                    {subcategoriasDe(p.id, categoriasGasto).map((s) => (
+                                      <option key={s.id} value={s.id}>{s.nombre}</option>
+                                    ))}
+                                  </optgroup>
                                 ))}
-                              </optgroup>
-                            ))}
-                            {categoriasGasto
-                              .filter(
-                                (c) =>
-                                  !c.parent_id &&
-                                  !categoriasGasto.some((s) => s.parent_id === c.id),
-                              )
-                              .map((c) => (
+                                {categoriasGasto
+                                  .filter(
+                                    (c) =>
+                                      !c.parent_id &&
+                                      !categoriasGasto.some((s) => s.parent_id === c.id),
+                                  )
+                                  .map((c) => (
+                                    <option key={c.id} value={c.id}>{c.nombre}</option>
+                                  ))}
+                              </>
+                            ) : (
+                              categoriasGastoElegibles(categoriasGasto).map((c) => (
                                 <option key={c.id} value={c.id}>{c.nombre}</option>
-                              ))}
-                          </>
-                        ) : (
-                          categoriasGastoElegibles(categoriasGasto).map((c) => (
-                            <option key={c.id} value={c.id}>{c.nombre}</option>
-                          ))
-                        )}
-                      </select>
-                      <button
-                        type="button"
-                        className="shrink-0 rounded-lg p-1.5 text-gray-500 hover:bg-white/10 hover:text-gray-300"
-                        aria-label="Cerrar selector de categoría"
-                        onClick={() => setKpiCatSelectorAbierto(false)}
-                      >
-                        <X size={14} />
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex justify-end">
-                      <button
-                        type="button"
-                        className="rounded-lg p-1.5 text-gray-500 hover:bg-white/10 hover:text-gray-300"
-                        aria-label="Editar categoría del indicador"
-                        onClick={() => setKpiCatSelectorAbierto(true)}
-                      >
-                        <Pencil size={14} />
-                      </button>
-                    </div>
-                  )
-                }
-              >
-                <PorcentajeDelIngresoKpi
-                  pct={pctGastoCategoriaKpi}
-                  hayMontoSinIngreso={gastoCategoriaKpi > 0}
-                  nombreCategoria={categoriaKpiSeleccionada.nombre}
-                />
-              </KPICard>
-            </div>
+                              ))
+                            )}
+                          </select>
+                          <button
+                            type="button"
+                            className="shrink-0 rounded-lg p-1.5 text-gray-500 hover:bg-white/10 hover:text-gray-300"
+                            aria-label="Cerrar selector de categoría"
+                            onClick={() => setKpiCatSelectorAbierto(false)}
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex justify-end">
+                          <button
+                            type="button"
+                            className="rounded-lg p-1.5 text-gray-500 hover:bg-white/10 hover:text-gray-300"
+                            aria-label="Editar categoría del indicador"
+                            onClick={() => setKpiCatSelectorAbierto(true)}
+                          >
+                            <Pencil size={14} />
+                          </button>
+                        </div>
+                      )
+                    }
+                  >
+                    <PorcentajeDelIngresoKpi
+                      pct={pctGastoCategoriaKpi}
+                      hayMontoSinIngreso={gastoCategoriaKpi > 0}
+                      nombreCategoria={categoriaKpiSeleccionada.nombre}
+                    />
+                  </KPICard>
+                </div>
+              </div>
+            ) : (
+              <div className="flex h-full min-h-0 w-full min-w-0">
+                <KPICard
+                  titulo="Suscripciones"
+                  montoARS={suscripciones}
+                  montoUSD={suscripciones / tc}
+                  icon={<RotateCcw size={18} />}
+                  accentColor="#a855f7"
+                  glowClass="glow-purple"
+                  delay={0.1}
+                  to={toSuscripciones}
+                  mobileStatLayout
+                >
+                  <div className="mt-1 w-full space-y-1 border-t border-white/[0.06] pt-2 text-center">
+                    <p className="text-[11px] text-gray-500">
+                      En ARS{' '}
+                      <span className="font-medium tabular-nums text-purple-200/90">{formatARS(suscripcionesNativoArsUsd.ars)}</span>
+                    </p>
+                    <p className="text-[11px] text-gray-500">
+                      En USD{' '}
+                      <span className="font-medium tabular-nums text-purple-200/90">{formatUSD(suscripcionesNativoArsUsd.usd)}</span>
+                    </p>
+                  </div>
+                  <PorcentajeDelIngresoKpi
+                    pct={pctSuscripcionDelIngreso}
+                    hayMontoSinIngreso={suscripciones > 0}
+                  />
+                </KPICard>
+              </div>
             )}
           </div>
 
-          {/* Tarjeta: ancho completo en móvil; 2 cols en desktop */}
           <Link
             to={toTarjetaCredito}
-            className="block h-full rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/45 focus-visible:ring-offset-2 focus-visible:ring-offset-dark-950 lg:col-span-2"
+            className="block h-full w-full min-w-0 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/45 focus-visible:ring-offset-2 focus-visible:ring-offset-dark-950"
             aria-label="Ver detalle de tarjeta de crédito"
           >
             <motion.div
@@ -764,7 +829,7 @@ export default function Dashboard() {
           </Link>
 
           {!loadingBolsillos && saldoFondoEmergencia > 0 && (
-            <div className="min-w-0 w-full lg:col-span-6">
+            <div className="min-w-0 w-full">
               <motion.div
                 initial={{ opacity: 0, y: 14 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -862,7 +927,7 @@ export default function Dashboard() {
             </div>
           )}
 
-          <div className="grid min-w-0 grid-cols-2 gap-3 lg:contents">
+          <div className="grid min-w-0 grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
             <KPICard
               titulo="Mayor Gasto"
               delay={0.22}
@@ -883,9 +948,6 @@ export default function Dashboard() {
               accentColor="#78716c"
               mobileStatLayout
             />
-          </div>
-
-          <div className="grid min-w-0 grid-cols-2 gap-3 lg:contents">
             <KPICard
               titulo="Mayor gasto TC"
               delay={0.25}
@@ -912,7 +974,7 @@ export default function Dashboard() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.28, ease: [0.25, 0.46, 0.45, 0.94] }}
-            className="glass relative overflow-hidden p-4 transition-all duration-300 glow-cyan hover:border-white/[0.12] lg:col-span-1"
+            className="glass relative w-full max-w-full overflow-hidden p-4 transition-all duration-300 glow-cyan hover:border-white/[0.12] lg:max-w-md lg:self-start"
           >
             <div className="absolute top-0 left-0 right-0 h-[2px] opacity-60"
               style={{ background: 'linear-gradient(90deg, transparent, #06b6d4, transparent)' }}

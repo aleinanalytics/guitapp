@@ -22,6 +22,11 @@ export interface Transaccion {
   categoria_id: string | null
   /** Solo tipo gasto: si es true, cuenta en el promedio de gastos fijos (fondo de emergencia). */
   es_gasto_fijo?: boolean
+  /**
+   * Gasto/suscripción con salida efectivo o transferencia que no debe restar de tu saldo/disponible
+   * (ej. lo pagó otra persona); sigue contando en totales y categorías para seguimiento.
+   */
+  excluye_saldo?: boolean
   categoria?: Categoria
   created_at: string
 }

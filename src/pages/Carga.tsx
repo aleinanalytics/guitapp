@@ -359,6 +359,8 @@ export default function Carga() {
   const [submitting, setSubmitting] = useState(false)
   /** Solo gastos: marca el movimiento como gasto fijo (fondo de emergencia). */
   const [esGastoFijo, setEsGastoFijo] = useState(false)
+  /** Gasto anotado solo para seguimiento; no resta del saldo/disponible (ej. lo pagó otra persona). */
+  const [excluyeSaldoCaja, setExcluyeSaldoCaja] = useState(false)
 
   /** When crédito selected, user can opt to pay in cuotas */
   const [enCuotas, setEnCuotas] = useState(false)
@@ -410,6 +412,7 @@ export default function Carga() {
   const [editFecha, setEditFecha] = useState('')
   const [editCategoriaId, setEditCategoriaId] = useState('')
   const [editEsGastoFijo, setEditEsGastoFijo] = useState(false)
+  const [editExcluyeSaldo, setEditExcluyeSaldo] = useState(false)
   const [editIngresoReintegroTc, setEditIngresoReintegroTc] = useState(false)
 
   useEffect(() => {
@@ -482,7 +485,10 @@ export default function Carga() {
     setEnCuotas(false)
     setNumCuotas('')
     setIngresoReintegroTc(false)
-    if (tipo !== 'gasto') setEsGastoFijo(false)
+    if (tipo !== 'gasto') {
+      setEsGastoFijo(false)
+      setExcluyeSaldoCaja(false)
+    }
   }, [tipo])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -508,7 +514,7 @@ export default function Carga() {
         window.alert('Cuotas registradas')
         setDescripcion(''); setMonto(''); setCategoriaId(''); setFecha(today); setMoneda('ARS')
         setMedioPagoNivel1('efectivo'); setPlasticoTipo('debito')
-        setEnCuotas(false); setNumCuotas(''); setEsGastoFijo(false)
+        setEnCuotas(false); setNumCuotas(''); setEsGastoFijo(false); setExcluyeSaldoCaja(false)
         fetchRecientes()
       }
       return
@@ -525,6 +531,7 @@ export default function Carga() {
       moneda,
       medio_pago: medioPagoDb,
       es_gasto_fijo: tipo === 'gasto' && esGastoFijo,
+      excluye_saldo: tipo === 'gasto' && excluyeSaldoCaja,
     })
     setSubmitting(false)
     if (error) { window.alert('Error: ' + error.message) }
@@ -532,7 +539,7 @@ export default function Carga() {
       window.alert('Registrado')
       setDescripcion(''); setMonto(''); setCategoriaId(''); setFecha(today); setMoneda('ARS')
       setMedioPagoNivel1('efectivo'); setPlasticoTipo('debito')
-      setEnCuotas(false); setNumCuotas(''); setEsGastoFijo(false)
+      setEnCuotas(false); setNumCuotas(''); setEsGastoFijo(false); setExcluyeSaldoCaja(false)
       fetchRecientes()
     }
   }
@@ -551,6 +558,7 @@ export default function Carga() {
     setEditFecha(t.fecha)
     setEditCategoriaId(t.categoria_id ?? '')
     setEditEsGastoFijo(t.tipo === 'gasto' && !!t.es_gasto_fijo)
+    setEditExcluyeSaldo(t.tipo === 'gasto' && !!t.excluye_saldo)
     setEditIngresoReintegroTc(t.tipo === 'ingreso' && t.medio_pago === 'tarjeta')
   }
 
@@ -565,6 +573,7 @@ export default function Carga() {
       fecha: editFecha,
       categoria_id: editCategoriaId,
       es_gasto_fijo: tipoTx === 'gasto' ? editEsGastoFijo : false,
+      excluye_saldo: tipoTx === 'gasto' ? editExcluyeSaldo : false,
     }
     if (tipoTx === 'ingreso') patch.medio_pago = editIngresoReintegroTc ? 'tarjeta' : 'efectivo'
     const { error } = await supabase.from('transacciones').update(patch).eq('id', id)
@@ -853,6 +862,19 @@ export default function Carga() {
                   <span className="text-xs text-gray-300 leading-snug">Gasto fijo</span>
                 </label>
               )}
+              {tipo === 'gasto' && (
+                <label className="flex items-center gap-2.5 cursor-pointer rounded-xl border border-white/[0.08] bg-dark-800/40 px-3 py-2.5">
+                  <input
+                    type="checkbox"
+                    checked={excluyeSaldoCaja}
+                    onChange={(e) => setExcluyeSaldoCaja(e.target.checked)}
+                    className="accent-sky-500 w-4 h-4 shrink-0"
+                  />
+                  <span className="text-xs text-gray-300 leading-snug">
+                    Solo seguimiento: no resta de mi saldo (ej. lo pagó otra persona). Sigue contando en gastos y categorías.
+                  </span>
+                </label>
+              )}
               {tipo === 'ingreso' && (
                 <label className="flex items-center gap-2.5 cursor-pointer rounded-xl border border-white/[0.08] bg-dark-800/40 px-3 py-2.5">
                   <input
@@ -994,6 +1016,19 @@ export default function Carga() {
                     className="accent-rose-500 w-4 h-4 shrink-0"
                   />
                   <span className="text-xs text-gray-400 leading-snug">Gasto fijo</span>
+                </label>
+              )}
+              {tipo === 'gasto' && (
+                <label className="flex items-start gap-2.5 cursor-pointer rounded-xl border border-white/[0.08] bg-dark-800/40 px-3 py-2.5">
+                  <input
+                    type="checkbox"
+                    checked={excluyeSaldoCaja}
+                    onChange={(e) => setExcluyeSaldoCaja(e.target.checked)}
+                    className="accent-sky-500 w-4 h-4 shrink-0 mt-0.5"
+                  />
+                  <span className="text-xs text-gray-300 leading-snug text-left">
+                    Solo seguimiento: no resta de mi saldo (ej. lo pagó otra persona). Sigue en gastos y categorías.
+                  </span>
                 </label>
               )}
               {tipo === 'ingreso' && (
@@ -1195,6 +1230,17 @@ export default function Carga() {
                                       Fijo
                                     </label>
                                   )}
+                                  {t.tipo === 'gasto' && (
+                                    <label className="flex items-center gap-1.5 text-[11px] text-gray-400 w-full sm:w-auto">
+                                      <input
+                                        type="checkbox"
+                                        checked={editExcluyeSaldo}
+                                        onChange={(e) => setEditExcluyeSaldo(e.target.checked)}
+                                        className="accent-sky-500 w-3.5 h-3.5"
+                                      />
+                                      Sin caja
+                                    </label>
+                                  )}
                                   {t.tipo === 'ingreso' && (
                                     <label className="flex items-center gap-1.5 text-[11px] text-gray-400 w-full sm:w-auto">
                                       <input
@@ -1236,6 +1282,9 @@ export default function Carga() {
                               {t.categoria?.nombre ?? '—'} · {t.fecha}
                               {t.tipo === 'gasto' && t.es_gasto_fijo && (
                                 <span className="ml-1.5 text-[10px] font-medium text-sky-400/90">· Fijo</span>
+                              )}
+                              {t.tipo === 'gasto' && t.excluye_saldo && (
+                                <span className="ml-1.5 text-[10px] font-medium text-cyan-400/90">· Solo seguimiento</span>
                               )}
                             </p>
                           </div>

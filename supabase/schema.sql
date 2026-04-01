@@ -20,6 +20,7 @@ create table transacciones (
   medio_pago text not null default 'efectivo' check (medio_pago in ('efectivo','tarjeta','transferencia')),
   categoria_id uuid references categorias(id) on delete set null,
   es_gasto_fijo boolean not null default false,
+  excluye_saldo boolean not null default false,
   created_at timestamptz default now()
 );
 

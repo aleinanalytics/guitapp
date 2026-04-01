@@ -36,7 +36,7 @@ export function useSaldoAcumuladoHastaMes({ mes, anio, tc }: { mes: number; anio
     const hasta = ultimoDiaDelMes(anio, mes)
     const { data, error: err } = await supabase
       .from('transacciones')
-      .select('monto, moneda, tipo, medio_pago')
+      .select('monto, moneda, tipo, medio_pago, excluye_saldo')
       .lte('fecha', hasta)
 
     if (err) {
@@ -49,7 +49,7 @@ export function useSaldoAcumuladoHastaMes({ mes, anio, tc }: { mes: number; anio
         const ars = convertirARS(Number(t.monto), t.moneda as Moneda, tc)
         if (t.tipo === 'ingreso' && !esIngresoReintegroTarjetaCredito(t as Pick<Transaccion, 'tipo' | 'medio_pago'>))
           ing += ars
-        else if (cuentaComoSalidaDeEfectivo(t as Pick<Transaccion, 'tipo' | 'medio_pago'>)) sal += ars
+        else if (cuentaComoSalidaDeEfectivo(t as Pick<Transaccion, 'tipo' | 'medio_pago' | 'excluye_saldo'>)) sal += ars
       }
       setSaldoAcumulado(ing - sal)
     }
