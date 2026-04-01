@@ -70,7 +70,12 @@ export default function Dashboard() {
   const { cuotas } = useCuotas()
   const { config: tcConfig } = useTarjetaConfig()
   const { transacciones: txAnio } = useAnalisis({ anio })
-  const { disponible: disponibleReservas, saldo: saldoBolsillo, loading: loadingBolsillos } = useBolsillos()
+  const {
+    disponible: disponibleReservas,
+    saldo: saldoBolsillo,
+    configs: bolsillosConfigs,
+    loading: loadingBolsillos,
+  } = useBolsillos()
 
   const diaCierreTc =
     tcConfig?.fecha_cierre != null
@@ -340,6 +345,28 @@ export default function Dashboard() {
   const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i)
   const firstName = user?.user_metadata?.full_name?.split(' ')[0] ?? ''
 
+  const saldoFondoEmergencia = saldoBolsillo('emergencia')
+  const metaFondoEmergencia = bolsillosConfigs.emergencia?.objetivo_monto
+  const kpiReserva = useMemo(() => {
+    const act = saldoFondoEmergencia
+    const meta = metaFondoEmergencia
+    const tieneMeta = meta != null && meta > 0
+    if (!tieneMeta) {
+      return {
+        tieneMeta: false as const,
+        actual: act,
+        falta: null as number | null,
+        meta: null as number | null,
+        pct: null as number | null,
+        metaAlcanzada: false,
+      }
+    }
+    const falta = Math.max(0, meta - act)
+    const metaAlcanzada = act >= meta
+    const pct = Math.min(100, (act / meta) * 100)
+    return { tieneMeta: true as const, actual: act, falta, meta, pct, metaAlcanzada }
+  }, [saldoFondoEmergencia, metaFondoEmergencia])
+
   const qMesAnio = `mes=${mes}&anio=${anio}`
   const toIngresos = `/movimientos?tipo=ingreso&${qMesAnio}`
   const toGastos = `/movimientos?tipo=gasto&${qMesAnio}`
@@ -427,6 +454,100 @@ export default function Dashboard() {
             {formatUSD(saldoAcumulado / tc)}
           </p>
         </motion.div>
+
+        {!loadingBolsillos && (
+          <motion.div
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.08 }}
+            className="mb-6 lg:mb-8"
+          >
+            <Link
+              to="/fondo-emergencia"
+              className="block glass relative overflow-hidden rounded-2xl border border-sky-500/25 bg-gradient-to-br from-sky-500/[0.07] to-transparent p-5 sm:p-6 lg:p-7 transition-all duration-300 hover:border-sky-400/35 hover:from-sky-500/[0.1] focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/45 focus-visible:ring-offset-2 focus-visible:ring-offset-dark-950"
+            >
+              <div
+                className="pointer-events-none absolute top-0 left-0 right-0 h-[2px] opacity-70"
+                style={{ background: 'linear-gradient(90deg, transparent, #38bdf8, transparent)' }}
+              />
+              <div className="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0 flex-1 text-center sm:text-left">
+                  <div className="flex items-center justify-center gap-2 sm:justify-start">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/20 text-sky-300">
+                      <Shield size={22} strokeWidth={2} />
+                    </span>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-200/80">
+                      Fondo de reserva
+                    </p>
+                  </div>
+                  {kpiReserva.tieneMeta ? (
+                    kpiReserva.metaAlcanzada ? (
+                      <>
+                        <p className="mt-3 text-3xl font-bold leading-tight text-emerald-400 sm:text-4xl lg:text-5xl">
+                          Meta alcanzada
+                        </p>
+                        <p className="mt-2 text-sm text-gray-400">
+                          Tenés {formatARS(kpiReserva.actual)} en reserva
+                          {kpiReserva.meta != null && kpiReserva.actual > kpiReserva.meta && (
+                            <span className="text-emerald-400/90"> ({formatARS(kpiReserva.actual - kpiReserva.meta)} por encima de la meta)</span>
+                          )}
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p
+                          className={`mt-3 font-bold tabular-nums leading-[1.08] break-words ${montoDisplayClass(kpiReserva.falta ?? 0, 'kpiStatProminent')} text-sky-100`}
+                        >
+                          {formatARS(kpiReserva.falta ?? 0)}
+                        </p>
+                        <p className="mt-1.5 text-sm text-gray-400">Te falta para llegar a tu meta</p>
+                        <p className="mt-2 text-[11px] text-gray-600">
+                          Actual {formatARS(kpiReserva.actual)} · Objetivo {formatARS(kpiReserva.meta ?? 0)}
+                        </p>
+                      </>
+                    )
+                  ) : (
+                    <>
+                      <p
+                        className={`mt-3 font-bold tabular-nums leading-[1.08] break-words ${montoDisplayClass(kpiReserva.actual, 'kpiStatProminent')} text-gray-50`}
+                      >
+                        {formatARS(kpiReserva.actual)}
+                      </p>
+                      <p className="mt-1.5 text-sm text-gray-400">
+                        En tu fondo de emergencia. Definí una meta en pesos para ver cuánto te falta.
+                      </p>
+                    </>
+                  )}
+                </div>
+                {kpiReserva.tieneMeta && kpiReserva.pct != null && (
+                  <div className="w-full shrink-0 sm:max-w-[14rem] sm:pt-8">
+                    <div className="mb-1.5 flex justify-between text-[10px] uppercase tracking-wide text-gray-500">
+                      <span>Progreso</span>
+                      <span className="tabular-nums text-sky-300/90">
+                        {kpiReserva.metaAlcanzada && kpiReserva.pct > 100
+                          ? '100%+'
+                          : `${Math.round(kpiReserva.pct)}%`}
+                      </span>
+                    </div>
+                    <div className="h-2.5 overflow-hidden rounded-full bg-white/[0.08]">
+                      <div
+                        className={`h-full rounded-full transition-[width] duration-500 ${
+                          kpiReserva.metaAlcanzada
+                            ? 'bg-gradient-to-r from-emerald-600 to-emerald-400'
+                            : 'bg-gradient-to-r from-sky-600 to-cyan-400'
+                        }`}
+                        style={{ width: `${Math.min(100, kpiReserva.pct)}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+              <p className="relative mt-4 text-center text-[11px] text-sky-400/70 sm:text-left">
+                Tocá para asignar fondos o editar la meta →
+              </p>
+            </Link>
+          </motion.div>
+        )}
 
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-6 lg:gap-4">
           <div className="grid min-w-0 grid-cols-2 gap-3 lg:contents">
