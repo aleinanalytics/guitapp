@@ -73,5 +73,7 @@ export interface BolsilloMovimiento {
   user_id: string
   tipo: BolsilloTipo
   monto: number
+  /** Por defecto ARS; en Ahorros se puede usar USD. */
+  moneda: Moneda
   created_at: string
 }

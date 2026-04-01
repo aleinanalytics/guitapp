@@ -3,7 +3,12 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import { useTipoCambio } from './useTipoCambio'
 import { convertirARS, cuentaComoSalidaDeEfectivo, esIngresoReintegroTarjetaCredito } from '../lib/utils'
-import type { BolsilloTipo, BolsilloConfig, BolsilloMovimiento, Transaccion } from '../lib/types'
+import type { BolsilloTipo, BolsilloConfig, BolsilloMovimiento, Moneda, Transaccion } from '../lib/types'
+
+function movimientoEquivalenteARS(m: BolsilloMovimiento, tc: number): number {
+  const mon = m.moneda ?? 'ARS'
+  return mon === 'USD' ? m.monto * tc : m.monto
+}
 
 export function useBolsillos() {
   const { user } = useAuth()
@@ -37,7 +42,15 @@ export function useBolsillos() {
     ])
 
     if (movRes.error) setError(movRes.error.message)
-    else setMovimientos((movRes.data as BolsilloMovimiento[]) ?? [])
+    else {
+      const rows = (movRes.data as BolsilloMovimiento[]) ?? []
+      setMovimientos(
+        rows.map((r) => ({
+          ...r,
+          moneda: (r as BolsilloMovimiento & { moneda?: Moneda }).moneda ?? 'ARS',
+        })),
+      )
+    }
 
     if (!cfgRes.error && cfgRes.data) {
       const next: Partial<Record<BolsilloTipo, BolsilloConfig>> = {}
@@ -66,24 +79,48 @@ export function useBolsillos() {
     refetch()
   }, [refetch])
 
-  const saldo = useCallback(
-    (tipo: BolsilloTipo) => movimientos.filter((m) => m.tipo === tipo).reduce((s, m) => s + m.monto, 0),
-    [movimientos]
+  /** Saldos reales por moneda (solo movimientos de ese tipo). */
+  const saldoPorMoneda = useCallback(
+    (tipo: BolsilloTipo): { ars: number; usd: number } => {
+      let ars = 0
+      let usd = 0
+      for (const m of movimientos) {
+        if (m.tipo !== tipo) continue
+        const mon = m.moneda ?? 'ARS'
+        if (mon === 'USD') usd += m.monto
+        else ars += m.monto
+      }
+      return { ars, usd }
+    },
+    [movimientos],
   )
 
-  const saldoTotalBolsillos = useMemo(() => saldo('ahorro') + saldo('emergencia'), [saldo])
+  /** Equivalente en ARS al tipo de cambio actual (disponible, metas, dashboard). */
+  const saldoEquivARS = useCallback(
+    (tipo: BolsilloTipo) =>
+      movimientos
+        .filter((m) => m.tipo === tipo)
+        .reduce((s, m) => s + movimientoEquivalenteARS(m, tc), 0),
+    [movimientos, tc],
+  )
+
+  const saldoTotalBolsillos = useMemo(
+    () => movimientos.reduce((s, m) => s + movimientoEquivalenteARS(m, tc), 0),
+    [movimientos, tc],
+  )
 
   const disponible = useMemo(
     () => fluidoHistorial - saldoTotalBolsillos,
     [fluidoHistorial, saldoTotalBolsillos]
   )
 
-  const registrarMovimiento = async (tipo: BolsilloTipo, monto: number) => {
+  const registrarMovimiento = async (tipo: BolsilloTipo, monto: number, moneda: Moneda = 'ARS') => {
     if (!user) return { error: 'No autenticado' }
     const { error: err } = await supabase.from('bolsillo_movimientos').insert({
       user_id: user.id,
       tipo,
       monto,
+      moneda,
     })
     if (err) return { error: err.message }
     await refetch()
@@ -118,7 +155,8 @@ export function useBolsillos() {
     loading,
     error,
     refetch,
-    saldo,
+    saldoPorMoneda,
+    saldoEquivARS,
     saldoTotalBolsillos,
     fluidoHistorial,
     disponible,

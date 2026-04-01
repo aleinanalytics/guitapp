@@ -79,7 +79,7 @@ export default function Dashboard() {
   const { transacciones: txAnio } = useAnalisis({ anio })
   const {
     disponible: disponibleReservas,
-    saldo: saldoBolsillo,
+    saldoEquivARS,
     configs: bolsillosConfigs,
     loading: loadingBolsillos,
   } = useBolsillos()
@@ -395,7 +395,7 @@ export default function Dashboard() {
   const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i)
   const firstName = user?.user_metadata?.full_name?.split(' ')[0] ?? ''
 
-  const saldoFondoEmergencia = saldoBolsillo('emergencia')
+  const saldoFondoEmergencia = saldoEquivARS('emergencia')
   const metaFondoEmergencia = bolsillosConfigs.emergencia?.objetivo_monto
   const kpiReserva = useMemo(() => {
     const act = saldoFondoEmergencia
@@ -1023,10 +1023,10 @@ export default function Dashboard() {
                 <span className={disponibleReservas >= 0 ? 'text-cyan-400/90' : 'text-rose-400/90'}>
                   {formatARS(disponibleReservas)}
                 </span>
-                {saldoBolsillo('ahorro') + saldoBolsillo('emergencia') > 0 && (
+                {saldoEquivARS('ahorro') + saldoEquivARS('emergencia') > 0 && (
                   <span className="text-gray-600">
                     {' '}
-                    · En bolsillos: {formatARS(saldoBolsillo('ahorro') + saldoBolsillo('emergencia'))}
+                    · En bolsillos: {formatARS(saldoEquivARS('ahorro') + saldoEquivARS('emergencia'))}
                   </span>
                 )}
               </>

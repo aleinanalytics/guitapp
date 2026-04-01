@@ -19,7 +19,7 @@ export default function VariacionIngresosMesAnteriorKpi({
 
   if (ingresosAnterior === 0 && ingresosActual > 0) {
     return (
-      <p className="mt-0.5 text-center text-[11px] leading-snug text-gray-500 lg:text-left">
+      <p className="mt-0.5 text-center text-[11px] leading-snug text-gray-500">
         Sin ingresos en {nombreMesAnterior} para comparar
       </p>
     )
@@ -32,10 +32,10 @@ export default function VariacionIngresosMesAnteriorKpi({
     const color = sube ? 'text-emerald-400' : baja ? 'text-rose-400' : 'text-gray-400'
     const Icon = sube ? TrendingUp : baja ? TrendingDown : Minus
     return (
-      <div className="mt-0.5 flex flex-col items-center gap-0.5 lg:items-stretch">
-        <div className={`flex items-center justify-center gap-1 lg:justify-start ${color}`}>
+      <div className="mt-0.5 flex flex-col items-center gap-0.5">
+        <div className={`flex items-center justify-center gap-1 ${color}`}>
           <Icon size={12} className="shrink-0 opacity-90" aria-hidden />
-          <p className="text-center text-xs font-medium leading-snug lg:text-left">
+          <p className="text-center text-xs font-medium leading-snug">
             {pct >= 0 ? '+' : ''}
             {pct.toFixed(1)}% vs {nombreMesAnterior}
           </p>

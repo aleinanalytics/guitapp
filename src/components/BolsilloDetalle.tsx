@@ -4,8 +4,8 @@ import { motion } from 'framer-motion'
 import { ArrowLeft, PiggyBank, Plus, Minus, Shield } from 'lucide-react'
 import { useBolsillos } from '../hooks/useBolsillos'
 import { useGastoFijoMensualPromedio } from '../hooks/useGastoFijoMensualPromedio'
-import { formatARS, parseMontoInput, formatMontoFromNumber } from '../lib/utils'
-import type { BolsilloTipo } from '../lib/types'
+import { formatARS, formatUSD, parseMontoInput, formatMontoFromNumber } from '../lib/utils'
+import type { BolsilloTipo, Moneda } from '../lib/types'
 
 type Props = {
   tipo: BolsilloTipo
@@ -18,26 +18,33 @@ export default function BolsilloDetalle({ tipo, titulo }: Props) {
     configs,
     loading,
     disponible,
-    saldo,
+    saldoPorMoneda,
+    saldoEquivARS,
     registrarMovimiento,
     upsertConfig,
+    tc,
   } = useBolsillos()
 
   const { promedioMensual, loading: loadingPromedio } = useGastoFijoMensualPromedio()
 
-  const s = saldo(tipo)
+  const saldos = saldoPorMoneda(tipo)
+  const sEquiv = saldoEquivARS(tipo)
   const cfg = configs[tipo]
   const objetivo = cfg?.objetivo_monto ?? null
   const mesesSugerencia = cfg?.meses_sugerencia ?? 3
 
   const [montoDeposito, setMontoDeposito] = useState('')
   const [montoRetiro, setMontoRetiro] = useState('')
+  const [monedaDeposito, setMonedaDeposito] = useState<Moneda>('ARS')
+  const [monedaRetiro, setMonedaRetiro] = useState<Moneda>('ARS')
   const [objetivoInput, setObjetivoInput] = useState('')
   const [msg, setMsg] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
   const pctObjetivo =
-    objetivo != null && objetivo > 0 ? Math.min(100, Math.round((s / objetivo) * 1000) / 10) : null
+    objetivo != null && objetivo > 0
+      ? Math.min(100, Math.round((sEquiv / objetivo) * 1000) / 10)
+      : null
 
   const sugeridoObjetivo = Math.round(promedioMensual * mesesSugerencia)
 
@@ -59,12 +66,14 @@ export default function BolsilloDetalle({ tipo, titulo }: Props) {
       setMsg('Ingresá un monto válido')
       return
     }
-    if (amt > disponible + 1e-6) {
+    const monedaOp: Moneda = tipo === 'ahorro' ? monedaDeposito : 'ARS'
+    const costoARS = monedaOp === 'USD' ? amt * tc : amt
+    if (costoARS > disponible + 1e-6) {
       setMsg('No tenés tanto disponible para asignar (según tu historial de movimientos).')
       return
     }
     setBusy(true)
-    const { error } = await registrarMovimiento(tipo, amt)
+    const { error } = await registrarMovimiento(tipo, amt, monedaOp)
     setBusy(false)
     if (error) setMsg(error)
     else setMontoDeposito('')
@@ -77,12 +86,14 @@ export default function BolsilloDetalle({ tipo, titulo }: Props) {
       setMsg('Ingresá un monto válido')
       return
     }
-    if (amt > s + 1e-6) {
-      setMsg('No podés retirar más de lo que hay en este bolsillo.')
+    const monedaOp: Moneda = tipo === 'ahorro' ? monedaRetiro : 'ARS'
+    const maxEnMoneda = monedaOp === 'USD' ? saldos.usd : saldos.ars
+    if (amt > maxEnMoneda + 1e-6) {
+      setMsg('No podés retirar más de lo que hay en esta moneda en el bolsillo.')
       return
     }
     setBusy(true)
-    const { error } = await registrarMovimiento(tipo, -amt)
+    const { error } = await registrarMovimiento(tipo, -amt, monedaOp)
     setBusy(false)
     if (error) setMsg(error)
     else setMontoRetiro('')
@@ -163,7 +174,8 @@ export default function BolsilloDetalle({ tipo, titulo }: Props) {
             </p>
             {tipo === 'ahorro' && (
               <p className="text-[11px] text-cyan-500/70 mt-2 leading-snug">
-                Objetivos: definí una meta en pesos y seguí el progreso desde este bolsillo.
+                Podés ahorrar en pesos o en dólares (p. ej. compra de USD). La meta sigue en pesos; el progreso usa
+                el tipo de cambio configurado en la app para sumar ambas monedas.
               </p>
             )}
           </div>
@@ -232,18 +244,38 @@ export default function BolsilloDetalle({ tipo, titulo }: Props) {
         ) : (
           <>
             <div className="grid gap-3 mb-5">
-              <div className="rounded-xl bg-white/[0.03] px-4 py-3">
-                <p className="text-[11px] uppercase tracking-wide text-gray-500">En este bolsillo</p>
-                <p className="text-2xl font-bold text-gray-50 mt-0.5">{formatARS(s)}</p>
-              </div>
+              {tipo === 'ahorro' ? (
+                <>
+                  <div className="rounded-xl bg-white/[0.03] px-4 py-3">
+                    <p className="text-[11px] uppercase tracking-wide text-gray-500">En ARS</p>
+                    <p className="text-2xl font-bold text-gray-50 mt-0.5">{formatARS(saldos.ars)}</p>
+                  </div>
+                  <div className="rounded-xl bg-white/[0.03] px-4 py-3">
+                    <p className="text-[11px] uppercase tracking-wide text-gray-500">En USD</p>
+                    <p className="text-2xl font-bold text-gray-50 mt-0.5">{formatUSD(saldos.usd)}</p>
+                  </div>
+                  <div className="rounded-xl bg-white/[0.02] px-4 py-2.5 border border-white/[0.05]">
+                    <p className="text-[10px] text-gray-500 leading-snug">
+                      Equivalente total (ARS + USD al TC {formatARS(tc)}):{' '}
+                      <span className="text-gray-300 font-medium">{formatARS(sEquiv)}</span>
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <div className="rounded-xl bg-white/[0.03] px-4 py-3">
+                  <p className="text-[11px] uppercase tracking-wide text-gray-500">En este bolsillo</p>
+                  <p className="text-2xl font-bold text-gray-50 mt-0.5">{formatARS(saldos.ars)}</p>
+                </div>
+              )}
               <div className="rounded-xl bg-white/[0.03] px-4 py-3">
                 <p className="text-[11px] uppercase tracking-wide text-gray-500">Disponible para asignar</p>
                 <p className={`text-lg font-semibold mt-0.5 ${disponible >= 0 ? 'text-cyan-300' : 'text-rose-400'}`}>
                   {formatARS(disponible)}
                 </p>
                 <p className="text-[10px] text-gray-600 mt-1 leading-snug">
-                  Estimado con todo tu historial de ingresos, gastos y suscripciones, menos lo ya asignado a
-                  Ahorros y Fondo de emergencia. No incluye deudas de tarjeta futuras.
+                  Estimado con todo tu historial de ingresos, gastos y suscripciones, menos lo ya asignado a Ahorros y
+                  Fondo de emergencia (los USD en Ahorros cuentan al tipo de cambio actual). No incluye deudas de
+                  tarjeta futuras.
                 </p>
               </div>
             </div>
@@ -300,10 +332,29 @@ export default function BolsilloDetalle({ tipo, titulo }: Props) {
                   <Plus size={14} className="text-emerald-400" />
                   Asignar desde disponible
                 </p>
+                {tipo === 'ahorro' && (
+                  <div className="flex rounded-xl bg-dark-800/90 p-0.5 gap-0.5 ring-1 ring-white/[0.06] mb-2">
+                    {(['ARS', 'USD'] as const).map((mon) => (
+                      <button
+                        key={mon}
+                        type="button"
+                        disabled={busy}
+                        onClick={() => setMonedaDeposito(mon)}
+                        className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                          monedaDeposito === mon
+                            ? 'bg-emerald-500/20 text-emerald-200 ring-1 ring-emerald-500/35'
+                            : 'text-gray-500 hover:text-gray-300'
+                        }`}
+                      >
+                        {mon}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <input
                   type="text"
                   inputMode="decimal"
-                  placeholder="Monto ARS"
+                  placeholder={tipo === 'ahorro' && monedaDeposito === 'USD' ? 'Monto USD' : 'Monto ARS'}
                   value={montoDeposito}
                   onChange={(e) => setMontoDeposito(e.target.value)}
                   className="input-dark w-full mb-2"
@@ -322,10 +373,29 @@ export default function BolsilloDetalle({ tipo, titulo }: Props) {
                   <Minus size={14} className="text-amber-400" />
                   Volver a disponible
                 </p>
+                {tipo === 'ahorro' && (
+                  <div className="flex rounded-xl bg-dark-800/90 p-0.5 gap-0.5 ring-1 ring-white/[0.06] mb-2">
+                    {(['ARS', 'USD'] as const).map((mon) => (
+                      <button
+                        key={mon}
+                        type="button"
+                        disabled={busy}
+                        onClick={() => setMonedaRetiro(mon)}
+                        className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                          monedaRetiro === mon
+                            ? 'bg-amber-500/15 text-amber-200/90 ring-1 ring-amber-500/30'
+                            : 'text-gray-500 hover:text-gray-300'
+                        }`}
+                      >
+                        {mon}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <input
                   type="text"
                   inputMode="decimal"
-                  placeholder="Monto ARS"
+                  placeholder={tipo === 'ahorro' && monedaRetiro === 'USD' ? 'Monto USD' : 'Monto ARS'}
                   value={montoRetiro}
                   onChange={(e) => setMontoRetiro(e.target.value)}
                   className="input-dark w-full mb-2"
@@ -354,7 +424,9 @@ export default function BolsilloDetalle({ tipo, titulo }: Props) {
                     >
                       <span className={m.monto >= 0 ? 'text-emerald-400/90' : 'text-amber-300/90'}>
                         {m.monto >= 0 ? '+' : '−'}
-                        {formatARS(Math.abs(m.monto))}
+                        {(m.moneda ?? 'ARS') === 'USD'
+                          ? formatUSD(Math.abs(m.monto))
+                          : formatARS(Math.abs(m.monto))}
                       </span>
                       <span className="text-gray-600 shrink-0">
                         {new Date(m.created_at).toLocaleString('es-AR', {

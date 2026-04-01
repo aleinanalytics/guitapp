@@ -44,6 +44,12 @@ export default function KPICard({
 }: KPICardProps) {
   const isHero = variant === 'hero'
   const ms = mobileStatLayout && !isHero
+  const arsStr = formatARS(montoARS)
+  const usdStr = montoUSD !== undefined ? formatUSD(montoUSD) : ''
+  /** Tipografía fluida en móvil para KPIs en grilla; Gastos sin TC (protagonista) solo si el texto es largo. */
+  const arsFluidMobile =
+    ms && (!montoProtagonista || arsStr.length >= 11)
+  const usdFluidMobile = ms && !montoProtagonista
   const montoArsKind =
     montoProtagonista && ms
       ? 'kpiStatProminentResponsive'
@@ -78,16 +84,16 @@ export default function KPICard({
         </div>
       ) : (
         <div
-          className={`${ms && montoProtagonista ? 'mb-1' : 'mb-2'} flex min-w-0 items-center gap-2 ${ms ? 'justify-center lg:justify-between' : 'justify-between'} ${
+          className={`${ms && montoProtagonista ? 'mb-1' : 'mb-2'} flex min-w-0 items-center gap-2 ${ms ? 'justify-center' : 'justify-between'} ${
             topAccessory ? 'pr-8 sm:pr-9' : ''
           }`}
         >
           <p
             className={`min-w-0 font-medium uppercase tracking-wider text-gray-400 ${
               ms && montoProtagonista
-                ? 'text-[10px] text-center lg:text-left lg:text-xs line-clamp-2 break-words leading-tight'
+                ? 'text-[10px] text-center lg:text-xs line-clamp-2 break-words leading-tight'
                 : ms
-                  ? 'text-xs text-center lg:text-left line-clamp-2 break-words leading-tight'
+                  ? 'text-xs text-center line-clamp-2 break-words leading-tight'
                   : 'text-xs truncate'
             }`}
           >
@@ -99,13 +105,17 @@ export default function KPICard({
         </div>
       )}
       {ms ? (
-        <div className="flex w-full max-w-full min-w-0 justify-center overflow-x-auto lg:justify-start [scrollbar-width:thin]">
+        <div className="flex w-full max-w-full min-w-0 justify-center overflow-x-auto [scrollbar-width:thin]">
           <p
-            className={`font-bold text-gray-50 tracking-tight tabular-nums whitespace-nowrap ${
+            className={`font-bold text-gray-50 tracking-tight tabular-nums whitespace-nowrap text-center ${
               montoProtagonista ? 'leading-none lg:leading-tight' : 'leading-tight'
-            } text-center lg:text-left ${montoDisplayClass(montoARS, montoArsKind)}`}
+            } ${montoDisplayClass(montoARS, montoArsKind)} ${
+              arsFluidMobile
+                ? 'max-lg:!text-[length:clamp(0.8125rem,2.85vw+0.45rem,1.4rem)] max-lg:!leading-tight'
+                : ''
+            }`}
           >
-            {formatARS(montoARS)}
+            {arsStr}
           </p>
         </div>
       ) : (
@@ -123,11 +133,15 @@ export default function KPICard({
       )}
       {montoUSD !== undefined &&
         (ms ? (
-          <div className="mt-1 flex w-full max-w-full min-w-0 justify-center overflow-x-auto lg:justify-start [scrollbar-width:thin]">
+          <div className="mt-1 flex w-full max-w-full min-w-0 justify-center overflow-x-auto [scrollbar-width:thin]">
             <p
-              className={`text-gray-500 whitespace-nowrap text-center lg:text-left ${montoDisplayClass(montoUSD, montoUsdKind)}`}
+              className={`text-gray-500 whitespace-nowrap text-center ${montoDisplayClass(montoUSD, montoUsdKind)} ${
+                usdFluidMobile
+                  ? 'max-lg:!text-[length:clamp(0.6875rem,2.1vw+0.4rem,0.9375rem)] max-lg:!leading-snug'
+                  : ''
+              }`}
             >
-              {formatUSD(montoUSD)}
+              {usdStr}
             </p>
           </div>
         ) : (
@@ -145,7 +159,7 @@ export default function KPICard({
         <div
           className={`flex items-center gap-1 mt-2 px-2 py-0.5 rounded-lg text-xs font-semibold ${
             variacion >= 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
-          } ${ms ? 'mx-auto lg:mx-0 w-fit' : 'inline-flex'}`}
+          } ${ms ? 'mx-auto w-fit' : 'inline-flex'}`}
         >
           {variacion >= 0 ? '+' : ''}
           {variacion.toFixed(1)}%
@@ -154,14 +168,14 @@ export default function KPICard({
       {descripcion && (
         <p
           className={`text-xs text-gray-500 mt-2 ${isHero ? 'max-w-lg mx-auto leading-snug px-1' : 'truncate'} ${
-            ms ? 'text-center lg:text-left' : ''
+            ms ? 'text-center' : ''
           }`}
         >
           {descripcion}
         </p>
       )}
       {ms && children ? (
-        <div className="mt-1.5 flex flex-col items-center lg:items-stretch">{children}</div>
+        <div className="mt-1.5 flex flex-col items-center">{children}</div>
       ) : (
         children
       )}
@@ -170,7 +184,9 @@ export default function KPICard({
 
   const motionPad = isHero ? 'p-5 sm:p-7 lg:p-8 text-center' : 'p-4'
   const roundedClass = isHero ? 'rounded-3xl' : 'rounded-2xl'
-  const motionBase = `glass h-full w-full min-w-0 relative overflow-hidden group transition-all duration-300 ${glowClass ?? ''} ${motionPad} ${
+  /** `overflow-x-auto` en layout stat: permite ver montos largos; el vidrio ya redondea con el borde. */
+  const cardOverflow = isHero ? 'overflow-hidden' : ms ? 'overflow-x-auto overflow-y-hidden' : 'overflow-hidden'
+  const motionBase = `glass h-full w-full min-w-0 relative ${cardOverflow} group transition-all duration-300 ${glowClass ?? ''} ${motionPad} ${
     to && !topAccessory ? 'cursor-pointer hover:border-white/[0.18] hover:bg-white/[0.02]' : 'hover:border-white/[0.12]'
   }`
 
@@ -179,7 +195,8 @@ export default function KPICard({
 
   /** Accesorio flotante: no ocupa fila en el flujo, título y montos alinean como el resto de KPIs */
   if (topAccessory) {
-    const shellClass = `glass h-full w-full min-w-0 relative overflow-hidden group transition-all duration-300 ${glowClass ?? ''} ${motionPad} ${roundedClass} ${
+    const shellOverflow = ms ? 'overflow-x-auto overflow-y-hidden' : 'overflow-hidden'
+    const shellClass = `glass h-full w-full min-w-0 relative ${shellOverflow} group transition-all duration-300 ${glowClass ?? ''} ${motionPad} ${roundedClass} ${
       to ? 'cursor-pointer hover:border-white/[0.18] hover:bg-white/[0.02]' : 'hover:border-white/[0.12]'
     }`
 

@@ -187,6 +187,7 @@ create table bolsillo_movimientos (
   user_id uuid not null references auth.users(id) on delete cascade,
   tipo text not null check (tipo in ('ahorro','emergencia')),
   monto numeric(12,2) not null,
+  moneda text not null default 'ARS' check (moneda in ('ARS','USD')),
   created_at timestamptz default now()
 );
 
