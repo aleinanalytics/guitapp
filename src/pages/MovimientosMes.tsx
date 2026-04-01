@@ -286,7 +286,7 @@ export default function MovimientosMes() {
   const dashLink = `/?mes=${mes}&anio=${anio}`
 
   return (
-    <div className="p-4 lg:p-8 max-w-3xl mx-auto">
+    <div className="px-4 pt-4 pb-28 lg:px-8 lg:pt-8 lg:pb-12 max-w-3xl mx-auto">
       <Link
         to={dashLink}
         className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-gray-200 transition-colors mb-6"
@@ -297,7 +297,7 @@ export default function MovimientosMes() {
 
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mb-6 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-2xl font-bold text-gray-50 lg:text-3xl">{titulo}</h1>
+          <h1 className="text-2xl font-bold text-slate-50 lg:text-3xl">{titulo}</h1>
           <p className="mt-1 text-sm text-gray-500">{sub}</p>
         </div>
         <div className="shrink-0 lg:hidden">
@@ -370,7 +370,7 @@ export default function MovimientosMes() {
 
       {loading || (tipo === 'todos' && loadingSaldoAcum) ? (
         <div className="flex items-center justify-center py-20">
-          <div className="w-8 h-8 border-2 border-accent-blue/30 border-t-accent-blue rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
         </div>
       ) : error ? (
         <p className="text-red-400 text-sm">{error}</p>

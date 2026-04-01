@@ -9,7 +9,6 @@ interface KPICardProps {
   variacion?: number
   descripcion?: string
   icon?: React.ReactNode
-  glowClass?: string
   accentColor?: string
   children?: React.ReactNode
   delay?: number
@@ -32,7 +31,6 @@ export default function KPICard({
   variacion,
   descripcion,
   icon,
-  glowClass,
   accentColor,
   children,
   delay = 0,
@@ -107,7 +105,7 @@ export default function KPICard({
       {ms ? (
         <div className="flex w-full max-w-full min-w-0 justify-center overflow-x-auto [scrollbar-width:thin]">
           <p
-            className={`font-bold text-gray-50 tracking-tight tabular-nums whitespace-nowrap text-center ${
+            className={`font-black text-gray-50 tracking-tighter tabular-nums whitespace-nowrap text-center ${
               montoProtagonista ? 'leading-none lg:leading-tight' : 'leading-tight'
             } ${montoDisplayClass(montoARS, montoArsKind)} ${
               arsFluidMobile
@@ -120,7 +118,7 @@ export default function KPICard({
         </div>
       ) : (
         <p
-          className={`font-bold text-gray-50 tracking-tight tabular-nums break-words lg:break-normal ${
+          className={`font-black text-gray-50 tracking-tighter tabular-nums break-words lg:break-normal ${
             montoProtagonista ? 'leading-none lg:leading-tight' : 'leading-tight'
           } ${
             isHero
@@ -135,7 +133,7 @@ export default function KPICard({
         (ms ? (
           <div className="mt-1 flex w-full max-w-full min-w-0 justify-center overflow-x-auto [scrollbar-width:thin]">
             <p
-              className={`text-gray-500 whitespace-nowrap text-center ${montoDisplayClass(montoUSD, montoUsdKind)} ${
+              className={`font-semibold tabular-nums tracking-tight text-gray-500 whitespace-nowrap text-center ${montoDisplayClass(montoUSD, montoUsdKind)} ${
                 usdFluidMobile
                   ? 'max-lg:!text-[length:clamp(0.6875rem,2.1vw+0.4rem,0.9375rem)] max-lg:!leading-snug'
                   : ''
@@ -146,7 +144,7 @@ export default function KPICard({
           </div>
         ) : (
           <p
-            className={`mt-1 text-gray-500 break-words lg:break-normal ${
+            className={`mt-1 font-semibold tabular-nums tracking-tight text-gray-500 break-words lg:break-normal ${
               isHero
                 ? montoDisplayClass(montoUSD, 'heroUsd')
                 : 'text-sm mt-0.5'
@@ -157,7 +155,7 @@ export default function KPICard({
         ))}
       {variacion !== undefined && (
         <div
-          className={`flex items-center gap-1 mt-2 px-2 py-0.5 rounded-lg text-xs font-semibold ${
+          className={`flex items-center gap-1 mt-2 px-2 py-0.5 rounded-lg text-xs font-semibold tabular-nums tracking-tight ${
             variacion >= 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
           } ${ms ? 'mx-auto w-fit' : 'inline-flex'}`}
         >
@@ -186,17 +184,17 @@ export default function KPICard({
   const roundedClass = isHero ? 'rounded-3xl' : 'rounded-2xl'
   /** `overflow-x-auto` en layout stat: permite ver montos largos; el vidrio ya redondea con el borde. */
   const cardOverflow = isHero ? 'overflow-hidden' : ms ? 'overflow-x-auto overflow-y-hidden' : 'overflow-hidden'
-  const motionBase = `glass h-full w-full min-w-0 relative ${cardOverflow} group transition-all duration-300 ${glowClass ?? ''} ${motionPad} ${
+  const motionBase = `glass h-full w-full min-w-0 relative ${cardOverflow} group transition-all duration-300 ${motionPad} ${
     to && !topAccessory ? 'cursor-pointer hover:border-white/[0.18] hover:bg-white/[0.02]' : 'hover:border-white/[0.12]'
   }`
 
   const linkFocusClass =
-    'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue/40 focus-visible:ring-offset-2 focus-visible:ring-offset-dark-950'
+    'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background'
 
   /** Accesorio flotante: no ocupa fila en el flujo, título y montos alinean como el resto de KPIs */
   if (topAccessory) {
     const shellOverflow = ms ? 'overflow-x-auto overflow-y-hidden' : 'overflow-hidden'
-    const shellClass = `glass h-full w-full min-w-0 relative ${shellOverflow} group transition-all duration-300 ${glowClass ?? ''} ${motionPad} ${roundedClass} ${
+    const shellClass = `glass h-full w-full min-w-0 relative ${shellOverflow} group transition-all duration-300 ${motionPad} ${roundedClass} ${
       to ? 'cursor-pointer hover:border-white/[0.18] hover:bg-white/[0.02]' : 'hover:border-white/[0.12]'
     }`
 

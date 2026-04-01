@@ -15,9 +15,18 @@ type Props = {
   /** Todas las categorías `tipo === 'gasto'` (principales y sub). No usar solo `categoriasGastoElegibles`: el select arma optgroups con las principales. */
   gastoCategorias: Categoria[]
   onMutated: () => void
+  /** Tarjeta de crédito: pastilla alineada al layout “profesional” del resumen. */
+  listVariant?: 'default' | 'tcPremium'
 }
 
-export default function EditableCuotaCompraRow({ compra, cuotaNumero, delay = 0, gastoCategorias, onMutated }: Props) {
+export default function EditableCuotaCompraRow({
+  compra,
+  cuotaNumero,
+  delay = 0,
+  gastoCategorias,
+  onMutated,
+  listVariant = 'default',
+}: Props) {
   const [editing, setEditing] = useState(false)
   const [editDesc, setEditDesc] = useState('')
   const [editMontoTotal, setEditMontoTotal] = useState('')
@@ -166,7 +175,7 @@ export default function EditableCuotaCompraRow({ compra, cuotaNumero, delay = 0,
               type="button"
               onClick={() => setEditMoneda(m)}
               className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition ${
-                editMoneda === m ? 'bg-accent-blue/10 text-accent-blue ring-1 ring-accent-blue/30' : 'bg-dark-800/50 text-gray-500'
+                editMoneda === m ? 'bg-primary/10 text-primary ring-1 ring-primary/30' : 'bg-surface-container-low/50 text-gray-500'
               }`}
             >
               {m}
@@ -174,6 +183,70 @@ export default function EditableCuotaCompraRow({ compra, cuotaNumero, delay = 0,
           ))}
         </div>
         <FormEditGuardarCancelar busy={busy} onCancel={cancelEdit} onSave={save} />
+      </motion.li>
+    )
+  }
+
+  const montoLine =
+    cuotaNumero != null
+      ? compra.moneda === 'ARS'
+        ? formatARS(compra.monto_cuota)
+        : formatUSD(compra.monto_cuota)
+      : compra.moneda === 'ARS'
+        ? formatARS(compra.monto_total)
+        : formatUSD(compra.monto_total)
+
+  const subLineDefault =
+    cuotaNumero != null ? (
+      <>
+        Cuota {cuotaNumero} de {compra.cuotas_total}
+        {compra.categoria?.nombre && ` · ${compra.categoria.nombre}`}
+      </>
+    ) : (
+      <>
+        {compra.cuotas_total} cuotas ·{' '}
+        {compra.moneda === 'ARS' ? formatARS(compra.monto_cuota) : formatUSD(compra.monto_cuota)}/mes
+        {compra.categoria?.nombre && ` · ${compra.categoria.nombre}`}
+      </>
+    )
+
+  if (listVariant === 'tcPremium') {
+    return (
+      <motion.li
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay }}
+        className="group rounded-2xl border border-white/[0.08] bg-[#1a1822] px-4 py-3.5"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium leading-snug text-white">{compra.descripcion}</p>
+          </div>
+          <div className="flex shrink-0 items-start gap-1">
+            <div className="text-right">
+              <p className="text-sm font-black tabular-nums tracking-tighter text-white">{montoLine}</p>
+              {cuotaNumero != null && (
+                <p className="mt-1 text-[11px] text-gray-500">
+                  Cuota {cuotaNumero}/{compra.cuotas_total}
+                </p>
+              )}
+            </div>
+            <div className="flex flex-col gap-0.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:transition-opacity">
+              <button type="button" onClick={startEdit} className="rounded-md p-1 text-gray-500 hover:text-rose-400" aria-label="Editar compra">
+                <Pencil size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={remove}
+                disabled={busy}
+                className="rounded-md p-1 text-gray-500 hover:text-red-400 disabled:opacity-40"
+                aria-label="Eliminar compra"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          </div>
+        </div>
       </motion.li>
     )
   }
@@ -187,36 +260,15 @@ export default function EditableCuotaCompraRow({ compra, cuotaNumero, delay = 0,
     >
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium text-gray-200 truncate">{compra.descripcion}</p>
-        <p className="text-xs text-gray-500">
-          {cuotaNumero != null ? (
-            <>
-              Cuota {cuotaNumero} de {compra.cuotas_total}
-              {compra.categoria?.nombre && ` · ${compra.categoria.nombre}`}
-            </>
-          ) : (
-            <>
-              {compra.cuotas_total} cuotas ·{' '}
-              {compra.moneda === 'ARS' ? formatARS(compra.monto_cuota) : formatUSD(compra.monto_cuota)}/mes
-              {compra.categoria?.nombre && ` · ${compra.categoria.nombre}`}
-            </>
-          )}
-        </p>
+        <p className="text-xs text-gray-500">{subLineDefault}</p>
       </div>
       <div className="text-right shrink-0 flex items-center gap-2">
         <div>
-          <p className="text-sm font-semibold text-gray-100">
-            {cuotaNumero != null
-              ? compra.moneda === 'ARS'
-                ? formatARS(compra.monto_cuota)
-                : formatUSD(compra.monto_cuota)
-              : compra.moneda === 'ARS'
-                ? formatARS(compra.monto_total)
-                : formatUSD(compra.monto_total)}
-          </p>
+          <p className="text-sm font-semibold text-gray-100">{montoLine}</p>
           <p className="text-[10px] text-gray-500">{cuotaNumero != null ? compra.moneda : 'total'}</p>
         </div>
         <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-          <button type="button" onClick={startEdit} className="text-gray-500 hover:text-accent-blue p-1" aria-label="Editar compra">
+          <button type="button" onClick={startEdit} className="text-gray-500 hover:text-primary p-1" aria-label="Editar compra">
             <Pencil size={15} />
           </button>
           <button type="button" onClick={remove} disabled={busy} className="text-gray-500 hover:text-red-400 p-1 disabled:opacity-40" aria-label="Eliminar compra">

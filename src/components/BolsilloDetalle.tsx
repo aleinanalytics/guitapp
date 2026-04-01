@@ -199,7 +199,7 @@ export default function BolsilloDetalle({ tipo, titulo }: Props) {
         {tipo === 'emergencia' && (
           <div className="mb-5 space-y-3">
             <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">Meses para el cálculo</p>
-            <div className="flex rounded-xl bg-dark-800/90 p-0.5 gap-0.5 ring-1 ring-white/[0.06]">
+            <div className="flex rounded-xl bg-surface-container-low/90 p-0.5 gap-0.5 ring-1 ring-white/[0.06]">
               {[3, 6].map((n) => (
                 <button
                   key={n}
@@ -208,7 +208,7 @@ export default function BolsilloDetalle({ tipo, titulo }: Props) {
                   onClick={() => handleMeses(n)}
                   className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${
                     mesesSugerencia === n
-                      ? 'bg-accent-blue/10 text-accent-blue ring-1 ring-accent-blue/30'
+                      ? 'bg-primary/10 text-primary ring-1 ring-primary/30'
                       : 'bg-transparent text-gray-500 hover:text-gray-300'
                   }`}
                 >
@@ -239,7 +239,7 @@ export default function BolsilloDetalle({ tipo, titulo }: Props) {
 
         {loading ? (
           <div className="flex justify-center py-12">
-            <div className="w-8 h-8 border-2 border-accent-blue/30 border-t-accent-blue rounded-full animate-spin" />
+            <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
           </div>
         ) : (
           <>
@@ -311,7 +311,7 @@ export default function BolsilloDetalle({ tipo, titulo }: Props) {
                   type="button"
                   disabled={busy}
                   onClick={handleGuardarObjetivo}
-                  className="whitespace-nowrap px-4 py-2.5 rounded-xl text-sm font-medium bg-accent-blue/10 text-accent-blue ring-1 ring-accent-blue/30 hover:bg-accent-blue/15 transition-colors disabled:opacity-50"
+                  className="whitespace-nowrap px-4 py-2.5 rounded-xl text-sm font-medium bg-primary/10 text-primary ring-1 ring-primary/30 hover:bg-primary/15 transition-colors disabled:opacity-50"
                 >
                   Guardar meta
                 </button>
@@ -333,7 +333,7 @@ export default function BolsilloDetalle({ tipo, titulo }: Props) {
                   Asignar desde disponible
                 </p>
                 {tipo === 'ahorro' && (
-                  <div className="flex rounded-xl bg-dark-800/90 p-0.5 gap-0.5 ring-1 ring-white/[0.06] mb-2">
+                  <div className="flex rounded-xl bg-surface-container-low/90 p-0.5 gap-0.5 ring-1 ring-white/[0.06] mb-2">
                     {(['ARS', 'USD'] as const).map((mon) => (
                       <button
                         key={mon}
@@ -374,7 +374,7 @@ export default function BolsilloDetalle({ tipo, titulo }: Props) {
                   Volver a disponible
                 </p>
                 {tipo === 'ahorro' && (
-                  <div className="flex rounded-xl bg-dark-800/90 p-0.5 gap-0.5 ring-1 ring-white/[0.06] mb-2">
+                  <div className="flex rounded-xl bg-surface-container-low/90 p-0.5 gap-0.5 ring-1 ring-white/[0.06] mb-2">
                     {(['ARS', 'USD'] as const).map((mon) => (
                       <button
                         key={mon}

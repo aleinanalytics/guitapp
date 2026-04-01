@@ -35,7 +35,7 @@ export default function VariacionIngresosMesAnteriorKpi({
       <div className="mt-0.5 flex flex-col items-center gap-0.5">
         <div className={`flex items-center justify-center gap-1 ${color}`}>
           <Icon size={12} className="shrink-0 opacity-90" aria-hidden />
-          <p className="text-center text-xs font-medium leading-snug">
+          <p className="text-center text-xs font-semibold tabular-nums tracking-tight leading-snug">
             {pct >= 0 ? '+' : ''}
             {pct.toFixed(1)}% vs {nombreMesAnterior}
           </p>

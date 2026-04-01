@@ -59,8 +59,8 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-10 relative overflow-hidden">
-      <div className="absolute inset-0 bg-dark-950" />
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-accent-blue/[0.07] rounded-full blur-[120px]" />
+      <div className="absolute inset-0 bg-background" />
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/[0.07] rounded-full blur-[120px]" />
       <div className="absolute bottom-1/4 left-1/3 w-[400px] h-[400px] bg-accent-purple/[0.05] rounded-full blur-[100px]" />
 
       <motion.div
@@ -135,7 +135,7 @@ export default function Login() {
           </div>
         </div>
 
-        <div className="flex rounded-xl bg-dark-800/80 p-1 gap-1 ring-1 ring-white/[0.06] mb-5">
+        <div className="flex rounded-xl bg-surface-container-high/80 p-1 gap-1 ring-1 ring-white/[0.06] mb-5">
           <button
             type="button"
             onClick={() => {
@@ -244,7 +244,7 @@ export default function Login() {
           <button
             type="submit"
             disabled={enviando}
-            className="w-full mt-2 bg-gradient-to-r from-accent-blue to-accent-purple text-white rounded-xl py-3 text-sm font-semibold hover:opacity-90 disabled:opacity-40 transition-opacity"
+            className="w-full mt-2 bg-primary-container text-white rounded-xl py-3 text-sm font-semibold hover:opacity-90 disabled:opacity-40 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             {enviando ? 'Procesando…' : modo === 'login' ? 'Entrar' : 'Crear cuenta'}
           </button>

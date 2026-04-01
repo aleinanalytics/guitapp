@@ -2,21 +2,60 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Google Fonts: Material Symbols ─────────────────────────────────────── */
+.material-symbols-outlined {
+  font-family: "Material Symbols Outlined";
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  vertical-align: middle;
+  user-select: none;
+}
+
 @layer base {
+  /* Suavizado global; la familia sale de `font-sans` en <html> (Tailwind + Inter en config). */
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
   body {
-    @apply bg-dark-950 text-gray-100 antialiased;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background-color: #08080f;
+    color: #e4e1ec;
+    @apply antialiased;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font-family: inherit;
+  }
+
+  /* Tabular numbers for all currency display */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
   }
 
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 5px;
+    height: 5px;
   }
   ::-webkit-scrollbar-track {
-    @apply bg-transparent;
+    background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    @apply bg-dark-600 rounded-full;
+    background: #464555;
+    border-radius: 9999px;
   }
 
   select, input[type="date"], input[type="text"], input[type="number"] {
@@ -25,34 +64,51 @@
 }
 
 @layer components {
+
+  /* ── Glass surfaces (M3 Glassmorphism) ─────────────────────────────────── */
   .glass {
-    @apply bg-dark-800/60 backdrop-blur-xl border border-white/[0.06] rounded-2xl;
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
   }
+  .glass-card {
+    background: rgba(52, 52, 60, 0.4);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+  .glass-panel {
+    background: rgba(27, 27, 35, 0.4);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+  /* Legacy */
   .glass-light {
     @apply bg-dark-800/40 backdrop-blur-lg border border-white/[0.04] rounded-xl;
   }
-  .glow-green {
-    box-shadow: 0 0 20px rgba(16, 185, 129, 0.15), 0 0 60px rgba(16, 185, 129, 0.05);
+
+  /* ── Ghost border ────────────────────────────────────────────────────────── */
+  .ghost-border {
+    border: 1px solid rgba(255, 255, 255, 0.06);
   }
-  .glow-red {
-    box-shadow: 0 0 20px rgba(239, 68, 68, 0.15), 0 0 60px rgba(239, 68, 68, 0.05);
+
+  /* ── Vault gradient (primary hero sections) ─────────────────────────────── */
+  .vault-gradient {
+    background: linear-gradient(135deg, #4f46e5 0%, #3c0091 100%);
   }
-  .glow-orange {
-    box-shadow: 0 0 20px rgba(249, 115, 22, 0.14), 0 0 60px rgba(249, 115, 22, 0.05);
-  }
-  .glow-purple {
-    box-shadow: 0 0 20px rgba(168, 85, 247, 0.15), 0 0 60px rgba(168, 85, 247, 0.05);
-  }
-  .glow-blue {
-    box-shadow: 0 0 20px rgba(99, 102, 241, 0.15), 0 0 60px rgba(99, 102, 241, 0.05);
-  }
-  .glow-cyan {
-    box-shadow: 0 0 20px rgba(6, 182, 212, 0.15), 0 0 60px rgba(6, 182, 212, 0.05);
-  }
+
+  /* ── Form inputs ─────────────────────────────────────────────────────────── */
   .input-dark {
-    @apply w-full bg-dark-800/80 border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-accent-blue/50 focus:ring-1 focus:ring-accent-blue/30 transition-all duration-200;
+    @apply w-full border border-white/[0.06] rounded-xl px-4 py-2.5 text-sm placeholder-slate-600 focus:outline-none transition-all duration-200;
+    background: rgba(52, 52, 60, 0.4);
+    color: #e4e1ec;
   }
-  /* Safari/iOS: el date tiene min-width intrínseco y desborda el card en móvil */
+  .input-dark:focus {
+    border-color: rgba(195, 192, 255, 0.4);
+    box-shadow: 0 0 0 1px rgba(195, 192, 255, 0.2);
+  }
   .input-dark[type='date'] {
     min-width: 0;
     max-width: 100%;
@@ -74,7 +130,6 @@
     max-width: 100%;
     overflow: hidden;
   }
-  /* Fecha centrada (Chrome/Safari/iOS) */
   .input-date-centered[type='date'] {
     text-align: center;
   }
@@ -87,12 +142,19 @@
     margin-right: auto;
     text-align: center;
   }
+
   .select-dark {
-    @apply bg-dark-800/80 border border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-gray-100 focus:outline-none focus:border-accent-blue/50 focus:ring-1 focus:ring-accent-blue/30 transition-all duration-200 appearance-none cursor-pointer;
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    @apply border border-white/[0.06] rounded-xl px-4 py-2.5 text-sm focus:outline-none transition-all duration-200 appearance-none cursor-pointer;
+    background-color: rgba(52, 52, 60, 0.4);
+    color: #e4e1ec;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23918fa1' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
     background-position: right 0.5rem center;
     background-repeat: no-repeat;
     background-size: 1.5em 1.5em;
     padding-right: 2.5rem;
+  }
+  .select-dark:focus {
+    border-color: rgba(195, 192, 255, 0.4);
+    box-shadow: 0 0 0 1px rgba(195, 192, 255, 0.2);
   }
 }

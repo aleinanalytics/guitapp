@@ -2,14 +2,19 @@ import { useEffect, useMemo, useState } from 'react'
 import { format, startOfDay } from 'date-fns'
 import { Link, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, CreditCard, Calendar, Pencil, Check, X } from 'lucide-react'
+import { ArrowLeft, CreditCard, Pencil, Check, X, Eye } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import EditableTransaccionListRow from '../components/EditableTransaccionListRow'
 import EditableCuotaCompraRow from '../components/EditableCuotaCompraRow'
 import MobileUserMenu from '../components/MobileUserMenu'
 import { useTransacciones } from '../hooks/useTransacciones'
 import { useCuotas, getCuotaForMonth } from '../hooks/useCuotas'
-import { useTarjetaConfig, diasHastaFecha, formatFechaTarjeta, rangoPickerTarjeta } from '../hooks/useTarjetaConfig'
+import {
+  useTarjetaConfig,
+  rangoPickerTarjeta,
+  formatFechaTarjeta,
+  countdownTarjeta,
+} from '../hooks/useTarjetaConfig'
 import {
   esIngresoReintegroTarjetaCredito,
   formatARS,
@@ -156,190 +161,301 @@ export default function TarjetaCreditoMes() {
   const dashLink = `/?mes=${mes}&anio=${anio}`
   const loadingAny = loading || loadingCuotas
 
-  return (
-    <div className="p-4 lg:p-8 max-w-3xl mx-auto">
-      <Link
-        to={dashLink}
-        className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-gray-200 transition-colors mb-6"
-      >
-        <ArrowLeft size={16} />
-        Volver al dashboard
-      </Link>
+  const cashbackPrincipal =
+    reintegrosPorMoneda.ars > 0
+      ? formatARS(reintegrosPorMoneda.ars)
+      : reintegrosPorMoneda.usd > 0
+        ? formatUSD(reintegrosPorMoneda.usd)
+        : formatARS(0)
 
-      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mb-6 flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <CreditCard size={28} className="shrink-0 text-rose-400/90" />
-            <h1 className="text-2xl font-bold text-gray-50 lg:text-3xl">Tarjeta de crédito</h1>
-          </div>
-          <p className="mt-1 text-sm text-gray-500">{MESES[mes - 1]} {anio}</p>
-          {diaCierreTc != null && (
-            <p className="mt-0.5 text-[11px] text-gray-600 max-w-md">
-              Pagos con tarjeta agrupados por cierre: día {diaCierreTc} de cada mes (lo posterior cuenta en el mes
-              siguiente).
-            </p>
-          )}
-        </div>
+  const cashbackSecundario =
+    reintegrosPorMoneda.ars > 0 && reintegrosPorMoneda.usd > 0 ? formatUSD(reintegrosPorMoneda.usd) : null
+
+  const nextPreviewMonto = [
+    nextPorMoneda.ars > 0 ? formatARS(nextPorMoneda.ars) : null,
+    nextPorMoneda.usd > 0 ? formatUSD(nextPorMoneda.usd) : null,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+
+  return (
+    <div className="mx-auto max-w-md px-4 pb-28 pt-4 lg:px-8 lg:pb-12 lg:pt-8">
+      <div className="mb-5 flex items-start justify-between gap-3">
+        <Link
+          to={dashLink}
+          className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-gray-200 transition-colors"
+        >
+          <ArrowLeft size={16} />
+          Volver al dashboard
+        </Link>
         <div className="shrink-0 lg:hidden">
           <MobileUserMenu />
         </div>
-      </motion.div>
-
-      {/* Fechas de cierre y vencimiento */}
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.05 }}
-        className="glass p-4 mb-6"
-      >
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-xs font-medium text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
-            <Calendar size={14} /> Fechas de la tarjeta
-          </h2>
-          {!editingConfig && (
-            <button onClick={startEditConfig} className="text-gray-600 hover:text-gray-400 transition-colors">
-              <Pencil size={14} />
-            </button>
-          )}
-        </div>
-
-        <AnimatePresence mode="wait">
-          {editingConfig ? (
-            <motion.div
-              key="edit"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="space-y-3"
-            >
-              <p className="text-xs text-gray-500 leading-relaxed">
-                Podés usar <strong className="text-gray-400">fechas pasadas</strong> si arrancás la app tarde, y un vencimiento
-                <strong className="text-gray-400"> varios meses después del cierre</strong>. Rango aproximado: 15 años atrás — 5 años adelante.
-              </p>
-              <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-end">
-                <div className="flex-1 min-w-0">
-                  <label className="block text-[10px] text-gray-500 mb-1">Fecha de cierre</label>
-                  <input
-                    type="date"
-                    min={pickerBounds.min}
-                    max={pickerBounds.max}
-                    value={inputCierre}
-                    onChange={(e) => setInputCierre(e.target.value)}
-                    className="input-dark !py-1.5 !text-sm w-full min-w-0"
-                    autoFocus
-                  />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <label className="block text-[10px] text-gray-500 mb-1">Fecha de vencimiento</label>
-                  <input
-                    type="date"
-                    min={pickerBounds.min}
-                    max={pickerBounds.max}
-                    value={inputVto}
-                    onChange={(e) => setInputVto(e.target.value)}
-                    className="input-dark !py-1.5 !text-sm w-full min-w-0"
-                  />
-                </div>
-                <div className="flex gap-1.5 pb-0.5 shrink-0">
-                  <button type="button" onClick={saveConfig} className="text-emerald-400 hover:text-emerald-300 transition-colors"><Check size={18} /></button>
-                  <button type="button" onClick={() => setEditingConfig(false)} className="text-red-400 hover:text-red-300 transition-colors"><X size={18} /></button>
-                </div>
-              </div>
-            </motion.div>
-          ) : tcConfig ? (
-            <motion.div key="display" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex gap-4">
-              <div className="flex-1 bg-rose-500/10 rounded-xl p-3 text-center">
-                <p className="text-[10px] text-rose-400/70 uppercase tracking-wider font-medium">Cierre</p>
-                <p className="text-lg font-bold text-rose-400 mt-0.5">{formatFechaTarjeta(tcConfig.fecha_cierre)}</p>
-                <p className="text-xs text-rose-300/60 mt-0.5">
-                  {diasHastaFecha(tcConfig.fecha_cierre) === 1 ? 'Mañana' : `Faltan ${diasHastaFecha(tcConfig.fecha_cierre)} días`}
-                </p>
-              </div>
-              <div className="flex-1 bg-amber-500/10 rounded-xl p-3 text-center">
-                <p className="text-[10px] text-amber-400/70 uppercase tracking-wider font-medium">Vencimiento</p>
-                <p className="text-lg font-bold text-amber-400 mt-0.5">{formatFechaTarjeta(tcConfig.fecha_vencimiento)}</p>
-                <p className="text-xs text-amber-300/60 mt-0.5">
-                  {diasHastaFecha(tcConfig.fecha_vencimiento) === 1 ? 'Mañana' : `Faltan ${diasHastaFecha(tcConfig.fecha_vencimiento)} días`}
-                </p>
-              </div>
-            </motion.div>
-          ) : (
-            <motion.p key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="text-sm text-gray-500">
-              No configuraste las fechas de tu tarjeta.{' '}
-              <button onClick={startEditConfig} className="text-accent-blue hover:underline">Configurar</button>
-            </motion.p>
-          )}
-        </AnimatePresence>
-      </motion.div>
+      </div>
 
       {loadingAny ? (
         <div className="flex items-center justify-center py-20">
-          <div className="w-8 h-8 border-2 border-accent-blue/30 border-t-accent-blue rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
         </div>
       ) : error ? (
         <p className="text-red-400 text-sm">{error}</p>
       ) : (
         <>
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
+          <motion.article
+            initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
-            className="glass p-4 mb-6 relative overflow-hidden"
-            style={{ boxShadow: '0 0 20px rgba(244, 63, 94, 0.1)' }}
+            transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
+            className="relative overflow-hidden rounded-[1.75rem] border border-white/[0.08] bg-gradient-to-b from-[#16121c] to-[#0c0a0f] px-5 pb-7 pt-6 sm:px-6"
           >
-            <div className="absolute top-0 left-0 right-0 h-[2px] opacity-60 bg-gradient-to-r from-transparent via-rose-500 to-transparent" />
-            <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Total del mes (por moneda)</p>
-            <p className="text-[11px] text-gray-600 mt-1 mb-3">
-              Neto: pagos únicos + cuotas − reintegros/promos. Sin convertir entre monedas.
+            {!editingConfig && (
+              <button
+                type="button"
+                onClick={startEditConfig}
+                className="absolute right-3 top-3 rounded-lg p-2 text-gray-500 transition-colors hover:bg-white/[0.06] hover:text-rose-300"
+                aria-label="Editar fechas de cierre y vencimiento"
+              >
+                <Pencil size={16} />
+              </button>
+            )}
+
+            <div className="flex items-center justify-center gap-2 pr-8">
+              <CreditCard size={22} className="shrink-0 text-rose-400" strokeWidth={2} />
+              <h1 className="text-center text-xs font-bold uppercase tracking-[0.2em] text-gray-400">
+                Tarjeta de Crédito
+              </h1>
+            </div>
+            <p className="mt-2 text-center text-[11px] font-medium text-gray-600">
+              {MESES[mes - 1]} {anio}
             </p>
-            <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-3">
-              <div className="rounded-xl bg-white/[0.04] px-3 py-2.5 min-w-0">
-                <p className="text-[10px] text-gray-500 uppercase tracking-wide">Total ARS</p>
+
+            <div className="mt-6 grid grid-cols-2 gap-4">
+              <div className="min-w-0 text-center">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500">ARS</p>
                 <p
-                  className={`font-bold text-gray-50 tabular-nums mt-0.5 leading-tight break-words ${montoDisplayClass(totalArs, 'pairArsTarjeta')}`}
+                  className={`mt-1 break-words font-black tabular-nums tracking-tighter text-white ${montoDisplayClass(totalArs, 'pairArsTarjeta')}`}
                 >
                   {formatARS(totalArs)}
                 </p>
               </div>
-              <div className="rounded-xl bg-white/[0.04] px-3 py-2.5 min-w-0">
-                <p className="text-[10px] text-gray-500 uppercase tracking-wide">Total USD</p>
+              <div className="min-w-0 text-center">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500">USD</p>
                 <p
-                  className={`font-bold text-gray-50 tabular-nums mt-0.5 leading-tight break-words ${montoDisplayClass(totalUsd, 'pairUsdTarjeta')}`}
+                  className={`mt-1 break-words font-black tabular-nums tracking-tighter text-white ${montoDisplayClass(totalUsd, 'pairUsdTarjeta')}`}
                 >
                   {formatUSD(totalUsd)}
                 </p>
               </div>
             </div>
-            <div className="mt-3 pt-3 border-t border-white/[0.06] grid grid-cols-2 gap-3 text-xs">
-              <div>
-                <span className="text-gray-500 block mb-1">Pagos únicos</span>
-                <p className="text-gray-200 font-medium">{formatARS(singlesPorMoneda.ars)}</p>
-                <p className="text-gray-200 font-medium">{formatUSD(singlesPorMoneda.usd)}</p>
-              </div>
-              <div>
-                <span className="text-gray-500 block mb-1">Cuotas del mes</span>
-                <p className="text-gray-200 font-medium">{formatARS(cuotasPorMoneda.ars)}</p>
-                <p className="text-gray-200 font-medium">{formatUSD(cuotasPorMoneda.usd)}</p>
-              </div>
-              {(reintegrosPorMoneda.ars > 0 || reintegrosPorMoneda.usd > 0) && (
-                <div className="col-span-2">
-                  <span className="text-gray-500 block mb-1">Reintegros / promos (a favor)</span>
-                  <p className="text-emerald-400/90 font-medium">−{formatARS(reintegrosPorMoneda.ars)}</p>
-                  <p className="text-emerald-400/90 font-medium">−{formatUSD(reintegrosPorMoneda.usd)}</p>
-                </div>
+            <p className="mt-4 text-center text-[10px] leading-relaxed text-gray-600">
+              Neto del mes por moneda (consumo − reintegros/promos TC), sin convertir.
+            </p>
+
+            <div className="mt-6">
+              <AnimatePresence mode="wait">
+                {editingConfig ? (
+                  <motion.div
+                    key="edit"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="space-y-3 rounded-2xl border border-white/[0.08] bg-black/30 p-4"
+                  >
+                    <p className="text-[11px] leading-relaxed text-gray-500">
+                      Próximas fechas de facturación. Rango: 15 años atrás — 5 adelante.
+                    </p>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+                      <div className="min-w-0 flex-1">
+                        <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-gray-500">
+                          Fecha de cierre
+                        </label>
+                        <input
+                          type="date"
+                          min={pickerBounds.min}
+                          max={pickerBounds.max}
+                          value={inputCierre}
+                          onChange={(e) => setInputCierre(e.target.value)}
+                          className="input-dark min-w-0 w-full !py-2 !text-sm"
+                          autoFocus
+                        />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <label className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-gray-500">
+                          Vencimiento
+                        </label>
+                        <input
+                          type="date"
+                          min={pickerBounds.min}
+                          max={pickerBounds.max}
+                          value={inputVto}
+                          onChange={(e) => setInputVto(e.target.value)}
+                          className="input-dark min-w-0 w-full !py-2 !text-sm"
+                        />
+                      </div>
+                      <div className="flex gap-1.5 sm:pb-1">
+                        <button
+                          type="button"
+                          onClick={saveConfig}
+                          className="rounded-lg p-2 text-emerald-400 transition-colors hover:bg-white/[0.06]"
+                          aria-label="Guardar fechas"
+                        >
+                          <Check size={18} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingConfig(false)}
+                          className="rounded-lg p-2 text-red-400 transition-colors hover:bg-white/[0.06]"
+                          aria-label="Cancelar"
+                        >
+                          <X size={18} />
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                ) : tcConfig ? (
+                  <motion.div
+                    key="fechas"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="grid grid-cols-1 gap-5 border-b border-white/[0.07] pb-5 sm:grid-cols-2 sm:gap-6"
+                  >
+                    <div className="min-w-0 text-center sm:text-left">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500">Fecha de cierre</p>
+                      <p className="mt-1.5 text-sm font-medium leading-snug text-white">
+                        {formatFechaTarjeta(tcConfig.fecha_cierre)}
+                        <span className="text-rose-400/90"> · {countdownTarjeta(tcConfig.fecha_cierre)}</span>
+                      </p>
+                    </div>
+                    <div className="min-w-0 text-center sm:text-left">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500">Vencimiento</p>
+                      <p className="mt-1.5 text-sm font-medium leading-snug text-white">
+                        {formatFechaTarjeta(tcConfig.fecha_vencimiento)}
+                        <span className="text-amber-400/90"> · {countdownTarjeta(tcConfig.fecha_vencimiento)}</span>
+                      </p>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.p
+                    key="sin-config"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="border-b border-white/[0.07] pb-5 text-center text-sm text-gray-500"
+                  >
+                    No configuraste cierre ni vencimiento.{' '}
+                    <button type="button" onClick={startEditConfig} className="font-semibold text-rose-400 hover:underline">
+                      Configurar
+                    </button>
+                  </motion.p>
+                )}
+              </AnimatePresence>
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-rose-500/35 bg-black/25 px-4 py-5 text-center">
+              <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-rose-400">Cashback acumulado</p>
+              <p className="mt-1 text-[10px] text-gray-600">Reintegros y promos del mes</p>
+              <p className="mt-4 font-black tabular-nums tracking-tighter text-white text-[clamp(1.4rem,5.5vw,1.9rem)] leading-none">
+                {cashbackPrincipal}
+              </p>
+              {cashbackSecundario && (
+                <p className="mt-2 text-sm font-semibold tabular-nums tracking-tight text-gray-400">{cashbackSecundario}</p>
               )}
             </div>
-          </motion.div>
+
+            <div className="mt-8 border-t border-white/[0.07] pt-6">
+              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-gray-500">Cuotas del mes</p>
+              {cuotaLines.length === 0 ? (
+                <p className="mt-4 rounded-2xl border border-white/[0.08] bg-[#14121a] px-4 py-6 text-center text-sm text-gray-500">
+                  Sin cuotas en este mes.
+                </p>
+              ) : (
+                <ul className="mt-4 space-y-2.5">
+                  {cuotaLines.map((l, i) => {
+                    const compra = cuotas.find((c) => c.id === l.compraId)
+                    if (!compra) return null
+                    return (
+                      <EditableCuotaCompraRow
+                        key={`${l.compraId}-${l.numero}`}
+                        compra={compra}
+                        cuotaNumero={l.numero}
+                        delay={i * 0.03}
+                        gastoCategorias={gastoCategorias}
+                        onMutated={refreshAll}
+                        listVariant="tcPremium"
+                      />
+                    )
+                  })}
+                </ul>
+              )}
+            </div>
+
+            {(nextPorMoneda.ars > 0 || nextPorMoneda.usd > 0) && (
+              <div className="mt-6 border-t border-white/[0.07] pt-5">
+                <div className="flex items-start gap-2.5">
+                  <Eye size={17} className="mt-0.5 shrink-0 text-gray-500" strokeWidth={2} aria-hidden />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-medium text-gray-500">Previsualización próximo mes:</p>
+                    <p className="mt-2 text-xs font-medium leading-snug text-amber-400/90">
+                      El próximo resumen ({MESES[nextMes - 1]} {nextAnio}): cuotas {nextPreviewMonto}
+                    </p>
+                    {nextCuotaLines.length > 0 && (
+                      <ul className="mt-2 space-y-1">
+                        {nextCuotaLines.map((d, i) => (
+                          <li key={i} className="text-[11px] text-gray-500">
+                            {d.desc} — cuota {d.numero}/{d.total} · {fmtCuotaMonto(d.monto, d.moneda)}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {diaCierreTc != null && (
+              <p className="mt-6 text-center text-[10px] leading-relaxed text-gray-600">
+                Consumos con tarjeta agrupados por cierre: día {diaCierreTc} (lo posterior va al mes siguiente).
+              </p>
+            )}
+          </motion.article>
+
+          <section className="mt-10 mb-8">
+            <h2 className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-gray-500">Desglose del mes</h2>
+            <div className="space-y-4 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div>
+                  <span className="block text-[10px] font-semibold uppercase tracking-wide text-gray-500">Pagos únicos</span>
+                  <p className="mt-1 font-semibold tabular-nums text-gray-200">{formatARS(singlesPorMoneda.ars)}</p>
+                  <p className="font-semibold tabular-nums text-gray-200">{formatUSD(singlesPorMoneda.usd)}</p>
+                </div>
+                <div>
+                  <span className="block text-[10px] font-semibold uppercase tracking-wide text-gray-500">Cuotas</span>
+                  <p className="mt-1 font-semibold tabular-nums text-gray-200">{formatARS(cuotasPorMoneda.ars)}</p>
+                  <p className="font-semibold tabular-nums text-gray-200">{formatUSD(cuotasPorMoneda.usd)}</p>
+                </div>
+                {(reintegrosPorMoneda.ars > 0 || reintegrosPorMoneda.usd > 0) && (
+                  <div className="col-span-2 border-t border-white/[0.06] pt-3">
+                    <span className="block text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+                      Reintegros / promos
+                    </span>
+                    <p className="mt-1 font-semibold tabular-nums text-emerald-400/90">−{formatARS(reintegrosPorMoneda.ars)}</p>
+                    <p className="font-semibold tabular-nums text-emerald-400/90">−{formatUSD(reintegrosPorMoneda.usd)}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
 
           <section className="mb-8">
-            <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3">
-              Reintegros y promos (ingreso a favor de TC)
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-400">
+              Reintegros y promos
             </h2>
-            <p className="text-[11px] text-gray-500 mb-3">
-              Cargalos en <span className="text-gray-400">Carga</span> como ingreso y marcá &quot;Reintegro o promo en tarjeta&quot;. Acá solo ves los del mes (mes calendario).
+            <p className="mb-3 text-[11px] text-gray-500">
+              En <span className="text-gray-400">Carga</span>, ingreso con &quot;Reintegro o promo en tarjeta&quot;. Mes calendario de esta vista.
             </p>
             {reintegrosMes.length === 0 ? (
-              <p className="text-gray-500 text-sm glass-light p-4 rounded-xl">No registraste reintegros ni promos este mes.</p>
+              <p className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 text-sm text-gray-500">
+                No registraste reintegros ni promos este mes.
+              </p>
             ) : (
               <ul className="space-y-2">
                 {reintegrosMes.map((t, i) => (
@@ -356,13 +472,11 @@ export default function TarjetaCreditoMes() {
           </section>
 
           <section className="mb-8">
-            <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3">
-              Pagos únicos con tarjeta
-            </h2>
-            <p className="text-[11px] text-gray-500 mb-3">Incluye gastos y suscripciones cargadas con crédito.</p>
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-400">Pagos únicos con tarjeta</h2>
+            <p className="mb-3 text-[11px] text-gray-500">Gastos y suscripciones en un pago.</p>
             {tarjetaPagosUnicos.length === 0 ? (
-              <p className="text-gray-500 text-sm glass-light p-4 rounded-xl">
-                No registraste movimientos con tarjeta de crédito este mes.
+              <p className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 text-sm text-gray-500">
+                No registraste movimientos con tarjeta este mes.
               </p>
             ) : (
               <ul className="space-y-2">
@@ -379,54 +493,6 @@ export default function TarjetaCreditoMes() {
             )}
           </section>
 
-          <section className="mb-8">
-            <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-1">Cuotas que vencen este mes</h2>
-            <p className="text-[11px] text-gray-500 mb-3">
-              Para corregir el mes de inicio de un plan viejo, editá la compra y cambiá &quot;Primera cuota&quot;.
-            </p>
-            {cuotaLines.length === 0 ? (
-              <p className="text-gray-500 text-sm glass-light p-4 rounded-xl">Sin cuotas activas en este mes.</p>
-            ) : (
-              <ul className="space-y-2">
-                {cuotaLines.map((l, i) => {
-                  const compra = cuotas.find((c) => c.id === l.compraId)
-                  if (!compra) return null
-                  return (
-                    <EditableCuotaCompraRow
-                      key={`${l.compraId}-${l.numero}`}
-                      compra={compra}
-                      cuotaNumero={l.numero}
-                      delay={i * 0.02}
-                      gastoCategorias={gastoCategorias}
-                      onMutated={refreshAll}
-                    />
-                  )
-                })}
-              </ul>
-            )}
-          </section>
-
-          {(nextPorMoneda.ars > 0 || nextPorMoneda.usd > 0) && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="glass border-amber-500/15 bg-amber-500/[0.04] p-4 rounded-xl"
-            >
-              <p className="text-xs text-amber-400/90 font-medium mb-2 text-center">
-                Próximo mes ({MESES[nextMes - 1]} {nextAnio}): cuotas estimadas{' '}
-                {nextPorMoneda.ars > 0 && <span>{formatARS(nextPorMoneda.ars)}</span>}
-                {nextPorMoneda.ars > 0 && nextPorMoneda.usd > 0 && <span className="text-gray-500"> · </span>}
-                {nextPorMoneda.usd > 0 && <span>{formatUSD(nextPorMoneda.usd)}</span>}
-              </p>
-              <ul className="space-y-1 text-center">
-                {nextCuotaLines.map((d, i) => (
-                  <li key={i} className="text-[11px] text-gray-500">
-                    {d.desc} — cuota {d.numero}/{d.total} · {fmtCuotaMonto(d.monto, d.moneda)}
-                  </li>
-                ))}
-              </ul>
-            </motion.div>
-          )}
         </>
       )}
     </div>

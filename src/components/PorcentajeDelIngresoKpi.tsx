@@ -51,7 +51,7 @@ export default function PorcentajeDelIngresoKpi({ pct, hayMontoSinIngreso, nombr
         {critico && (
           <OctagonAlert className="shrink-0 text-rose-400" size={14} strokeWidth={2.25} aria-hidden />
         )}
-        <p className="text-center text-xs font-medium leading-snug">
+        <p className="text-center text-xs font-semibold tabular-nums tracking-tight leading-snug">
           {pct.toFixed(1)}% del ingreso
         </p>
       </div>

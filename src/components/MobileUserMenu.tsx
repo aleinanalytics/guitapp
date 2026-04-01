@@ -58,7 +58,7 @@ export default function MobileUserMenu() {
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-haspopup="menu"
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-accent-blue to-accent-purple text-sm font-bold text-white ring-1 ring-white/10 transition-opacity hover:opacity-90"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent-purple text-sm font-bold text-white ring-1 ring-white/10 transition-opacity hover:opacity-90"
       >
         {displayName[0]?.toUpperCase() ?? 'U'}
       </button>

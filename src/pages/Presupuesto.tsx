@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Wallet, Info } from 'lucide-react'
 import MobileUserMenu from '../components/MobileUserMenu'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
@@ -165,140 +164,136 @@ export default function Presupuesto() {
   const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i)
 
   return (
-    <div className="p-4 pb-8 lg:p-8 max-w-3xl mx-auto">
+    <div className="px-4 pt-4 pb-28 lg:px-8 lg:pt-8 lg:pb-12 max-w-3xl mx-auto space-y-6">
+
+      {/* ── Header ──────────────────────────────────────────────────────── */}
       <motion.div
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mb-6 flex flex-wrap items-center justify-between gap-3"
+        className="flex flex-wrap items-center justify-between gap-3"
       >
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/25">
-            <Wallet size={22} />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-50 lg:text-3xl">Presupuesto</h1>
-            <p className="text-sm text-gray-500">
-              Proyección sobre tu gasto del mes anterior (sin categoría ni principal &quot;Otros&quot;).
-            </p>
-          </div>
+        <div>
+          <p className="text-primary text-xs font-bold tracking-[0.25em] uppercase mb-1">Finanzas Personales</p>
+          <h1 className="text-2xl font-extrabold text-slate-50 tracking-tight lg:text-3xl">Presupuesto</h1>
         </div>
         <div className="lg:hidden">
           <MobileUserMenu />
         </div>
       </motion.div>
 
-      <div className="mb-6 flex gap-2">
+      {/* ── Selectores ──────────────────────────────────────────────────── */}
+      <div className="flex gap-2">
         <select value={mes} onChange={(e) => setMes(Number(e.target.value))} className="select-dark flex-1">
-          {MESES_FULL.map((m, i) => (
-            <option key={m} value={i + 1}>
-              {m}
-            </option>
-          ))}
+          {MESES_FULL.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
         </select>
         <select value={anio} onChange={(e) => setAnio(Number(e.target.value))} className="select-dark w-28">
-          {years.map((y) => (
-            <option key={y} value={y}>
-              {y}
-            </option>
-          ))}
+          {years.map((y) => <option key={y} value={y}>{y}</option>)}
         </select>
       </div>
 
-      <div className="mb-4 flex gap-2 rounded-xl border border-sky-500/20 bg-sky-500/5 px-3 py-2.5 text-xs text-sky-200/90">
-        <Info size={16} className="shrink-0 mt-0.5 text-sky-400" />
+      {/* ── Info IPC ────────────────────────────────────────────────────── */}
+      <div className="flex gap-3 rounded-xl border border-sky-500/20 bg-sky-500/5 px-4 py-3 text-xs text-sky-200/90">
+        <span className="material-symbols-outlined text-sky-400 flex-shrink-0" style={{ fontSize: 16, marginTop: 1 }}>info</span>
         <p className="leading-relaxed">
-          Base: <span className="font-medium text-gray-200">{mesBaseLabel}</span>. La parte <strong>variable</strong>{' '}
-          se ajusta con IPC <span className="font-semibold text-sky-300">{ipcPct.toFixed(1)}%</span> (referencia{' '}
-          {MESES_FULL[mes - 1]} {anio}). Los movimientos marcados como <strong>gasto fijo</strong> repiten el mismo
-          monto (sin IPC), pensando en contratos o gastos difíciles de proyectar.
+          Base: <span className="font-medium text-slate-200">{mesBaseLabel}</span>. Parte <strong>variable</strong>{' '}
+          ajustada con IPC <span className="font-semibold text-sky-300">{ipcPct.toFixed(1)}%</span> ({MESES_FULL[mes - 1]} {anio}).{' '}
+          <strong>Gastos fijos</strong> se repiten sin IPC.
         </p>
       </div>
 
       {loading ? (
         <div className="flex justify-center py-16">
-          <div className="h-9 w-9 animate-spin rounded-full border-2 border-accent-blue/30 border-t-accent-blue" />
+          <div className="h-9 w-9 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
         </div>
       ) : totalPresupuesto <= 0 ? (
-        <div className="glass rounded-2xl p-8 text-center text-gray-500 text-sm">
+        <div className="glass-card rounded-xl p-8 text-center text-slate-500 text-sm">
           No hay gastos en {mesBaseLabel} para armar el presupuesto de {MESES_FULL[mes - 1]}.
         </div>
       ) : (
         <>
+          {/* ── Hero: Total ─────────────────────────────────────────────── */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className="glass mb-8 rounded-2xl border border-white/[0.08] p-6 text-center"
+            className="glass-panel rounded-xl p-7 text-center relative overflow-hidden"
           >
-            <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-gray-500 mb-2">
+            <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full pointer-events-none"
+              style={{ background: 'radial-gradient(circle, rgba(195,192,255,0.12) 0%, transparent 70%)' }} />
+            <div className="absolute -bottom-16 -left-16 w-48 h-48 rounded-full pointer-events-none"
+              style={{ background: 'radial-gradient(circle, rgba(76,215,246,0.08) 0%, transparent 70%)' }} />
+            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400 mb-3 relative z-10">
               Presupuesto total estimado
             </p>
-            <p className="text-4xl font-bold tracking-tight text-gray-50 sm:text-5xl">{formatARS(totalPresupuesto)}</p>
-            <p className="mt-2 text-xs text-gray-500">
-              {MESES_FULL[mes - 1]} {anio} · suma de categorías (fijo + variable × {factorVariable.toFixed(3)})
+            <p className="text-4xl font-extrabold tracking-tighter text-slate-50 tabular-nums relative z-10 sm:text-5xl">
+              {formatARS(totalPresupuesto)}
+            </p>
+            <p className="mt-2 text-xs text-slate-500 relative z-10">
+              {MESES_FULL[mes - 1]} {anio} · fijo + variable × {factorVariable.toFixed(3)}
             </p>
           </motion.div>
 
-          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Por categoría principal</h2>
-          <div className="space-y-4 mb-10">
-            {porPrincipal.map((p, i) => {
-              const pct = totalPresupuesto > 0 ? (p.presupuesto / totalPresupuesto) * 100 : 0
-              return (
-                <motion.div
-                  key={p.nombre + i}
-                  initial={{ opacity: 0, x: -8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.04 }}
-                  className="glass rounded-xl border border-white/[0.06] p-4"
-                >
-                  <div className="mb-2 flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: p.color }} />
-                      <span className="font-medium text-gray-200 truncate">{p.nombre}</span>
+          {/* ── Categorías ──────────────────────────────────────────────── */}
+          <div>
+            <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Por categoría principal</h2>
+            <div className="space-y-3">
+              {porPrincipal.map((p, i) => {
+                const pct = totalPresupuesto > 0 ? (p.presupuesto / totalPresupuesto) * 100 : 0
+                return (
+                  <motion.div
+                    key={p.nombre + i}
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.04 }}
+                    className="glass-panel rounded-xl p-5"
+                  >
+                    <div className="mb-3 flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: p.color }} />
+                        <span className="font-semibold text-slate-100 truncate">{p.nombre}</span>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-sm font-bold text-slate-50 tabular-nums">{formatARS(p.presupuesto)}</p>
+                        <p className="text-[10px] text-slate-500">{pct.toFixed(1)}% del total</p>
+                      </div>
                     </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-sm font-semibold text-gray-100">{formatARS(p.presupuesto)}</p>
-                      <p className="text-[11px] text-gray-500">{pct.toFixed(1)}% del total</p>
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-surface-container-lowest">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{ width: `${pct}%`, backgroundColor: p.color, opacity: 0.85 }}
+                      />
                     </div>
-                  </div>
-                  <div className="h-2.5 w-full overflow-hidden rounded-full bg-dark-800/80">
-                    <div
-                      className="h-full rounded-full transition-all duration-500"
-                      style={{
-                        width: `${pct}%`,
-                        backgroundColor: p.color,
-                        opacity: 0.85,
-                      }}
-                    />
-                  </div>
-                  {p.lineas.length > 1 && (
-                    <ul className="mt-3 space-y-1.5 border-t border-white/[0.05] pt-3">
-                      {p.lineas.map((L) => (
-                        <li key={L.categoriaId} className="flex justify-between gap-2 text-[11px] text-gray-500">
-                          <span className="truncate text-gray-400">{L.nombre}</span>
-                          <span className="shrink-0 text-gray-300">{formatARS(L.presupuesto)}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </motion.div>
-              )
-            })}
+                    {p.lineas.length > 1 && (
+                      <ul className="mt-3 space-y-1.5 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                        {p.lineas.map((L) => (
+                          <li key={L.categoriaId} className="flex justify-between gap-2 text-xs text-slate-500">
+                            <span className="truncate text-slate-400">{L.nombre}</span>
+                            <span className="shrink-0 text-slate-300 tabular-nums">{formatARS(L.presupuesto)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </motion.div>
+                )
+              })}
+            </div>
           </div>
 
+          {/* ── Detalle por subcategoría ────────────────────────────────── */}
           {lineas.length > 0 && (
-            <>
-              <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Detalle por subcategoría</h2>
-              <div className="glass rounded-xl border border-white/[0.06] divide-y divide-white/[0.05] overflow-hidden">
+            <div>
+              <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Detalle por subcategoría</h2>
+              <div className="glass-card rounded-xl overflow-hidden">
                 {lineas.map((L) => (
-                  <div key={L.categoriaId} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-sm">
+                  <div key={L.categoriaId} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm"
+                    style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                     <div className="flex min-w-0 items-center gap-2">
                       <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: L.color }} />
-                      <span className="text-gray-300 truncate">{L.nombre}</span>
+                      <span className="text-slate-300 truncate">{L.nombre}</span>
                     </div>
                     <div className="text-right text-xs">
-                      <span className="font-medium text-gray-100">{formatARS(L.presupuesto)}</span>
+                      <span className="font-semibold text-slate-100 tabular-nums">{formatARS(L.presupuesto)}</span>
                       {totalPresupuesto > 0 && (
-                        <span className="ml-2 text-gray-500">
+                        <span className="ml-2 text-slate-500">
                           {((L.presupuesto / totalPresupuesto) * 100).toFixed(1)}%
                         </span>
                       )}
@@ -306,7 +301,7 @@ export default function Presupuesto() {
                   </div>
                 ))}
               </div>
-            </>
+            </div>
           )}
         </>
       )}

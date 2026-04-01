@@ -83,7 +83,7 @@ function MedioPagoGastoFields({
         <button
           type="button"
           onClick={() => setMedioPagoNivel1('efectivo')}
-          className={`min-w-0 flex-1 shrink flex flex-col items-center justify-center gap-0.5 rounded-xl py-2 px-0.5 text-[10px] font-semibold leading-tight transition-all duration-200 sm:flex-row sm:gap-1.5 sm:px-2 sm:text-xs ${medioPagoNivel1 === 'efectivo' ? 'bg-rose-500/10 text-rose-400 ring-1 ring-rose-500/30' : 'bg-dark-800/50 text-gray-500 hover:text-gray-300'}`}
+          className={`min-w-0 flex-1 shrink flex flex-col items-center justify-center gap-0.5 rounded-xl py-2 px-0.5 text-[10px] font-semibold leading-tight transition-all duration-200 sm:flex-row sm:gap-1.5 sm:px-2 sm:text-xs ${medioPagoNivel1 === 'efectivo' ? 'bg-rose-500/10 text-rose-400 ring-1 ring-rose-500/30' : 'bg-surface-container-low text-gray-500 hover:text-gray-300'}`}
         >
           <CircleDollarSign size={15} className="shrink-0 opacity-95" strokeWidth={2.25} aria-hidden />
           <span className="text-center">Efectivo</span>
@@ -91,7 +91,7 @@ function MedioPagoGastoFields({
         <button
           type="button"
           onClick={() => setMedioPagoNivel1('transferencia')}
-          className={`min-w-0 flex-1 shrink flex flex-col items-center justify-center gap-0.5 rounded-xl py-2 px-0.5 text-[10px] font-semibold leading-tight transition-all duration-200 sm:flex-row sm:gap-1.5 sm:px-2 sm:text-xs ${medioPagoNivel1 === 'transferencia' ? 'bg-sky-500/10 text-sky-400 ring-1 ring-sky-500/30' : 'bg-dark-800/50 text-gray-500 hover:text-gray-300'}`}
+          className={`min-w-0 flex-1 shrink flex flex-col items-center justify-center gap-0.5 rounded-xl py-2 px-0.5 text-[10px] font-semibold leading-tight transition-all duration-200 sm:flex-row sm:gap-1.5 sm:px-2 sm:text-xs ${medioPagoNivel1 === 'transferencia' ? 'bg-sky-500/10 text-sky-400 ring-1 ring-sky-500/30' : 'bg-surface-container-low text-gray-500 hover:text-gray-300'}`}
         >
           <ArrowLeftRight size={15} className="shrink-0 opacity-95" strokeWidth={2.25} aria-hidden />
           <span className="text-center">Transferencia</span>
@@ -99,7 +99,7 @@ function MedioPagoGastoFields({
         <button
           type="button"
           onClick={() => setMedioPagoNivel1('plastico')}
-          className={`min-w-0 flex-1 shrink flex flex-col items-center justify-center gap-0.5 rounded-xl py-2 px-0.5 text-[10px] font-semibold leading-tight transition-all duration-200 sm:flex-row sm:gap-1.5 sm:px-2 sm:text-xs sm:text-sm ${medioPagoNivel1 === 'plastico' ? 'bg-rose-500/10 text-rose-400 ring-1 ring-rose-500/30' : 'bg-dark-800/50 text-gray-500 hover:text-gray-300'}`}
+          className={`min-w-0 flex-1 shrink flex flex-col items-center justify-center gap-0.5 rounded-xl py-2 px-0.5 text-[10px] font-semibold leading-tight transition-all duration-200 sm:flex-row sm:gap-1.5 sm:px-2 sm:text-xs sm:text-sm ${medioPagoNivel1 === 'plastico' ? 'bg-rose-500/10 text-rose-400 ring-1 ring-rose-500/30' : 'bg-surface-container-low text-gray-500 hover:text-gray-300'}`}
         >
           <CreditCard size={15} className="shrink-0" strokeWidth={2.25} aria-hidden />
           <span className="text-center">Tarjeta</span>
@@ -119,14 +119,14 @@ function MedioPagoGastoFields({
               <button
                 type="button"
                 onClick={() => setPlasticoTipo('debito')}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${plasticoTipo === 'debito' ? 'bg-amber-500/10 text-amber-400 ring-1 ring-amber-500/30' : 'bg-dark-800/50 text-gray-500 hover:text-gray-300'}`}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${plasticoTipo === 'debito' ? 'bg-amber-500/10 text-amber-400 ring-1 ring-amber-500/30' : 'bg-surface-container-low text-gray-500 hover:text-gray-300'}`}
               >
                 Débito
               </button>
               <button
                 type="button"
                 onClick={() => setPlasticoTipo('credito')}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1.5 ${plasticoTipo === 'credito' ? 'bg-rose-500/10 text-rose-400 ring-1 ring-rose-500/30' : 'bg-dark-800/50 text-gray-500 hover:text-gray-300'}`}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1.5 ${plasticoTipo === 'credito' ? 'bg-rose-500/10 text-rose-400 ring-1 ring-rose-500/30' : 'bg-surface-container-low text-gray-500 hover:text-gray-300'}`}
               >
                 <CreditCard size={14} />
                 Crédito
@@ -247,14 +247,14 @@ function MedioPagoSuscripcionFields({
         <button
           type="button"
           onClick={() => setPlasticoTipo('debito')}
-          className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${plasticoTipo === 'debito' ? 'bg-amber-500/10 text-amber-400 ring-1 ring-amber-500/30' : 'bg-dark-800/50 text-gray-500 hover:text-gray-300'}`}
+          className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${plasticoTipo === 'debito' ? 'bg-amber-500/10 text-amber-400 ring-1 ring-amber-500/30' : 'bg-surface-container-low text-gray-500 hover:text-gray-300'}`}
         >
           Débito
         </button>
         <button
           type="button"
           onClick={() => setPlasticoTipo('credito')}
-          className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1.5 ${plasticoTipo === 'credito' ? 'bg-rose-500/10 text-rose-400 ring-1 ring-rose-500/30' : 'bg-dark-800/50 text-gray-500 hover:text-gray-300'}`}
+          className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 flex items-center justify-center gap-1.5 ${plasticoTipo === 'credito' ? 'bg-rose-500/10 text-rose-400 ring-1 ring-rose-500/30' : 'bg-surface-container-low text-gray-500 hover:text-gray-300'}`}
         >
           <CreditCard size={14} />
           Crédito
@@ -632,25 +632,30 @@ export default function Carga() {
   }
 
   return (
-    <div className="p-4 pb-[max(1.25rem,calc(0.5rem+env(safe-area-inset-bottom,0px)))] lg:pb-8 max-w-5xl mx-auto">
-      <div className="mb-4 flex justify-end lg:hidden">
+    <div className="px-4 pt-4 pb-28 lg:px-8 lg:pt-8 lg:pb-12 max-w-5xl mx-auto">
+      <div className="mb-4 flex items-center justify-between lg:hidden">
+        <div>
+          <p className="text-primary text-xs font-bold tracking-[0.25em] uppercase">Finanzas</p>
+          <h1 className="text-xl font-extrabold text-slate-50 tracking-tight">Cargar Movimiento</h1>
+        </div>
         <MobileUserMenu />
       </div>
-      <motion.h1 initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-        className="hidden lg:block text-2xl lg:text-3xl font-bold text-gray-50 mb-6">
-        Cargar Transacción
-      </motion.h1>
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+        className="hidden lg:block mb-6">
+        <p className="text-primary text-xs font-bold tracking-[0.25em] uppercase mb-1">Finanzas Personales</p>
+        <h1 className="text-2xl lg:text-3xl font-extrabold text-slate-50 tracking-tight">Cargar Movimiento</h1>
+      </motion.div>
 
       <div className="lg:grid lg:grid-cols-5 lg:gap-6">
         {/* Form column */}
         <div className="lg:col-span-2">
           <motion.form initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-            onSubmit={handleSubmit} className="glass p-4 sm:p-5 mb-6">
+            onSubmit={handleSubmit} className="glass-panel rounded-xl p-4 sm:p-5 mb-6">
             {/* Móvil: layout tipo app de referencia */}
             <div className="lg:hidden space-y-5 overflow-visible">
               <h2 className="w-full text-center text-xl font-bold text-gray-50">Cargar</h2>
 
-              <div className="flex rounded-2xl bg-dark-800/90 p-1 gap-0.5 ring-1 ring-white/[0.08]">
+              <div className="flex rounded-2xl bg-surface-container-high p-1 gap-0.5 ring-1 ring-white/[0.08]">
                 {TIPO_ORDER_MOBILE.map((t) => {
                   const cfg = TIPO_CONFIG[t]
                   const active = tipo === t
@@ -664,8 +669,8 @@ export default function Carga() {
                       }}
                       className={`flex-1 py-3 rounded-xl text-xs font-semibold transition-all duration-200 ${
                         active
-                          ? 'bg-gray-100 text-dark-950 shadow-md'
-                          : 'text-gray-500 hover:text-gray-400'
+                          ? 'bg-white/90 text-background shadow-md'
+                          : 'text-slate-500 hover:text-slate-300'
                       }`}
                     >
                       {cfg.label}
@@ -687,14 +692,14 @@ export default function Carga() {
                     placeholder="0,00"
                     className={`min-w-0 max-w-full w-full sm:max-w-[min(100%,22rem)] bg-transparent border-0 text-center font-bold leading-[1.05] tracking-tight text-gray-50 placeholder:text-gray-700 focus:ring-0 focus:outline-none sm:leading-[1.02] ${cargaMontoClassMobile}`}
                   />
-                  <div className="flex rounded-xl bg-dark-800/90 p-0.5 gap-0.5 ring-1 ring-white/[0.06] shrink-0 mb-1 sm:mb-1.5">
+                  <div className="flex rounded-xl bg-surface-container-high p-0.5 gap-0.5 ring-1 ring-white/[0.06] shrink-0 mb-1 sm:mb-1.5">
                     {(['ARS', 'USD'] as Moneda[]).map((m) => (
                       <button
                         key={m}
                         type="button"
                         onClick={() => setMoneda(m)}
                         className={`px-3 py-2 rounded-lg text-xs font-bold transition-all duration-200 ${
-                          moneda === m ? 'bg-gray-100 text-dark-950' : 'text-gray-500'
+                          moneda === m ? 'bg-primary text-on-primary' : 'text-slate-500'
                         }`}
                       >
                         {m}
@@ -704,7 +709,7 @@ export default function Carga() {
                 </div>
               </div>
 
-              <div className="rounded-2xl bg-dark-800/50 border border-white/[0.06] px-4 py-3 min-w-0 max-w-full overflow-hidden">
+              <div className="rounded-2xl bg-surface-container-low border border-white/[0.06] px-4 py-3 min-w-0 max-w-full overflow-hidden">
                 <div className="mb-2 flex items-center justify-center gap-2 text-[10px] font-medium uppercase tracking-wider text-gray-500">
                   <Calendar className="shrink-0" size={14} strokeWidth={2} />
                   Fecha
@@ -742,7 +747,7 @@ export default function Carga() {
                             >
                               <div
                                 className={`w-11 h-11 shrink-0 rounded-full border-2 flex items-center justify-center text-xs font-bold ${
-                                  active ? 'ring-2 ring-accent-blue ring-offset-2 ring-offset-dark-950' : 'opacity-80'
+                                  active ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : 'opacity-80'
                                 }`}
                                 style={{
                                   borderColor: c.color,
@@ -780,7 +785,7 @@ export default function Carga() {
                             >
                               <div
                                 className={`w-12 h-12 shrink-0 rounded-full border-2 flex items-center justify-center text-sm font-bold ${
-                                  active ? 'ring-2 ring-accent-blue ring-offset-2 ring-offset-dark-950' : 'opacity-80'
+                                  active ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : 'opacity-80'
                                 }`}
                                 style={{
                                   borderColor: c.color,
@@ -818,7 +823,7 @@ export default function Carga() {
                         >
                           <div
                             className={`w-12 h-12 shrink-0 rounded-full border-2 flex items-center justify-center text-sm font-bold ${
-                              active ? 'ring-2 ring-accent-blue ring-offset-2 ring-offset-dark-950' : 'opacity-80'
+                              active ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : 'opacity-80'
                             }`}
                             style={{
                               borderColor: c.color,
@@ -852,7 +857,7 @@ export default function Carga() {
               </div>
 
               {tipo === 'gasto' && (
-                <label className="flex items-center gap-2.5 cursor-pointer rounded-xl border border-white/[0.08] bg-dark-800/40 px-3 py-2.5">
+                <label className="flex items-center gap-2.5 cursor-pointer rounded-xl border border-white/[0.08] bg-surface-container-low px-3 py-2.5">
                   <input
                     type="checkbox"
                     checked={esGastoFijo}
@@ -863,7 +868,7 @@ export default function Carga() {
                 </label>
               )}
               {tipo === 'gasto' && (
-                <label className="flex items-center gap-2.5 cursor-pointer rounded-xl border border-white/[0.08] bg-dark-800/40 px-3 py-2.5">
+                <label className="flex items-center gap-2.5 cursor-pointer rounded-xl border border-white/[0.08] bg-surface-container-low px-3 py-2.5">
                   <input
                     type="checkbox"
                     checked={excluyeSaldoCaja}
@@ -876,7 +881,7 @@ export default function Carga() {
                 </label>
               )}
               {tipo === 'ingreso' && (
-                <label className="flex items-center gap-2.5 cursor-pointer rounded-xl border border-white/[0.08] bg-dark-800/40 px-3 py-2.5">
+                <label className="flex items-center gap-2.5 cursor-pointer rounded-xl border border-white/[0.08] bg-surface-container-low px-3 py-2.5">
                   <input
                     type="checkbox"
                     checked={ingresoReintegroTc}
@@ -919,7 +924,7 @@ export default function Carga() {
                         setCategoriaId('')
                         setTipo(t)
                       }}
-                        className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${active ? `${cfg.bg} ${cfg.color} ring-1 ${cfg.ring}` : 'bg-dark-800/50 text-gray-500 hover:text-gray-300'}`}>
+                        className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${active ? `${cfg.bg} ${cfg.color} ring-1 ${cfg.ring}` : 'bg-surface-container-low text-gray-500 hover:text-gray-300'}`}>
                         {cfg.label}
                       </button>
                     )
@@ -999,7 +1004,7 @@ export default function Carga() {
                   <div className="flex gap-2 mt-0.5">
                     {(['ARS', 'USD'] as Moneda[]).map((m) => (
                       <button key={m} type="button" onClick={() => setMoneda(m)}
-                        className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${moneda === m ? 'bg-accent-blue/10 text-accent-blue ring-1 ring-accent-blue/30' : 'bg-dark-800/50 text-gray-500 hover:text-gray-300'}`}>
+                        className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${moneda === m ? 'bg-primary/10 text-primary ring-1 ring-primary/30' : 'bg-surface-container-low text-gray-500 hover:text-gray-300'}`}>
                         {m}
                       </button>
                     ))}
@@ -1019,7 +1024,7 @@ export default function Carga() {
                 </label>
               )}
               {tipo === 'gasto' && (
-                <label className="flex items-start gap-2.5 cursor-pointer rounded-xl border border-white/[0.08] bg-dark-800/40 px-3 py-2.5">
+                <label className="flex items-start gap-2.5 cursor-pointer rounded-xl border border-white/[0.08] bg-surface-container-low px-3 py-2.5">
                   <input
                     type="checkbox"
                     checked={excluyeSaldoCaja}
@@ -1032,7 +1037,7 @@ export default function Carga() {
                 </label>
               )}
               {tipo === 'ingreso' && (
-                <label className="flex items-center gap-2.5 cursor-pointer rounded-xl border border-white/[0.08] bg-dark-800/40 px-3 py-2.5">
+                <label className="flex items-center gap-2.5 cursor-pointer rounded-xl border border-white/[0.08] bg-surface-container-low px-3 py-2.5">
                   <input
                     type="checkbox"
                     checked={ingresoReintegroTc}
@@ -1064,7 +1069,7 @@ export default function Carga() {
                 <span className="truncate min-w-0">Compras en cuotas</span>
               </h2>
               <button onClick={() => setShowCuotaForm(!showCuotaForm)}
-                className="text-xs text-accent-blue hover:text-accent-blue/80 transition-colors">
+                className="text-xs text-primary hover:text-primary/80 transition-colors">
                 {showCuotaForm ? 'Cancelar' : '+ Nueva'}
               </button>
             </div>
@@ -1104,7 +1109,7 @@ export default function Carga() {
                   <div className="flex gap-2">
                     {(['ARS', 'USD'] as Moneda[]).map((m) => (
                       <button key={m} type="button" onClick={() => setCuotaMoneda(m)}
-                        className={`flex-1 py-2 rounded-xl text-xs font-medium transition-all ${cuotaMoneda === m ? 'bg-accent-blue/10 text-accent-blue ring-1 ring-accent-blue/30' : 'bg-dark-800/50 text-gray-500'}`}>
+                        className={`flex-1 py-2 rounded-xl text-xs font-medium transition-all ${cuotaMoneda === m ? 'bg-primary/10 text-primary ring-1 ring-primary/30' : 'bg-surface-container-low text-gray-500'}`}>
                         {m}
                       </button>
                     ))}
@@ -1297,7 +1302,7 @@ export default function Carga() {
                             </span>
                           </div>
                           <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => startEdit(t)} className="text-gray-600 hover:text-accent-blue transition-colors">
+                            <button onClick={() => startEdit(t)} className="text-gray-600 hover:text-primary transition-colors">
                               <Pencil size={14} />
                             </button>
                             <button onClick={() => handleDelete(t.id)} className="text-gray-600 hover:text-red-400 transition-colors">

@@ -150,6 +150,7 @@ cross join (values
   ('Alimentos', 'Heladería', '#7dd3fc'),
   ('Alimentos', 'Verdulería', '#65a30d'),
   ('Alimentos', 'Restaurante', '#f59e0b'),
+  ('Alimentos', 'Delivery', '#fb923c'),
   ('Alimentos', 'General', '#15803d'),
   ('Regalos', 'General', '#f472b6'),
   ('Auto', 'Garage', '#78716c'),

@@ -33,10 +33,10 @@ const CHART_COLORS = {
   ingresos: '#10b981',
   gastos: '#ef4444',
   suscripciones: '#a855f7',
-  grid: '#1e1e32',
-  axis: '#4a4a66',
-  tooltipBg: '#151524',
-  tooltipBorder: '#2d2d44',
+  grid: '#2a2931',
+  axis: '#464555',
+  tooltipBg: '#1b1b23',
+  tooltipBorder: 'rgba(70,69,85,0.6)',
 }
 
 type MomCatRow = { catId: string; nombre: string; tipo: TipoTransaccion; anterior: number; actual: number }
@@ -462,22 +462,27 @@ export default function Analisis() {
   }
 
   return (
-    <div className="p-4 lg:p-8 max-w-5xl mx-auto">
+    <div className="px-4 pt-4 pb-28 lg:px-8 lg:pt-8 lg:pb-12 max-w-5xl mx-auto space-y-6">
+
+      {/* ── Header ──────────────────────────────────────────────────────── */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mb-6 flex flex-wrap items-center justify-between gap-3"
+        className="flex flex-wrap items-center justify-between gap-3"
       >
-        <h1 className="min-w-0 text-2xl font-bold text-gray-50 lg:text-3xl">Análisis</h1>
+        <div>
+          <p className="text-primary text-xs font-bold tracking-[0.25em] uppercase mb-1">Finanzas Personales</p>
+          <h1 className="text-2xl font-extrabold text-slate-50 tracking-tight lg:text-3xl">Análisis</h1>
+        </div>
         <div className="flex items-center gap-2">
           <button
             onClick={handleDescargarCSV}
             disabled={downloading}
-            className="flex items-center gap-2 rounded-xl bg-accent-blue/10 px-3 py-2 text-sm font-medium text-accent-blue ring-1 ring-accent-blue/25 transition-all duration-200 hover:bg-accent-blue/20 disabled:opacity-50"
+            className="flex items-center gap-2 glass px-3 py-2 rounded-xl text-sm font-medium text-primary hover:bg-primary/10 transition-all disabled:opacity-50"
           >
             {downloading
-              ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-accent-blue/30 border-t-accent-blue" />
-              : <Download size={15} />}
+              ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+              : <span className="material-symbols-outlined" style={{ fontSize: 16 }}>download</span>}
             <span className="hidden sm:inline">{downloading ? 'Descargando...' : 'Descargar CSV'}</span>
           </button>
           <div className="lg:hidden">
@@ -486,11 +491,12 @@ export default function Analisis() {
         </div>
       </motion.div>
 
+      {/* ── Selectores ──────────────────────────────────────────────────── */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.1 }}
-        className="flex gap-2 mb-6"
+        className="flex gap-2"
       >
         <select value={mesSeleccionado} onChange={(e) => setMesSeleccionado(Number(e.target.value))} className="select-dark flex-1">
           {MESES_FULL.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
@@ -502,7 +508,7 @@ export default function Analisis() {
 
       {loading || loadingSaldoHist ? (
         <div className="flex items-center justify-center py-20">
-          <div className="w-8 h-8 border-2 border-accent-blue/30 border-t-accent-blue rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
         </div>
       ) : (
         <>
@@ -511,9 +517,9 @@ export default function Analisis() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="glass p-4 lg:p-6 mb-6"
+            className="glass-card p-4 lg:p-6 rounded-xl"
           >
-            <h2 className="text-base font-semibold text-gray-200 mb-4">Evolución anual {anioSeleccionado}</h2>
+            <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-4">Evolución anual {anioSeleccionado}</h2>
             <ResponsiveContainer width="100%" height={320}>
               <BarChart data={barData} barCategoryGap="20%">
                 <XAxis dataKey="mes" tick={{ fontSize: 11, fill: CHART_COLORS.axis }} axisLine={false} tickLine={false} />
@@ -535,9 +541,9 @@ export default function Analisis() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
-            className="glass p-4 lg:p-6 mb-6"
+            className="glass-card p-4 lg:p-6 rounded-xl"
           >
-            <h2 className="text-base font-semibold text-gray-200 mb-1">Balance del mes y saldo acumulado</h2>
+            <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-1">Balance del mes y saldo acumulado</h2>
             <p className="text-[11px] text-gray-500 mb-4 leading-relaxed">
               <strong className="text-gray-400">Balance del mes</strong> (área): solo ese mes, ingresos menos salidas en efectivo, transferencia o débito; sin tarjeta de crédito.{' '}
               <strong className="text-gray-400">Saldo acumulado</strong> (línea): todo tu historial hasta el último día de cada mes — el superávit de meses previos se arrastra, igual que en el inicio.
@@ -629,9 +635,9 @@ export default function Analisis() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.18 }}
-            className="glass p-4 lg:p-6 mb-6"
+            className="glass-card p-4 lg:p-6 rounded-xl"
           >
-            <h2 className="text-base font-semibold text-gray-200 mb-1">
+            <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-1">
               Gastos por día — {MESES_FULL[mesSeleccionado - 1]} {anioSeleccionado}
             </h2>
             <p className="text-[11px] text-gray-500 mb-4">
@@ -686,9 +692,9 @@ export default function Analisis() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="glass p-4 lg:p-6 mb-6"
+            className="glass-card p-4 lg:p-6 rounded-xl"
           >
-            <h2 className="text-base font-semibold text-gray-200 mb-4">
+            <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-4">
               Distribución de gastos — {MESES_FULL[mesSeleccionado - 1]}
             </h2>
             {donutData.length === 0 ? (
@@ -758,9 +764,9 @@ export default function Analisis() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.25 }}
-            className="glass p-4 lg:p-6 mb-6"
+            className="glass-card p-4 lg:p-6 rounded-xl"
           >
-            <h2 className="text-base font-semibold text-gray-200 mb-2">
+            <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-2">
               Comparativa {MESES_FULL[mesSeleccionado === 1 ? 11 : mesSeleccionado - 2]} vs{' '}
               {MESES_FULL[mesSeleccionado - 1]} {anioSeleccionado}
             </h2>
@@ -771,7 +777,7 @@ export default function Analisis() {
               inflación oficial del mes actual (referencia INDEC, editable abajo).
             </p>
 
-            <div className="mb-5 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-3 space-y-2">
+            <div className="mb-5 rounded-xl border border-white/[0.06] bg-white/[0.01] px-3 py-3 space-y-2">
               <div className="flex flex-wrap items-end gap-2">
                 <div className="flex-1 min-w-[10rem]">
                   <label className="block text-[10px] uppercase tracking-wider text-gray-500 mb-1">
@@ -948,11 +954,11 @@ export default function Analisis() {
             transition={{ delay: 0.3 }}
             className="mb-8"
           >
-            <h2 className="text-base font-semibold text-gray-200 mb-4">Resumen anual {anioSeleccionado}</h2>
+            <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-4">Resumen anual {anioSeleccionado}</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <KPICard titulo="Total Ingresos" montoARS={annualSummary.ingresos} montoUSD={annualSummary.ingresos / tc} icon={<TrendingUp size={16} />} accentColor="#10b981" glowClass="glow-green" delay={0.35} />
-              <KPICard titulo="Total Gastos" montoARS={annualSummary.gastos} montoUSD={annualSummary.gastos / tc} icon={<TrendingDown size={16} />} accentColor="#ef4444" glowClass="glow-red" delay={0.4} />
-              <KPICard titulo="Total Suscripciones" montoARS={annualSummary.suscripciones} montoUSD={annualSummary.suscripciones / tc} icon={<RotateCcw size={16} />} accentColor="#a855f7" glowClass="glow-purple" delay={0.45} />
+              <KPICard titulo="Total Ingresos" montoARS={annualSummary.ingresos} montoUSD={annualSummary.ingresos / tc} icon={<TrendingUp size={16} />} accentColor="#10b981" delay={0.35} />
+              <KPICard titulo="Total Gastos" montoARS={annualSummary.gastos} montoUSD={annualSummary.gastos / tc} icon={<TrendingDown size={16} />} accentColor="#ef4444" delay={0.4} />
+              <KPICard titulo="Total Suscripciones" montoARS={annualSummary.suscripciones} montoUSD={annualSummary.suscripciones / tc} icon={<RotateCcw size={16} />} accentColor="#a855f7" delay={0.45} />
               <KPICard titulo="Mes mayor gasto" montoARS={annualSummary.maxVal} descripcion={annualSummary.maxVal > 0 ? MESES_FULL[annualSummary.maxMonth] : 'Sin gastos'} icon={<CalendarDays size={16} />} accentColor="#f59e0b" delay={0.5} />
             </div>
           </motion.section>

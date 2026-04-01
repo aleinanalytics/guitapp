@@ -232,7 +232,7 @@ export default function EditableTransaccionListRow({ t, categorias, delay = 0, m
           <p className="text-[10px] text-gray-500">{t.moneda}</p>
         </div>
         <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-          <button type="button" onClick={startEdit} className="text-gray-500 hover:text-accent-blue p-1" aria-label="Editar">
+          <button type="button" onClick={startEdit} className="text-gray-500 hover:text-primary p-1" aria-label="Editar">
             <Pencil size={15} />
           </button>
           <button type="button" onClick={remove} disabled={busy} className="text-gray-500 hover:text-red-400 p-1 disabled:opacity-40" aria-label="Eliminar">

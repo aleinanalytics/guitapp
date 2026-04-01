@@ -437,86 +437,137 @@ export default function Dashboard() {
   }, [kpiCatId, categoriasGasto, qMesAnio])
 
   return (
-    <div className="p-4 lg:p-8 max-w-5xl mx-auto">
-      {/* Header */}
+    <div className="px-4 pt-4 pb-28 lg:px-8 lg:pt-8 lg:pb-12 max-w-5xl mx-auto space-y-6">
+
+      {/* ── Header editorial ──────────────────────────────────────────────── */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between mb-6"
+        className="flex flex-col md:flex-row md:items-end justify-between gap-4"
       >
-        <div className="min-w-0 flex-1">
-          <p className="text-sm text-gray-500">{firstName ? `Hola, ${firstName}` : 'Hola'}</p>
-          <h1 className="text-xl leading-snug sm:text-2xl lg:text-3xl lg:leading-tight font-bold text-gray-50">
+        <div>
+          <p className="text-primary text-xs font-bold tracking-[0.25em] uppercase mb-1">
             Control de Gastos Personales
+          </p>
+          <h1 className="text-2xl lg:text-3xl font-black text-slate-50 tracking-tighter">
+            {firstName ? `Hola, ${firstName}.` : 'Hola.'}
           </h1>
         </div>
-        <div className="flex shrink-0 items-start gap-2">
+
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Dólar live pill */}
           {dolarLive && (
-            <div className="hidden sm:flex items-center gap-1.5 text-xs text-cyan-400 bg-cyan-500/10 px-3 py-1.5 rounded-lg">
-              <Zap size={12} />
-              Dólar Oficial: {formatARS(dolarLive)}
+            <div className="glass px-3 py-1.5 rounded-full flex items-center gap-2">
+              <span className="material-symbols-outlined text-emerald-400" style={{ fontSize: 14 }}>payments</span>
+              <span className="text-xs font-semibold text-slate-300">
+                Oficial: <span className="text-slate-50 tabular-nums">{formatARS(dolarLive)}</span>
+              </span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
             </div>
           )}
+
+          {/* Tipo de cambio editable */}
+          <div className="glass px-3 py-1.5 rounded-full flex items-center gap-2 group">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Mi Cambio</span>
+            {editingTC ? (
+              <>
+                <input
+                  type="number"
+                  value={tcInput}
+                  onChange={(e) => setTcInput(e.target.value)}
+                  className="bg-transparent border-none focus:outline-none text-sm font-bold text-slate-50 tabular-nums w-20 p-0"
+                  min="0.01"
+                  step="0.01"
+                  autoFocus
+                />
+                <button onClick={handleTcSave} className="text-emerald-400 hover:text-emerald-300 transition-colors">
+                  <span className="material-symbols-outlined" style={{ fontSize: 14 }}>check</span>
+                </button>
+                <button onClick={() => setEditingTC(false)} className="text-red-400 hover:text-red-300 transition-colors">
+                  <span className="material-symbols-outlined" style={{ fontSize: 14 }}>close</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <span className="text-sm font-bold text-slate-50 tabular-nums">{formatARS(tc)}</span>
+                <button
+                  onClick={() => { setTcInput(String(tc)); setEditingTC(true) }}
+                  className="text-slate-500 hover:text-primary transition-colors"
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: 13 }}>edit</span>
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* Selector Mes / Año */}
+          <div className="flex bg-surface-container-low p-1 rounded-full border border-white/5 gap-1">
+            <select
+              value={mes}
+              onChange={(e) => setMes(Number(e.target.value))}
+              className="bg-transparent border-none text-xs font-bold text-slate-300 focus:outline-none cursor-pointer px-2 py-1"
+            >
+              {MESES.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+            </select>
+            <select
+              value={anio}
+              onChange={(e) => setAnio(Number(e.target.value))}
+              className="bg-transparent border-none text-xs font-bold text-slate-500 focus:outline-none cursor-pointer px-2 py-1"
+            >
+              {years.map((y) => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </div>
+
           <div className="lg:hidden">
             <MobileUserMenu />
           </div>
         </div>
       </motion.div>
 
-      {/* Warning */}
+      {/* Warning TC */}
       {!tipoCambio && (
         <motion.div
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
-          className="glass border-yellow-500/20 bg-yellow-500/[0.05] text-yellow-300/80 text-sm rounded-xl p-3 mb-4 flex items-center gap-2"
+          className="flex items-center gap-2 glass rounded-xl p-3 text-sm text-yellow-300/80 border border-yellow-500/20 bg-yellow-500/[0.04]"
         >
-          <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse-slow" />
+          <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse-slow flex-shrink-0" />
           Tipo de cambio no configurado — usando $1.000 por defecto
         </motion.div>
       )}
 
-      {/* Selectors */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.1 }}
-        className="flex gap-2 mb-6"
-      >
-        <select value={mes} onChange={(e) => setMes(Number(e.target.value))} className="select-dark flex-1 lg:flex-none lg:w-40">
-          {MESES.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
-        </select>
-        <select value={anio} onChange={(e) => setAnio(Number(e.target.value))} className="select-dark w-28">
-          {years.map((y) => <option key={y} value={y}>{y}</option>)}
-        </select>
-      </motion.div>
-
       {loading || loadingSaldoAcum ? (
         <div className="flex items-center justify-center py-20">
-          <div className="w-8 h-8 border-2 border-accent-blue/30 border-t-accent-blue rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
         </div>
       ) : (
         <>
-        <motion.div
+
+        {/* ── Hero: Balance Acumulado ────────────────────────────────────── */}
+        <motion.section
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35 }}
-          className="mb-6 min-w-0 text-center lg:mb-8"
+          transition={{ duration: 0.4 }}
+          className="relative overflow-hidden rounded-xl p-7 md:p-10 flex flex-col items-center justify-center text-center"
+          style={{
+            background: 'linear-gradient(135deg, rgba(79,70,229,0.25) 0%, rgba(99,102,241,0.08) 100%)',
+            border: '1px solid rgba(255,255,255,0.08)',
+          }}
         >
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500 mb-3">Saldo acumulado</p>
-          <p
-            className={`font-bold tabular-nums leading-[1.05] break-words px-1 max-w-[100vw] ${saldoAcumulado >= 0 ? 'text-white' : 'text-rose-400'} ${montoDisplayClass(saldoAcumulado, 'saldoHero')}`}
-          >
+          <span className="text-primary-fixed-dim text-[10px] font-bold tracking-[0.3em] uppercase mb-4 relative z-10 opacity-80">
+            Balance Acumulado
+          </span>
+          <p className={`relative z-10 font-black text-slate-50 tabular-nums tracking-tighter leading-none mb-3 ${montoDisplayClass(saldoAcumulado, 'saldoHero')} ${saldoAcumulado < 0 ? 'text-rose-400' : ''}`}>
             {formatARS(saldoAcumulado)}
           </p>
-          <p
-            className={`mt-2 text-gray-400 break-words px-2 ${montoDisplayClass(saldoAcumulado / tc, 'saldoHeroUsd')}`}
-          >
-            {formatUSD(saldoAcumulado / tc)}
-          </p>
-        </motion.div>
+          <div className="relative z-10 glass px-5 py-1.5 rounded-full inline-flex items-center gap-2">
+            <span className="text-slate-400 text-sm">Equivalente aprox.</span>
+            <span className="text-emerald-400 font-black tabular-nums tracking-tight text-sm">{formatUSD(saldoAcumulado / tc)}</span>
+          </div>
+        </motion.section>
 
-        {/* Móvil: misma grilla 2+2 que antes. Escritorio: fila de KPI con columnas amplias (evita tarjetas de ~1/6 de pantalla). */}
-        <div className="flex min-w-0 flex-col gap-3 lg:gap-4">
+        {/* ── KPI + tarjeta + reservas ───────────────────────────────────── */}
+        <div className="flex min-w-0 flex-col gap-4">
           <div
             className={`grid min-w-0 grid-cols-2 gap-3 lg:gap-4 ${
               kpiCatId !== '' && categoriaKpiSeleccionada ? 'lg:grid-cols-5' : 'lg:grid-cols-4'
@@ -528,7 +579,6 @@ export default function Dashboard() {
               montoUSD={ingresos / tc}
               icon={<TrendingUp size={18} />}
               accentColor="#10b981"
-              glowClass="glow-green"
               delay={0.05}
               to={toIngresos}
               mobileStatLayout
@@ -545,7 +595,6 @@ export default function Dashboard() {
               montoUSD={gastos / tc}
               icon={<TrendingDown size={18} />}
               accentColor="#ef4444"
-              glowClass="glow-red"
               delay={0.08}
               to={toGastos}
               mobileStatLayout
@@ -562,7 +611,6 @@ export default function Dashboard() {
                 montoUSD={gastosSinTc / tc}
                 icon={<Banknote size={18} />}
                 accentColor="#f97316"
-                glowClass="glow-orange"
                 delay={0.09}
                 to={toGastosSinTc}
                 mobileStatLayout
@@ -583,7 +631,6 @@ export default function Dashboard() {
                     montoUSD={suscripciones / tc}
                     icon={<RotateCcw size={18} />}
                     accentColor="#a855f7"
-                    glowClass="glow-purple"
                     delay={0.1}
                     to={toSuscripciones}
                     mobileStatLayout
@@ -697,7 +744,6 @@ export default function Dashboard() {
                   montoUSD={suscripciones / tc}
                   icon={<RotateCcw size={18} />}
                   accentColor="#a855f7"
-                  glowClass="glow-purple"
                   delay={0.1}
                   to={toSuscripciones}
                   mobileStatLayout
@@ -730,38 +776,34 @@ export default function Dashboard() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
-              className="glass h-full p-4 relative overflow-hidden cursor-pointer hover:border-white/[0.18] hover:bg-white/[0.02] transition-all duration-300"
-              style={{ boxShadow: '0 0 20px rgba(244, 63, 94, 0.12), 0 0 60px rgba(244, 63, 94, 0.04)' }}
+              className="glass h-full rounded-2xl p-4 relative overflow-hidden cursor-pointer hover:border-white/[0.18] hover:bg-white/[0.02] transition-all duration-300"
             >
-              <div className="absolute top-0 left-0 right-0 h-[2px] opacity-60"
-                style={{ background: 'linear-gradient(90deg, transparent, #f43f5e, transparent)' }}
-              />
-              <div className="flex items-center justify-center gap-2 mb-3">
-                <CreditCard size={20} className="text-gray-500 shrink-0" />
-                <p className="text-xs font-medium text-gray-400 uppercase tracking-wider text-center">
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <CreditCard size={20} className="shrink-0 text-rose-400/90" />
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-[0.18em] text-center">
                   Tarjeta de Crédito
                 </p>
               </div>
 
               <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-3 sm:gap-4">
                 <div className="text-center min-w-0">
-                  <p className="text-[10px] text-gray-500 uppercase tracking-wide">ARS</p>
+                  <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">ARS</p>
                   <p
-                    className={`font-bold text-gray-50 tabular-nums leading-tight mt-0.5 break-words ${montoDisplayClass(tarjetaData.totalArs, 'pairArsTarjeta')}`}
+                    className={`font-black text-white tabular-nums tracking-tighter leading-tight mt-0.5 break-words ${montoDisplayClass(tarjetaData.totalArs, 'pairArsTarjeta')}`}
                   >
                     {formatARS(tarjetaData.totalArs)}
                   </p>
                 </div>
                 <div className="text-center min-w-0">
-                  <p className="text-[10px] text-gray-500 uppercase tracking-wide">USD</p>
+                  <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">USD</p>
                   <p
-                    className={`font-bold text-gray-50 tabular-nums leading-tight mt-0.5 break-words ${montoDisplayClass(tarjetaData.totalUsd, 'pairUsdTarjeta')}`}
+                    className={`font-black text-white tabular-nums tracking-tighter leading-tight mt-0.5 break-words ${montoDisplayClass(tarjetaData.totalUsd, 'pairUsdTarjeta')}`}
                   >
                     {formatUSD(tarjetaData.totalUsd)}
                   </p>
                 </div>
               </div>
-              <p className="text-[10px] text-gray-600 mt-2 text-center">Neto del mes por moneda (consumo − reintegros/promos TC), sin convertir.</p>
+              <p className="text-[10px] text-gray-600 mt-3 text-center leading-relaxed">Neto del mes por moneda (consumo − reintegros/promos TC), sin convertir.</p>
               {(tarjetaData.reintegroArs > 0 || tarjetaData.reintegroUsd > 0) && (
                 <p className="text-[10px] text-emerald-400/85 mt-1.5 text-center leading-snug">
                   Reintegros/promos: −{formatARS(tarjetaData.reintegroArs)}
@@ -774,17 +816,17 @@ export default function Dashboard() {
               )}
 
               {tcConfig ? (
-                <div className="mt-3 pt-3 border-t border-white/[0.06] grid gap-x-5 gap-y-2.5 text-[11px] sm:text-xs text-center [grid-template-columns:repeat(auto-fit,minmax(11rem,1fr))]">
+                <div className="mt-4 pt-4 border-t border-white/[0.06] grid gap-x-5 gap-y-3 text-left text-[11px] sm:text-xs [grid-template-columns:repeat(auto-fit,minmax(11rem,1fr))]">
                   <div className="min-w-0">
-                    <p className="text-gray-500 uppercase tracking-wide">Fecha de cierre</p>
-                    <p className="mt-0.5 text-gray-200 leading-snug">
+                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.15em]">Fecha de cierre</p>
+                    <p className="mt-1 text-sm font-medium text-white leading-snug">
                       {formatFechaTarjeta(tcConfig.fecha_cierre)}
                       <span className="text-rose-400/90"> · {countdownTarjeta(tcConfig.fecha_cierre)}</span>
                     </p>
                   </div>
                   <div className="min-w-0">
-                    <p className="text-gray-500 uppercase tracking-wide">Vencimiento</p>
-                    <p className="mt-0.5 text-gray-200 leading-snug">
+                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.15em]">Vencimiento</p>
+                    <p className="mt-1 text-sm font-medium text-white leading-snug">
                       {formatFechaTarjeta(tcConfig.fecha_vencimiento)}
                       <span className="text-amber-400/90"> · {countdownTarjeta(tcConfig.fecha_vencimiento)}</span>
                     </p>
@@ -797,10 +839,10 @@ export default function Dashboard() {
               )}
 
               {tarjetaData.cuotaDetails.length > 0 && (
-                <div className="mt-3 space-y-1">
+                <div className="mt-4 space-y-1.5 border-t border-white/[0.06] pt-4">
                   {tarjetaData.cuotaDetails.map((d, i) => (
-                    <p key={i} className="text-xs text-gray-400">
-                      <span className="text-gray-300">{d.desc}</span> — cuota {d.numero}/{d.total} ·{' '}
+                    <p key={i} className="text-xs font-medium text-white leading-snug">
+                      {d.desc} — cuota {d.numero}/{d.total} ·{' '}
                       {d.moneda === 'USD' ? formatUSD(d.monto) : formatARS(d.monto)}
                     </p>
                   ))}
@@ -808,17 +850,17 @@ export default function Dashboard() {
               )}
 
               {(tarjetaData.nextMonthArs > 0 || tarjetaData.nextMonthUsd > 0) && (
-                <div className="mt-3 pt-3 border-t border-white/[0.06]">
-                  <p className="text-xs text-amber-400/80 text-center">
+                <div className="mt-4 pt-4 border-t border-white/[0.06] text-left">
+                  <p className="text-xs font-medium text-amber-400/90 leading-snug">
                     El próximo resumen ({tarjetaData.nextMesName}): cuotas{' '}
-                    {tarjetaData.nextMonthArs > 0 && <span>{formatARS(tarjetaData.nextMonthArs)}</span>}
+                    {tarjetaData.nextMonthArs > 0 && <span className="font-black tabular-nums tracking-tight">{formatARS(tarjetaData.nextMonthArs)}</span>}
                     {tarjetaData.nextMonthArs > 0 && tarjetaData.nextMonthUsd > 0 && (
-                      <span className="text-gray-500"> · </span>
+                      <span className="font-normal text-gray-500"> · </span>
                     )}
-                    {tarjetaData.nextMonthUsd > 0 && <span>{formatUSD(tarjetaData.nextMonthUsd)}</span>}
+                    {tarjetaData.nextMonthUsd > 0 && <span className="font-black tabular-nums tracking-tight">{formatUSD(tarjetaData.nextMonthUsd)}</span>}
                   </p>
                   {tarjetaData.nextDetails.map((d, i) => (
-                    <p key={i} className="text-[11px] text-gray-500 mt-0.5 text-center">
+                    <p key={i} className="text-[11px] text-gray-500 mt-1.5 leading-snug">
                       {d.desc} — cuota {d.numero}/{d.total} ·{' '}
                       {d.moneda === 'USD' ? formatUSD(d.monto) : formatARS(d.monto)}
                     </p>
@@ -857,7 +899,7 @@ export default function Dashboard() {
                         kpiReserva.metaAlcanzada ? (
                           <>
                             <p
-                              className={`mt-4 font-bold tabular-nums leading-[1.08] break-words ${montoDisplayClass(kpiReserva.actual, 'kpiStatProminent')} text-emerald-400`}
+                              className={`mt-4 font-black tabular-nums tracking-tighter leading-[1.08] break-words ${montoDisplayClass(kpiReserva.actual, 'kpiStatProminent')} text-emerald-400`}
                             >
                               {formatARS(kpiReserva.actual)}
                             </p>
@@ -871,7 +913,7 @@ export default function Dashboard() {
                         ) : (
                           <>
                             <p
-                              className={`mt-4 font-bold tabular-nums leading-[1.08] break-words ${montoDisplayClass(kpiReserva.actual, 'kpiStatProminent')} text-sky-100`}
+                              className={`mt-4 font-black tabular-nums tracking-tighter leading-[1.08] break-words ${montoDisplayClass(kpiReserva.actual, 'kpiStatProminent')} text-sky-100`}
                             >
                               {formatARS(kpiReserva.actual)}
                             </p>
@@ -886,7 +928,7 @@ export default function Dashboard() {
                       ) : (
                         <>
                           <p
-                            className={`mt-4 font-bold tabular-nums leading-[1.08] break-words ${montoDisplayClass(kpiReserva.actual, 'kpiStatProminent')} text-gray-50`}
+                            className={`mt-4 font-black tabular-nums tracking-tighter leading-[1.08] break-words ${montoDisplayClass(kpiReserva.actual, 'kpiStatProminent')} text-gray-50`}
                           >
                             {formatARS(kpiReserva.actual)}
                           </p>
@@ -970,108 +1012,86 @@ export default function Dashboard() {
             />
           </div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.28, ease: [0.25, 0.46, 0.45, 0.94] }}
-            className="glass relative w-full max-w-full overflow-hidden p-4 transition-all duration-300 glow-cyan hover:border-white/[0.12] lg:max-w-md lg:self-start"
-          >
-            <div className="absolute top-0 left-0 right-0 h-[2px] opacity-60"
-              style={{ background: 'linear-gradient(90deg, transparent, #06b6d4, transparent)' }}
-            />
-            <div className="flex items-start justify-between mb-2">
-              <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">Tipo de Cambio</p>
-              <DollarSign size={18} className="text-gray-500" />
-            </div>
-            {editingTC ? (
-              <div className="flex items-center gap-2 mt-1">
-                <input type="number" value={tcInput} onChange={(e) => setTcInput(e.target.value)}
-                  className="input-dark w-24 !py-1.5 !text-base" min="0.01" step="0.01" autoFocus />
-                <button onClick={handleTcSave} className="text-emerald-400 hover:text-emerald-300 transition-colors"><Check size={18} /></button>
-                <button onClick={() => setEditingTC(false)} className="text-red-400 hover:text-red-300 transition-colors"><X size={18} /></button>
+          {/* TC card — colapsado a pill cuando no se está editando en el header */}
+          {editingTC && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35 }}
+              className="glass-card rounded-xl p-4"
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <span className="material-symbols-outlined text-tertiary" style={{ fontSize: 18 }}>currency_exchange</span>
+                <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Tipo de Cambio</p>
               </div>
-            ) : (
               <div className="flex items-center gap-2">
-                <p className="text-xl font-bold text-gray-50">{formatARS(tc)}</p>
-                <button onClick={() => { setTcInput(String(tc)); setEditingTC(true) }}
-                  className="text-gray-600 hover:text-gray-400 transition-colors">
-                  <Pencil size={14} />
+                <input type="number" value={tcInput} onChange={(e) => setTcInput(e.target.value)}
+                  className="input-dark w-28 !py-1.5 !text-lg font-bold" min="0.01" step="0.01" autoFocus />
+                <button onClick={handleTcSave} className="text-emerald-400 hover:text-emerald-300 transition-colors p-1">
+                  <span className="material-symbols-outlined" style={{ fontSize: 20 }}>check</span>
+                </button>
+                <button onClick={() => setEditingTC(false)} className="text-red-400 hover:text-red-300 transition-colors p-1">
+                  <span className="material-symbols-outlined" style={{ fontSize: 20 }}>close</span>
                 </button>
               </div>
-            )}
-            <p className="text-sm text-gray-500 mt-1">{formatUSD(1)} = {formatARS(tc)}</p>
-            {dolarLive && (
-              <p className="text-[11px] text-cyan-500/60 mt-1 flex items-center gap-1">
-                <Zap size={10} /> Oficial hoy: {formatARS(dolarLive)}
-              </p>
-            )}
-          </motion.div>
+              <p className="text-xs text-slate-500 mt-1">{formatUSD(1)} = {formatARS(tc)}</p>
+            </motion.div>
+          )}
         </div>
 
+        {/* ── Available + Reservas ─────────────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, delay: 0.32 }}
-          className="mt-5 lg:mt-6"
         >
-          <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Reservas</p>
-          <p className="text-[11px] text-gray-500 mb-3 leading-snug">
-            Asigná plata al margen de tus gastos (cifra acumulada de todo tu historial, no solo el mes del selector).{' '}
-            {!loadingBolsillos ? (
-              <>
-                Disponible:{' '}
-                <span className={disponibleReservas >= 0 ? 'text-cyan-400/90' : 'text-rose-400/90'}>
-                  {formatARS(disponibleReservas)}
-                </span>
-                {saldoEquivARS('ahorro') + saldoEquivARS('emergencia') > 0 && (
-                  <span className="text-gray-600">
-                    {' '}
-                    · En bolsillos: {formatARS(saldoEquivARS('ahorro') + saldoEquivARS('emergencia'))}
-                  </span>
-                )}
-              </>
-            ) : (
-              <span className="text-gray-600">Calculando disponible…</span>
-            )}
-          </p>
-          <div className="grid grid-cols-3 gap-2 sm:gap-3">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-bold text-slate-50 tracking-tight">Available</h3>
+            <span className="text-cyan-400 text-xl font-black tabular-nums tracking-tighter">
+              {loadingBolsillos ? '—' : formatARS(disponibleReservas)}
+            </span>
+          </div>
+          <div className="space-y-3">
             <Link
               to="/ahorros"
-              className="glass flex flex-col items-center justify-center gap-1.5 rounded-2xl p-3 sm:p-4 border border-white/[0.06] hover:border-emerald-500/25 hover:bg-emerald-500/[0.04] transition-all min-h-[5.5rem] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/40"
+              className="glass-card flex items-center gap-4 p-4 rounded-xl hover:bg-white/[0.05] cursor-pointer transition-all active:scale-[0.98] focus:outline-none"
             >
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-400">
-                <Plus size={20} strokeWidth={2.5} />
-              </span>
-              <span className="text-[11px] sm:text-xs font-medium text-gray-200 text-center leading-tight">Ahorros</span>
-              <span className="text-[9px] text-gray-600 text-center flex items-center gap-0.5">
-                <PiggyBank size={10} /> Objetivos
-              </span>
+              <div className="w-11 h-11 rounded-full bg-cyan-500/10 flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-cyan-400" style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>savings</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-bold text-cyan-400 uppercase tracking-widest mb-0.5">Ahorros</p>
+                <p className="text-lg font-black text-slate-50 tabular-nums tracking-tighter">{formatARS(saldoEquivARS('ahorro'))}</p>
+              </div>
+              <span className="material-symbols-outlined text-slate-600" style={{ fontSize: 20 }}>chevron_right</span>
             </Link>
+
             <Link
               to="/fondo-emergencia"
-              className="glass flex flex-col items-center justify-center gap-1.5 rounded-2xl p-3 sm:p-4 border border-white/[0.06] hover:border-sky-500/25 hover:bg-sky-500/[0.04] transition-all min-h-[5.5rem] focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/40"
+              className="glass-card flex items-center gap-4 p-4 rounded-xl hover:bg-white/[0.05] cursor-pointer transition-all active:scale-[0.98] focus:outline-none"
             >
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-sky-500/15 text-sky-400">
-                <Plus size={20} strokeWidth={2.5} />
-              </span>
-              <span className="text-[11px] sm:text-xs font-medium text-gray-200 text-center leading-tight">
-                Fondo emergencia
-              </span>
-              <span className="text-[9px] text-gray-600 text-center flex items-center gap-0.5">
-                <Shield size={10} /> Meta sugerida
-              </span>
+              <div className="w-11 h-11 rounded-full bg-sky-500/10 flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-sky-400" style={{ fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>emergency</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-bold text-sky-400 uppercase tracking-widest mb-0.5">Fondo Emergencia</p>
+                <p className="text-lg font-black text-slate-50 tabular-nums tracking-tighter">{formatARS(saldoFondoEmergencia)}</p>
+              </div>
+              <span className="material-symbols-outlined text-slate-600" style={{ fontSize: 20 }}>chevron_right</span>
             </Link>
+
             <Link
               to="/inversiones"
-              className="glass flex flex-col items-center justify-center gap-1.5 rounded-2xl p-3 sm:p-4 border border-white/[0.06] hover:border-violet-500/20 transition-all min-h-[5.5rem] opacity-85 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/35"
+              className="glass-card flex items-center gap-4 p-4 rounded-xl opacity-50 hover:opacity-90 cursor-pointer transition-all active:scale-[0.98] focus:outline-none"
             >
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-violet-500/10 text-violet-400/80">
-                <Plus size={20} strokeWidth={2.5} />
-              </span>
-              <span className="text-[11px] sm:text-xs font-medium text-gray-300 text-center leading-tight">
-                Inversiones
-              </span>
-              <span className="text-[9px] text-amber-400/80 text-center font-medium">En desarrollo</span>
+              <div className="w-11 h-11 rounded-full bg-violet-500/10 flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-violet-400" style={{ fontSize: 22 }}>add_circle</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">Inversiones</p>
+                <p className="text-xs font-medium text-amber-400/80">En desarrollo</p>
+              </div>
+              <span className="material-symbols-outlined text-slate-700" style={{ fontSize: 20 }}>chevron_right</span>
             </Link>
           </div>
         </motion.div>
@@ -1111,7 +1131,7 @@ export default function Dashboard() {
                         }
                         return [formatARS(Number(value ?? 0)), name]
                       }}
-                      contentStyle={{ background: '#151524', border: '1px solid #2d2d44', borderRadius: 8, fontSize: 12 }}
+                      contentStyle={{ background: '#1b1b23', border: '1px solid rgba(70,69,85,0.6)', borderRadius: 12, fontSize: 12 }}
                       itemStyle={{ color: '#e2e8f0' }}
                       labelStyle={{ color: '#94a3b8' }}
                     />
@@ -1158,7 +1178,7 @@ export default function Dashboard() {
                   />
                   <Tooltip
                     formatter={(value) => formatARS(Number(value ?? 0))}
-                    contentStyle={{ background: '#151524', border: '1px solid #2d2d44', borderRadius: 8, fontSize: 12 }}
+                    contentStyle={{ background: '#1b1b23', border: '1px solid rgba(70,69,85,0.6)', borderRadius: 12, fontSize: 12 }}
                     itemStyle={{ color: '#e2e8f0' }}
                     labelStyle={{ color: '#94a3b8' }}
                     cursor={{ fill: 'rgba(255,255,255,0.03)' }}
@@ -1188,7 +1208,7 @@ export default function Dashboard() {
           </p>
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={lineData} margin={{ left: 8, right: 16, top: 4, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e1e32" vertical={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#2a2931" vertical={false} />
               <XAxis dataKey="mes" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
               <YAxis
                 tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`}
@@ -1199,7 +1219,7 @@ export default function Dashboard() {
               />
               <Tooltip
                 formatter={(value, name) => [formatARS(Number(value ?? 0)), String(name ?? '')]}
-                contentStyle={{ background: '#151524', border: '1px solid #2d2d44', borderRadius: 8, fontSize: 12 }}
+                contentStyle={{ background: '#1b1b23', border: '1px solid rgba(70,69,85,0.6)', borderRadius: 12, fontSize: 12 }}
                 itemStyle={{ color: '#e2e8f0' }}
                 labelStyle={{ color: '#94a3b8' }}
               />

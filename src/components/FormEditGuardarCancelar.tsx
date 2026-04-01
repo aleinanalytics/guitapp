@@ -15,7 +15,7 @@ export default function FormEditGuardarCancelar({ busy = false, onCancel, onSave
         type="button"
         disabled={busy}
         onClick={onCancel}
-        className="flex-1 min-h-[48px] px-3 flex items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-dark-800/70 text-red-400 text-sm font-semibold hover:bg-dark-800 active:scale-[0.99] disabled:opacity-40 transition-colors"
+        className="flex-1 min-h-[48px] px-3 flex items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-surface-container-low/70 text-red-400 text-sm font-semibold hover:bg-surface-container-high active:scale-[0.99] disabled:opacity-40 transition-colors"
       >
         <X size={22} strokeWidth={2.25} className="shrink-0" aria-hidden />
         Cancelar
