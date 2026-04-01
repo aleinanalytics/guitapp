@@ -1,7 +1,9 @@
 import { useState, useMemo, useEffect } from 'react'
+import { format } from 'date-fns'
+import { es } from 'date-fns/locale'
 import { Link, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Pencil, Check, X, TrendingUp, TrendingDown, CreditCard, RotateCcw, DollarSign, Zap, Plus, PiggyBank, Shield, Store, Banknote } from 'lucide-react'
+import { Pencil, X, TrendingUp, TrendingDown, CreditCard, RotateCcw, Shield, Store, Banknote } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
@@ -15,7 +17,7 @@ import { useTransacciones } from '../hooks/useTransacciones'
 import { useSaldoAcumuladoHastaMes } from '../hooks/useSaldoAcumuladoHastaMes'
 import { useTipoCambio } from '../hooks/useTipoCambio'
 import { useCuotas, getCuotaForMonth } from '../hooks/useCuotas'
-import { useTarjetaConfig, countdownTarjeta, formatFechaTarjeta } from '../hooks/useTarjetaConfig'
+import { useTarjetaConfig, fechaProximaCiclo, countdownTarjeta } from '../hooks/useTarjetaConfig'
 import { useAnalisis } from '../hooks/useAnalisis'
 import type { Categoria, Moneda, Transaccion } from '../lib/types'
 
@@ -35,6 +37,7 @@ import {
 } from '../lib/utils'
 import {
   categoriasGastoElegibles,
+  esIdValidoParaKpiGastoHome,
   idsFamiliaGastoPrincipal,
   principalesGastoOrdenadas,
   subcategoriasDe,
@@ -48,6 +51,11 @@ const MESES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ]
+
+/** Fecha corta tipo "28 OCT" para filas Cierre / Vence en KPI home TC. */
+function tcFechaCortaHome(iso: string) {
+  return format(fechaProximaCiclo(iso), 'd MMM', { locale: es }).replace(/\./g, '').toUpperCase()
+}
 
 const now = new Date()
 const currentYear = now.getFullYear()
@@ -124,7 +132,7 @@ export default function Dashboard() {
     const eleg = categoriasGastoElegibles(categoriasGasto)
     if (!eleg.length) return
     const stored = localStorage.getItem(LS_KPI_GASTO_CATEGORIA)
-    if (stored && eleg.some((c) => c.id === stored)) {
+    if (stored && esIdValidoParaKpiGastoHome(stored, categoriasGasto)) {
       setKpiCatId(stored)
       return
     }
@@ -295,9 +303,17 @@ export default function Dashboard() {
       nextMonthArs: nextArs,
       nextMonthUsd: nextUsd,
       nextDetails,
-      nextMesName: MESES[nextMes - 1],
     }
   }, [transaccionesDelMes, cuotas, mes, anio])
+
+  const kpiTarjetaCashbackPrincipal =
+    tarjetaData.reintegroArs > 0
+      ? formatARS(tarjetaData.reintegroArs)
+      : tarjetaData.reintegroUsd > 0
+        ? formatUSD(tarjetaData.reintegroUsd)
+        : formatARS(0)
+  const kpiTarjetaCashbackSecundario =
+    tarjetaData.reintegroArs > 0 && tarjetaData.reintegroUsd > 0 ? formatUSD(tarjetaData.reintegroUsd) : null
 
   // Chart data — desktop only
   type PieSlice = {
@@ -443,83 +459,103 @@ export default function Dashboard() {
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col md:flex-row md:items-end justify-between gap-4"
+        className="flex flex-col gap-3"
       >
-        <div>
-          <p className="text-primary text-xs font-bold tracking-[0.25em] uppercase mb-1">
-            Control de Gastos Personales
-          </p>
-          <h1 className="text-2xl lg:text-3xl font-black text-slate-50 tracking-tighter">
-            {firstName ? `Hola, ${firstName}.` : 'Hola.'}
-          </h1>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 pr-2">
+            <p className="text-primary text-xs font-bold tracking-[0.25em] uppercase mb-1">
+              Control de Gastos Personales
+            </p>
+            <h1 className="text-2xl lg:text-3xl font-black text-slate-50 tracking-tighter">
+              {firstName ? `Hola, ${firstName}.` : 'Hola.'}
+            </h1>
+          </div>
+          <div className="shrink-0 pt-0.5 lg:hidden">
+            <MobileUserMenu />
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* Dólar live pill */}
-          {dolarLive && (
-            <div className="glass px-3 py-1.5 rounded-full flex items-center gap-2">
-              <span className="material-symbols-outlined text-emerald-400" style={{ fontSize: 14 }}>payments</span>
-              <span className="text-xs font-semibold text-slate-300">
-                Oficial: <span className="text-slate-50 tabular-nums">{formatARS(dolarLive)}</span>
-              </span>
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            </div>
-          )}
-
-          {/* Tipo de cambio editable */}
-          <div className="glass px-3 py-1.5 rounded-full flex items-center gap-2 group">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Mi Cambio</span>
+          {/* Oficial + tipo de cambio de la app (una sola píldora) */}
+          <div className="glass flex min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-full px-3 py-1.5">
+            {dolarLive != null && (
+              <>
+                <span className="material-symbols-outlined shrink-0 text-emerald-400" style={{ fontSize: 14 }}>
+                  payments
+                </span>
+                <span className="text-xs font-semibold text-slate-300">
+                  Oficial: <span className="text-slate-50 tabular-nums">{formatARS(dolarLive)}</span>
+                </span>
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="h-4 w-px shrink-0 bg-white/10" aria-hidden />
+              </>
+            )}
             {editingTC ? (
               <>
                 <input
                   type="number"
                   value={tcInput}
                   onChange={(e) => setTcInput(e.target.value)}
-                  className="bg-transparent border-none focus:outline-none text-sm font-bold text-slate-50 tabular-nums w-20 p-0"
+                  className="w-20 border-none bg-transparent p-0 text-sm font-bold text-slate-50 tabular-nums focus:outline-none"
                   min="0.01"
                   step="0.01"
                   autoFocus
+                  aria-label="Tipo de cambio USD a ARS"
                 />
-                <button onClick={handleTcSave} className="text-emerald-400 hover:text-emerald-300 transition-colors">
-                  <span className="material-symbols-outlined" style={{ fontSize: 14 }}>check</span>
+                <button type="button" onClick={handleTcSave} className="text-emerald-400 transition-colors hover:text-emerald-300">
+                  <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
+                    check
+                  </span>
                 </button>
-                <button onClick={() => setEditingTC(false)} className="text-red-400 hover:text-red-300 transition-colors">
-                  <span className="material-symbols-outlined" style={{ fontSize: 14 }}>close</span>
+                <button type="button" onClick={() => setEditingTC(false)} className="text-red-400 transition-colors hover:text-red-300">
+                  <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
+                    close
+                  </span>
                 </button>
               </>
             ) : (
               <>
                 <span className="text-sm font-bold text-slate-50 tabular-nums">{formatARS(tc)}</span>
                 <button
-                  onClick={() => { setTcInput(String(tc)); setEditingTC(true) }}
-                  className="text-slate-500 hover:text-primary transition-colors"
+                  type="button"
+                  onClick={() => {
+                    setTcInput(String(tc))
+                    setEditingTC(true)
+                  }}
+                  className="text-slate-500 transition-colors hover:text-primary"
+                  aria-label="Editar tipo de cambio"
                 >
-                  <span className="material-symbols-outlined" style={{ fontSize: 13 }}>edit</span>
+                  <span className="material-symbols-outlined" style={{ fontSize: 13 }}>
+                    edit
+                  </span>
                 </button>
               </>
             )}
           </div>
 
-          {/* Selector Mes / Año */}
-          <div className="flex bg-surface-container-low p-1 rounded-full border border-white/5 gap-1">
+          <div className="flex gap-1 rounded-full border border-white/5 bg-surface-container-low p-1">
             <select
               value={mes}
               onChange={(e) => setMes(Number(e.target.value))}
-              className="bg-transparent border-none text-xs font-bold text-slate-300 focus:outline-none cursor-pointer px-2 py-1"
+              className="cursor-pointer border-none bg-transparent px-2 py-1 text-xs font-bold text-slate-300 focus:outline-none"
             >
-              {MESES.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+              {MESES.map((m, i) => (
+                <option key={i} value={i + 1}>
+                  {m}
+                </option>
+              ))}
             </select>
             <select
               value={anio}
               onChange={(e) => setAnio(Number(e.target.value))}
-              className="bg-transparent border-none text-xs font-bold text-slate-500 focus:outline-none cursor-pointer px-2 py-1"
+              className="cursor-pointer border-none bg-transparent px-2 py-1 text-xs font-bold text-slate-500 focus:outline-none"
             >
-              {years.map((y) => <option key={y} value={y}>{y}</option>)}
+              {years.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
             </select>
-          </div>
-
-          <div className="lg:hidden">
-            <MobileUserMenu />
           </div>
         </div>
       </motion.div>
@@ -578,7 +614,6 @@ export default function Dashboard() {
               montoARS={ingresos}
               montoUSD={ingresos / tc}
               icon={<TrendingUp size={18} />}
-              accentColor="#10b981"
               delay={0.05}
               to={toIngresos}
               mobileStatLayout
@@ -594,7 +629,6 @@ export default function Dashboard() {
               montoARS={gastos}
               montoUSD={gastos / tc}
               icon={<TrendingDown size={18} />}
-              accentColor="#ef4444"
               delay={0.08}
               to={toGastos}
               mobileStatLayout
@@ -610,7 +644,6 @@ export default function Dashboard() {
                 montoARS={gastosSinTc}
                 montoUSD={gastosSinTc / tc}
                 icon={<Banknote size={18} />}
-                accentColor="#f97316"
                 delay={0.09}
                 to={toGastosSinTc}
                 mobileStatLayout
@@ -630,7 +663,6 @@ export default function Dashboard() {
                     montoARS={suscripciones}
                     montoUSD={suscripciones / tc}
                     icon={<RotateCcw size={18} />}
-                    accentColor="#a855f7"
                     delay={0.1}
                     to={toSuscripciones}
                     mobileStatLayout
@@ -657,7 +689,6 @@ export default function Dashboard() {
                     montoARS={gastoCategoriaKpi}
                     montoUSD={gastoCategoriaKpi / tc}
                     icon={<Store size={18} />}
-                    accentColor={categoriaKpiSeleccionada.color}
                     delay={0.11}
                     to={toGastoCategoriaKpi}
                     mobileStatLayout
@@ -743,7 +774,6 @@ export default function Dashboard() {
                   montoARS={suscripciones}
                   montoUSD={suscripciones / tc}
                   icon={<RotateCcw size={18} />}
-                  accentColor="#a855f7"
                   delay={0.1}
                   to={toSuscripciones}
                   mobileStatLayout
@@ -776,95 +806,175 @@ export default function Dashboard() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
-              className="glass h-full rounded-2xl p-4 relative overflow-hidden cursor-pointer hover:border-white/[0.18] hover:bg-white/[0.02] transition-all duration-300"
+              className="relative h-full cursor-pointer overflow-hidden rounded-2xl border border-white/[0.08] p-4 text-center transition-all duration-300 hover:border-white/[0.14] hover:bg-white/[0.02] sm:p-5"
+              style={{
+                background:
+                  'linear-gradient(165deg, rgba(72, 62, 95, 0.35) 0%, rgba(24, 22, 32, 0.92) 42%, rgba(10, 9, 14, 0.98) 100%)',
+              }}
             >
-              <div className="flex items-center justify-center gap-2 mb-4">
-                <CreditCard size={20} className="shrink-0 text-rose-400/90" />
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-[0.18em] text-center">
-                  Tarjeta de Crédito
-                </p>
+              <div className="mb-3 flex items-center justify-center gap-2.5">
+                <CreditCard size={22} className="shrink-0 text-rose-400" strokeWidth={2} />
+                <span className="text-base font-bold tracking-tight text-white">Tarjeta de Crédito</span>
               </div>
 
-              <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-3 sm:gap-4">
-                <div className="text-center min-w-0">
-                  <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">ARS</p>
+              {tcConfig ? (
+                <div className="mb-4 flex flex-row flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[10px] sm:gap-x-3">
+                  <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+                    <span className="h-2 w-2 shrink-0 rounded-full bg-sky-400" aria-hidden />
+                    <span className="font-bold uppercase tracking-[0.15em] text-gray-500">Cierre</span>
+                    <span className="font-semibold text-gray-100">{tcFechaCortaHome(tcConfig.fecha_cierre)}</span>
+                    <span className="text-sky-400/90">· {countdownTarjeta(tcConfig.fecha_cierre)}</span>
+                  </div>
+                  <span className="shrink-0 px-0.5 text-gray-600 sm:px-1" aria-hidden>
+                    ·
+                  </span>
+                  <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+                    <span className="h-2 w-2 shrink-0 rounded-full bg-rose-400" aria-hidden />
+                    <span className="font-bold uppercase tracking-[0.15em] text-gray-500">Vence</span>
+                    <span className="font-semibold text-gray-100">{tcFechaCortaHome(tcConfig.fecha_vencimiento)}</span>
+                    <span className="text-rose-400/90">· {countdownTarjeta(tcConfig.fecha_vencimiento)}</span>
+                  </div>
+                </div>
+              ) : (
+                <p className="mb-4 text-[11px] text-gray-500">
+                  Configurá cierre y vencimiento en el detalle de tarjeta.
+                </p>
+              )}
+
+              <div className="mb-4 rounded-2xl border border-rose-500/35 bg-black/25 px-3 py-3.5 text-center">
+                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-rose-400">Cashback acumulado</p>
+                <p className="mt-2 font-black tabular-nums tracking-tighter text-white text-[clamp(1.1rem,4vw,1.45rem)] leading-none">
+                  {kpiTarjetaCashbackPrincipal}
+                </p>
+                {kpiTarjetaCashbackSecundario && (
+                  <p className="mt-1.5 text-xs font-semibold tabular-nums tracking-tight text-gray-400">
+                    {kpiTarjetaCashbackSecundario}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-4 border-t border-white/[0.06] pt-4">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500">
+                    Total a pagar (ARS)
+                  </p>
                   <p
-                    className={`font-black text-white tabular-nums tracking-tighter leading-tight mt-0.5 break-words ${montoDisplayClass(tarjetaData.totalArs, 'pairArsTarjeta')}`}
+                    className={`mt-1 break-words font-black tabular-nums tracking-tighter text-white leading-none ${montoDisplayClass(tarjetaData.totalArs, 'pairArsTarjeta')}`}
                   >
                     {formatARS(tarjetaData.totalArs)}
                   </p>
                 </div>
-                <div className="text-center min-w-0">
-                  <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">USD</p>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500">
+                    Total a pagar (USD)
+                  </p>
                   <p
-                    className={`font-black text-white tabular-nums tracking-tighter leading-tight mt-0.5 break-words ${montoDisplayClass(tarjetaData.totalUsd, 'pairUsdTarjeta')}`}
+                    className={`mt-1 break-words font-black tabular-nums tracking-tighter text-white leading-none ${montoDisplayClass(tarjetaData.totalUsd, 'pairUsdTarjeta')}`}
                   >
                     {formatUSD(tarjetaData.totalUsd)}
                   </p>
                 </div>
               </div>
-              <p className="text-[10px] text-gray-600 mt-3 text-center leading-relaxed">Neto del mes por moneda (consumo − reintegros/promos TC), sin convertir.</p>
-              {(tarjetaData.reintegroArs > 0 || tarjetaData.reintegroUsd > 0) && (
-                <p className="text-[10px] text-emerald-400/85 mt-1.5 text-center leading-snug">
-                  Reintegros/promos: −{formatARS(tarjetaData.reintegroArs)}
-                  {tarjetaData.reintegroUsd > 0 && (
-                    <>
-                      {' · '}−{formatUSD(tarjetaData.reintegroUsd)}
-                    </>
-                  )}
-                </p>
-              )}
 
-              {tcConfig ? (
-                <div className="mt-4 pt-4 border-t border-white/[0.06] grid gap-x-5 gap-y-3 text-left text-[11px] sm:text-xs [grid-template-columns:repeat(auto-fit,minmax(11rem,1fr))]">
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.15em]">Fecha de cierre</p>
-                    <p className="mt-1 text-sm font-medium text-white leading-snug">
-                      {formatFechaTarjeta(tcConfig.fecha_cierre)}
-                      <span className="text-rose-400/90"> · {countdownTarjeta(tcConfig.fecha_cierre)}</span>
-                    </p>
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.15em]">Vencimiento</p>
-                    <p className="mt-1 text-sm font-medium text-white leading-snug">
-                      {formatFechaTarjeta(tcConfig.fecha_vencimiento)}
-                      <span className="text-amber-400/90"> · {countdownTarjeta(tcConfig.fecha_vencimiento)}</span>
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <p className="mt-3 text-[11px] text-gray-500">
-                  Configurá cierre y vencimiento en el detalle de tarjeta.
+              <div className="mt-4 border-t border-white/[0.06] pt-4">
+                <p className="text-center text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500">
+                  Cuotas del mes
                 </p>
-              )}
-
-              {tarjetaData.cuotaDetails.length > 0 && (
-                <div className="mt-4 space-y-1.5 border-t border-white/[0.06] pt-4">
-                  {tarjetaData.cuotaDetails.map((d, i) => (
-                    <p key={i} className="text-xs font-medium text-white leading-snug">
-                      {d.desc} — cuota {d.numero}/{d.total} ·{' '}
-                      {d.moneda === 'USD' ? formatUSD(d.monto) : formatARS(d.monto)}
-                    </p>
-                  ))}
-                </div>
-              )}
+                {tarjetaData.cuotaDetails.length === 0 ? (
+                  <p className="mt-3 text-center text-xs text-gray-500">Sin cuotas en este mes.</p>
+                ) : (
+                  <ul className="mt-3 space-y-2">
+                    {tarjetaData.cuotaDetails.slice(0, 5).map((d, i) => {
+                      const cuotasRest = d.total - d.numero
+                      const montoRestante = cuotasRest > 0 ? cuotasRest * d.monto : 0
+                      return (
+                        <li
+                          key={i}
+                          className="rounded-2xl border border-white/[0.08] bg-[#1a1822] px-4 py-3 text-left"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium leading-snug text-white">{d.desc}</p>
+                              <p className="mt-1 text-[11px] leading-snug text-gray-500">
+                                <span>(Cuota {d.numero}/{d.total})</span>
+                                {cuotasRest > 0 && (
+                                  <>
+                                    {' '}
+                                    <span aria-hidden>-</span>{' '}
+                                    <span className="font-semibold tabular-nums text-gray-400">
+                                      {d.moneda === 'USD'
+                                        ? formatUSD(montoRestante)
+                                        : formatARS(montoRestante)}
+                                    </span>
+                                  </>
+                                )}
+                              </p>
+                            </div>
+                            <div className="shrink-0 self-start text-right">
+                              <p className="text-sm font-black tabular-nums tracking-tighter text-white">
+                                {d.moneda === 'USD' ? formatUSD(d.monto) : formatARS(d.monto)}
+                              </p>
+                            </div>
+                          </div>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+                {tarjetaData.cuotaDetails.length > 5 && (
+                  <p className="mt-2 text-center text-[10px] text-gray-500">
+                    +{tarjetaData.cuotaDetails.length - 5} en detalle →
+                  </p>
+                )}
+              </div>
 
               {(tarjetaData.nextMonthArs > 0 || tarjetaData.nextMonthUsd > 0) && (
-                <div className="mt-4 pt-4 border-t border-white/[0.06] text-left">
-                  <p className="text-xs font-medium text-amber-400/90 leading-snug">
-                    El próximo resumen ({tarjetaData.nextMesName}): cuotas{' '}
-                    {tarjetaData.nextMonthArs > 0 && <span className="font-black tabular-nums tracking-tight">{formatARS(tarjetaData.nextMonthArs)}</span>}
-                    {tarjetaData.nextMonthArs > 0 && tarjetaData.nextMonthUsd > 0 && (
-                      <span className="font-normal text-gray-500"> · </span>
-                    )}
-                    {tarjetaData.nextMonthUsd > 0 && <span className="font-black tabular-nums tracking-tight">{formatUSD(tarjetaData.nextMonthUsd)}</span>}
-                  </p>
-                  {tarjetaData.nextDetails.map((d, i) => (
-                    <p key={i} className="text-[11px] text-gray-500 mt-1.5 leading-snug">
-                      {d.desc} — cuota {d.numero}/{d.total} ·{' '}
-                      {d.moneda === 'USD' ? formatUSD(d.monto) : formatARS(d.monto)}
+                <div className="mt-4 border-t border-white/[0.06] pt-4">
+                  <ul className="mx-auto w-full max-w-md space-y-2 text-left">
+                      {tarjetaData.nextDetails.slice(0, 4).map((d, i) => {
+                        const cuotasRest = d.total - d.numero
+                        const montoRestante = cuotasRest > 0 ? cuotasRest * d.monto : 0
+                        return (
+                          <li
+                            key={i}
+                            className="rounded-2xl border border-amber-500/35 bg-gradient-to-br from-amber-950/40 via-amber-950/15 to-transparent p-4 sm:p-[1.125rem] shadow-[inset_0_1px_0_0_rgba(251,191,36,0.06)]"
+                          >
+                            <div className="flex items-center justify-between gap-3 sm:gap-4">
+                              <div className="min-w-0 flex-1 space-y-1.5">
+                                <p className="text-[9px] font-bold uppercase leading-none tracking-[0.18em] text-amber-400/85">
+                                  Próximo ciclo
+                                </p>
+                                <p className="text-sm font-medium leading-snug text-amber-50/95">{d.desc}</p>
+                                <p className="text-[11px] leading-snug text-amber-200/50">
+                                  <span>(Cuota {d.numero}/{d.total})</span>
+                                  {cuotasRest > 0 && (
+                                    <>
+                                      {' '}
+                                      <span aria-hidden>-</span>{' '}
+                                      <span className="font-semibold tabular-nums text-amber-100/90">
+                                        {d.moneda === 'USD'
+                                          ? formatUSD(montoRestante)
+                                          : formatARS(montoRestante)}
+                                      </span>
+                                    </>
+                                  )}
+                                </p>
+                              </div>
+                              <div className="flex shrink-0 items-center self-stretch text-right">
+                                <p className="text-sm font-black tabular-nums tracking-tighter text-amber-100">
+                                  {d.moneda === 'USD' ? formatUSD(d.monto) : formatARS(d.monto)}
+                                </p>
+                              </div>
+                            </div>
+                          </li>
+                        )
+                      })}
+                  </ul>
+                  {tarjetaData.nextDetails.length > 4 && (
+                    <p className="mx-auto mt-2 max-w-md text-center text-[10px] text-gray-600">
+                      +{tarjetaData.nextDetails.length - 4} más en detalle de tarjeta →
                     </p>
-                  ))}
+                  )}
                 </div>
               )}
             </motion.div>
@@ -977,7 +1087,6 @@ export default function Dashboard() {
               montoUSD={(mayorGasto?.monto ?? 0) / tc}
               descripcion={mayorGasto?.descripcion}
               icon={<Banknote size={18} />}
-              accentColor="#f59e0b"
               mobileStatLayout
             />
             <KPICard
@@ -987,7 +1096,6 @@ export default function Dashboard() {
               montoUSD={(menorGasto?.monto ?? 0) / tc}
               descripcion={menorGasto?.descripcion}
               icon={<Banknote size={18} />}
-              accentColor="#78716c"
               mobileStatLayout
             />
             <KPICard
@@ -997,7 +1105,6 @@ export default function Dashboard() {
               montoUSD={mayorGastoTc ? convertirARS(mayorGastoTc.monto, mayorGastoTc.moneda, tc) / tc : 0}
               descripcion={mayorGastoTc?.descripcion}
               icon={<CreditCard size={18} />}
-              accentColor="#f43f5e"
               mobileStatLayout
             />
             <KPICard
@@ -1007,7 +1114,6 @@ export default function Dashboard() {
               montoUSD={menorGastoTc ? convertirARS(menorGastoTc.monto, menorGastoTc.moneda, tc) / tc : 0}
               descripcion={menorGastoTc?.descripcion}
               icon={<CreditCard size={18} />}
-              accentColor="#fb7185"
               mobileStatLayout
             />
           </div>
