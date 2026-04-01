@@ -21,7 +21,7 @@ export default function PorcentajeDelIngresoKpi({ pct, hayMontoSinIngreso, nombr
   if (pct === null) {
     if (hayMontoSinIngreso) {
       return (
-        <p className="text-center text-xs text-gray-500 lg:text-left lg:text-[11px]">Sin ingresos en el mes</p>
+        <p className="text-center text-xs text-gray-500">Sin ingresos en el mes</p>
       )
     }
     return null
@@ -45,22 +45,20 @@ export default function PorcentajeDelIngresoKpi({ pct, hayMontoSinIngreso, nombr
     : 'Consumo muy elevado, precaución.'
 
   return (
-    <div className="mt-0.5 flex w-full flex-col gap-1.5 items-center lg:items-stretch">
-      <div
-        className={`flex items-center justify-center gap-1.5 lg:justify-start ${colorLinea}`}
-      >
+    <div className="mt-0.5 flex w-full flex-col gap-1.5 items-center">
+      <div className={`flex items-center justify-center gap-1.5 ${colorLinea}`}>
         {alerta && <AlertTriangle className="shrink-0 text-amber-400" size={14} strokeWidth={2.25} aria-hidden />}
         {critico && (
           <OctagonAlert className="shrink-0 text-rose-400" size={14} strokeWidth={2.25} aria-hidden />
         )}
-        <p className="text-center text-xs font-medium leading-snug lg:text-left lg:text-[11px]">
+        <p className="text-center text-xs font-medium leading-snug">
           {pct.toFixed(1)}% del ingreso
         </p>
       </div>
       {alerta && (
         <p
           role="status"
-          className="text-center text-[10px] font-medium leading-snug text-amber-200/85 lg:text-left"
+          className="text-center text-[10px] font-medium leading-snug text-amber-200/85"
         >
           {leyendaAlerta}
         </p>
@@ -68,7 +66,7 @@ export default function PorcentajeDelIngresoKpi({ pct, hayMontoSinIngreso, nombr
       {critico && (
         <p
           role="alert"
-          className="text-center text-[10px] font-semibold leading-snug text-rose-200/90 lg:text-left"
+          className="text-center text-[10px] font-semibold leading-snug text-rose-200/90"
         >
           {leyendaCritico}
         </p>

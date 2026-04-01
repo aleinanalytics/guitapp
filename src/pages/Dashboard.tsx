@@ -29,6 +29,7 @@ import {
 } from '../lib/utils'
 import {
   categoriasGastoElegibles,
+  idsFamiliaGastoPrincipal,
   principalesGastoOrdenadas,
   subcategoriasDe,
 } from '../lib/categoriasJerarquia'
@@ -138,6 +139,13 @@ export default function Dashboard() {
     .filter((t) => t.tipo === 'suscripcion')
     .reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
 
+  const suscripcionesNativoArsUsd = useMemo(() => {
+    const subs = transaccionesDelMes.filter((t) => t.tipo === 'suscripcion')
+    const ars = subs.filter((t) => t.moneda === 'ARS').reduce((s, t) => s + t.monto, 0)
+    const usd = subs.filter((t) => t.moneda === 'USD').reduce((s, t) => s + t.monto, 0)
+    return { ars, usd }
+  }, [transaccionesDelMes])
+
   /** Gastos sin tarjeta de crédito, solo ARS (no mezcla consumos en USD). */
   const gastosSinTcArs = transaccionesDelMes.filter(
     (t) => t.tipo === 'gasto' && t.medio_pago !== 'tarjeta' && t.moneda === 'ARS',
@@ -175,10 +183,24 @@ export default function Dashboard() {
 
   const gastoCategoriaKpi = useMemo(() => {
     if (!kpiCatId) return 0
+    const cat = categoriasGasto.find((c) => c.id === kpiCatId)
+    let idsCategoria: Set<string>
+    if (!cat || cat.tipo !== 'gasto') {
+      idsCategoria = new Set([kpiCatId])
+    } else {
+      const tieneHijos = categoriasGasto.some((c) => c.parent_id === cat.id)
+      if (cat.parent_id) {
+        idsCategoria = new Set([kpiCatId])
+      } else if (tieneHijos) {
+        idsCategoria = new Set(idsFamiliaGastoPrincipal(cat.id, categoriasGasto))
+      } else {
+        idsCategoria = new Set([kpiCatId])
+      }
+    }
     return transaccionesDelMes
-      .filter((t) => t.tipo === 'gasto' && t.categoria_id === kpiCatId)
+      .filter((t) => t.tipo === 'gasto' && t.categoria_id && idsCategoria.has(t.categoria_id))
       .reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
-  }, [transaccionesDelMes, kpiCatId, tc])
+  }, [transaccionesDelMes, kpiCatId, tc, categoriasGasto])
 
   const pctGastoCategoriaKpi = ingresos > 0 ? (gastoCategoriaKpi / ingresos) * 100 : null
 
@@ -373,8 +395,18 @@ export default function Dashboard() {
   const toGastosSinTc = `/movimientos?tipo=gasto&sin_tc=1&${qMesAnio}`
   const toSuscripciones = `/movimientos?tipo=suscripcion&${qMesAnio}`
   const toTarjetaCredito = `/tarjeta-credito?${qMesAnio}`
-  const toGastoCategoriaKpi =
-    kpiCatId !== '' ? `/movimientos?tipo=gasto&categoria_id=${encodeURIComponent(kpiCatId)}&${qMesAnio}` : `/movimientos?tipo=gasto&${qMesAnio}`
+  const toGastoCategoriaKpi = useMemo(() => {
+    if (!kpiCatId) return `/movimientos?tipo=gasto&${qMesAnio}`
+    const cat = categoriasGasto.find((c) => c.id === kpiCatId)
+    const tieneHijos = cat ? categoriasGasto.some((c) => c.parent_id === cat!.id) : false
+    if (cat && !cat.parent_id && tieneHijos) {
+      return `/movimientos?tipo=gasto&padre=${encodeURIComponent(kpiCatId)}&${qMesAnio}`
+    }
+    if (cat?.parent_id) {
+      return `/movimientos?tipo=gasto&padre=${encodeURIComponent(cat.parent_id)}&hijo=${encodeURIComponent(kpiCatId)}&${qMesAnio}`
+    }
+    return `/movimientos?tipo=gasto&categoria_id=${encodeURIComponent(kpiCatId)}&${qMesAnio}`
+  }, [kpiCatId, categoriasGasto, qMesAnio])
 
   return (
     <div className="p-4 lg:p-8 max-w-5xl mx-auto">
@@ -518,6 +550,16 @@ export default function Dashboard() {
               to={toSuscripciones}
               mobileStatLayout
             >
+              <div className="mt-1 w-full space-y-1 border-t border-white/[0.06] pt-2 text-center">
+                <p className="text-[11px] text-gray-500">
+                  En ARS{' '}
+                  <span className="font-medium tabular-nums text-purple-200/90">{formatARS(suscripcionesNativoArsUsd.ars)}</span>
+                </p>
+                <p className="text-[11px] text-gray-500">
+                  En USD{' '}
+                  <span className="font-medium tabular-nums text-purple-200/90">{formatUSD(suscripcionesNativoArsUsd.usd)}</span>
+                </p>
+              </div>
               <PorcentajeDelIngresoKpi
                 pct={pctSuscripcionDelIngreso}
                 hayMontoSinIngreso={suscripciones > 0}
@@ -558,6 +600,7 @@ export default function Dashboard() {
                           <>
                             {principalesGastoOrdenadas(categoriasGasto).map((p) => (
                               <optgroup key={p.id} label={p.nombre}>
+                                <option value={p.id}>Todo el rubro</option>
                                 {subcategoriasDe(p.id, categoriasGasto).map((s) => (
                                   <option key={s.id} value={s.id}>{s.nombre}</option>
                                 ))}
@@ -735,9 +778,9 @@ export default function Dashboard() {
                     className="pointer-events-none absolute top-0 left-0 right-0 h-[2px] opacity-70"
                     style={{ background: 'linear-gradient(90deg, transparent, #38bdf8, transparent)' }}
                   />
-                  <div className="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="min-w-0 flex-1 text-center sm:text-left">
-                      <div className="flex items-center justify-center gap-2 sm:justify-start">
+                  <div className="relative flex flex-col items-center text-center gap-6">
+                    <div className="w-full max-w-xl mx-auto px-1">
+                      <div className="flex items-center justify-center gap-2">
                         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/20 text-sky-300">
                           <Shield size={22} strokeWidth={2} />
                         </span>
@@ -748,45 +791,49 @@ export default function Dashboard() {
                       {kpiReserva.tieneMeta ? (
                         kpiReserva.metaAlcanzada ? (
                           <>
-                            <p className="mt-3 text-3xl font-bold leading-tight text-emerald-400 sm:text-4xl lg:text-5xl">
-                              Meta alcanzada
+                            <p
+                              className={`mt-4 font-bold tabular-nums leading-[1.08] break-words ${montoDisplayClass(kpiReserva.actual, 'kpiStatProminent')} text-emerald-400`}
+                            >
+                              {formatARS(kpiReserva.actual)}
                             </p>
-                            <p className="mt-2 text-sm text-gray-400">
-                              Tenés {formatARS(kpiReserva.actual)} en reserva
-                              {kpiReserva.meta != null && kpiReserva.actual > kpiReserva.meta && (
-                                <span className="text-emerald-400/90"> ({formatARS(kpiReserva.actual - kpiReserva.meta)} por encima de la meta)</span>
-                              )}
-                            </p>
+                            <p className="mt-2 text-sm text-gray-400">Meta alcanzada · en tu fondo</p>
+                            {kpiReserva.meta != null && kpiReserva.actual > kpiReserva.meta && (
+                              <p className="mt-1 text-xs text-emerald-400/85">
+                                {formatARS(kpiReserva.actual - kpiReserva.meta)} por encima de la meta
+                              </p>
+                            )}
                           </>
                         ) : (
                           <>
                             <p
-                              className={`mt-3 font-bold tabular-nums leading-[1.08] break-words ${montoDisplayClass(kpiReserva.falta ?? 0, 'kpiStatProminent')} text-sky-100`}
+                              className={`mt-4 font-bold tabular-nums leading-[1.08] break-words ${montoDisplayClass(kpiReserva.actual, 'kpiStatProminent')} text-sky-100`}
                             >
-                              {formatARS(kpiReserva.falta ?? 0)}
+                              {formatARS(kpiReserva.actual)}
                             </p>
-                            <p className="mt-1.5 text-sm text-gray-400">Te falta para llegar a tu meta</p>
-                            <p className="mt-2 text-[11px] text-gray-600">
-                              Actual {formatARS(kpiReserva.actual)} · Objetivo {formatARS(kpiReserva.meta ?? 0)}
+                            <p className="mt-2 text-sm text-gray-400">En tu fondo ahora</p>
+                            <p className="mt-3 text-sm text-sky-200/85 tabular-nums leading-snug">
+                              Te falta{' '}
+                              <span className="font-semibold text-sky-100">{formatARS(kpiReserva.falta ?? 0)}</span> para la
+                              meta de <span className="font-semibold text-sky-100">{formatARS(kpiReserva.meta ?? 0)}</span>
                             </p>
                           </>
                         )
                       ) : (
                         <>
                           <p
-                            className={`mt-3 font-bold tabular-nums leading-[1.08] break-words ${montoDisplayClass(kpiReserva.actual, 'kpiStatProminent')} text-gray-50`}
+                            className={`mt-4 font-bold tabular-nums leading-[1.08] break-words ${montoDisplayClass(kpiReserva.actual, 'kpiStatProminent')} text-gray-50`}
                           >
                             {formatARS(kpiReserva.actual)}
                           </p>
-                          <p className="mt-1.5 text-sm text-gray-400">
-                            En tu fondo de emergencia. Definí una meta en pesos para ver cuánto te falta.
+                          <p className="mt-2 text-sm text-gray-400">
+                            Definí una meta en pesos en el detalle para ver cuánto te falta.
                           </p>
                         </>
                       )}
                     </div>
                     {kpiReserva.tieneMeta && kpiReserva.pct != null && (
-                      <div className="w-full shrink-0 sm:max-w-[14rem] sm:pt-8">
-                        <div className="mb-1.5 flex justify-between text-[10px] uppercase tracking-wide text-gray-500">
+                      <div className="w-full max-w-md mx-auto px-1">
+                        <div className="mb-1.5 flex items-center justify-center gap-3 text-[10px] uppercase tracking-wide text-gray-500">
                           <span>Progreso</span>
                           <span className="tabular-nums text-sky-300/90">
                             {kpiReserva.metaAlcanzada && kpiReserva.pct > 100
@@ -807,7 +854,7 @@ export default function Dashboard() {
                       </div>
                     )}
                   </div>
-                  <p className="relative mt-4 text-center text-[11px] text-sky-400/70 sm:text-left">
+                  <p className="relative mt-2 text-center text-[11px] text-sky-400/70">
                     Tocá para asignar fondos o editar la meta →
                   </p>
                 </Link>
