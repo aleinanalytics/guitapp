@@ -653,8 +653,6 @@ export default function Carga() {
             onSubmit={handleSubmit} className="glass-panel rounded-xl p-4 sm:p-5 mb-6">
             {/* Móvil: layout tipo app de referencia */}
             <div className="lg:hidden space-y-5 overflow-visible">
-              <h2 className="w-full text-center text-xl font-bold text-gray-50">Cargar</h2>
-
               <div className="flex rounded-2xl bg-surface-container-high p-1 gap-0.5 ring-1 ring-white/[0.08]">
                 {TIPO_ORDER_MOBILE.map((t) => {
                   const cfg = TIPO_CONFIG[t]
@@ -1062,7 +1060,7 @@ export default function Carga() {
 
           {/* Cuotas section */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
-            className="glass p-5 mb-6">
+            className="glass overflow-hidden rounded-2xl p-5 mb-6">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-base font-semibold text-gray-200 flex items-center gap-2 min-w-0">
                 <CreditCard size={18} className="text-rose-400 shrink-0" />{' '}
@@ -1128,7 +1126,7 @@ export default function Carga() {
             {cuotas.length === 0 ? (
               <p className="text-gray-500 text-xs">Sin compras en cuotas activas.</p>
             ) : (
-              <ul className="space-y-2">
+              <ul className="space-y-3">
                 {cuotas.map((c, i) => (
                   <EditableCuotaCompraRow
                     key={c.id}

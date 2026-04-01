@@ -93,7 +93,7 @@ export default function EditableCuotaCompraRow({
         initial={{ opacity: 0, x: -12 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay }}
-        className="glass-light p-3 flex flex-col gap-2"
+        className="flex flex-col gap-3 rounded-2xl border border-white/[0.06] bg-dark-800/40 p-5 backdrop-blur-lg"
       >
         <p className="text-[10px] text-gray-500">
           {cuotaNumero != null
@@ -216,7 +216,7 @@ export default function EditableCuotaCompraRow({
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay }}
-        className="group rounded-2xl border border-white/[0.08] bg-[#1a1822] px-4 py-3.5"
+        className="group rounded-2xl border border-white/[0.08] bg-[#1a1822] px-5 py-4"
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
@@ -256,7 +256,7 @@ export default function EditableCuotaCompraRow({
       initial={{ opacity: 0, x: -12 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay }}
-      className="glass-light p-3 flex items-center justify-between gap-3 group"
+      className="group flex items-center justify-between gap-4 rounded-2xl border border-white/[0.06] bg-dark-800/40 px-5 py-4 backdrop-blur-lg"
     >
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium text-gray-200 truncate">{compra.descripcion}</p>
