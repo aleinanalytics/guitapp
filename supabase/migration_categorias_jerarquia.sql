@@ -23,6 +23,7 @@ from (values
   ('Transporte', '#f97316'),
   ('Salud', '#0d9488'),
   ('Entretenimiento', '#a855f7'),
+  ('Estilo de vida', '#db2777'),
   ('Compras online', '#fbbf24')
 ) as v(nombre, color)
 where not exists (
@@ -73,6 +74,8 @@ cross join (values
   ('Salud', 'Gastos Médicos', '#ec4899'),
   ('Salud', 'Otros', '#0f7669'),
   ('Entretenimiento', 'Otros', '#8b5cf6'),
+  ('Estilo de vida', 'Peluquería', '#f472b6'),
+  ('Estilo de vida', 'Estética', '#e879f9'),
   ('Compras online', 'MercadoLibre', '#3483fa')
 ) as s(principal, nombre, color)
 where p.tipo = 'gasto' and p.parent_id is null and p.nombre = s.principal

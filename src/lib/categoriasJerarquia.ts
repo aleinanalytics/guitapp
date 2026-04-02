@@ -13,6 +13,7 @@ export const ORDEN_PRINCIPALES_GASTO = [
   'Transporte',
   'Salud',
   'Entretenimiento',
+  'Estilo de vida',
 ] as const
 
 export type NombrePrincipal = (typeof ORDEN_PRINCIPALES_GASTO)[number]
