@@ -81,7 +81,7 @@ export default function Dashboard() {
     }
   }, [searchParams])
   const { transacciones, loading } = useTransacciones({ mes, anio })
-  const { tipoCambio, dolarLive, upsertTipoCambio } = useTipoCambio()
+  const { tipoCambio, dolarLive } = useTipoCambio()
   const { cuotas } = useCuotas()
   const { config: tcConfig } = useTarjetaConfig()
   const { transacciones: txAnio } = useAnalisis({ anio })
@@ -111,8 +111,6 @@ export default function Dashboard() {
     [transacciones, mes, anio, diaCierreTc, mesAnteriorKpi, anioAnteriorKpi],
   )
 
-  const [editingTC, setEditingTC] = useState(false)
-  const [tcInput, setTcInput] = useState('')
   const [categoriasGasto, setCategoriasGasto] = useState<Categoria[]>([])
   const [kpiCatId, setKpiCatId] = useState('')
   const [kpiCatSelectorAbierto, setKpiCatSelectorAbierto] = useState(false)
@@ -143,7 +141,8 @@ export default function Dashboard() {
     localStorage.setItem(LS_KPI_GASTO_CATEGORIA, id)
   }, [categoriasGasto])
 
-  const tc = tipoCambio?.usd_ars ?? 1000
+  /** Prioriza cotización de la API (dolarapi); si no hay, fila en BD; último recurso 1000. */
+  const tc = dolarLive ?? tipoCambio?.usd_ars ?? 1000
   const { saldoAcumulado, loading: loadingSaldoAcum } = useSaldoAcumuladoHastaMes({ mes, anio, tc })
 
   const ingresosMesAnterior = useMemo(
@@ -401,13 +400,6 @@ export default function Dashboard() {
     }).filter((d) => d.activo)
   }, [txAnio, cuotas, anio, tc])
 
-  const handleTcSave = async () => {
-    const val = parseFloat(tcInput)
-    if (isNaN(val) || val <= 0) return
-    await upsertTipoCambio(val)
-    setEditingTC(false)
-  }
-
   const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i)
   const firstName = user?.user_metadata?.full_name?.split(' ')[0] ?? ''
 
@@ -476,62 +468,29 @@ export default function Dashboard() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* Oficial + tipo de cambio de la app (una sola píldora) */}
-          <div className="glass flex min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-full px-3 py-1.5">
-            {dolarLive != null && (
-              <>
-                <span className="material-symbols-outlined shrink-0 text-emerald-400" style={{ fontSize: 14 }}>
-                  payments
-                </span>
-                <span className="text-xs font-semibold text-slate-300">
-                  Oficial: <span className="text-slate-50 tabular-nums">{formatARS(dolarLive)}</span>
-                </span>
+          {(dolarLive != null || tipoCambio != null) && (
+            <div className="glass flex min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-1 rounded-full px-3 py-1.5">
+              <span className="material-symbols-outlined shrink-0 text-emerald-400" style={{ fontSize: 14 }}>
+                payments
+              </span>
+              <span className="text-xs font-semibold text-slate-300">
+                {dolarLive != null ? (
+                  <>
+                    Dólar oficial:{' '}
+                    <span className="text-slate-50 tabular-nums">{formatARS(dolarLive)}</span>
+                  </>
+                ) : (
+                  <>
+                    Tipo de cambio:{' '}
+                    <span className="text-slate-50 tabular-nums">{formatARS(tipoCambio!.usd_ars)}</span>
+                  </>
+                )}
+              </span>
+              {dolarLive != null && (
                 <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="h-4 w-px shrink-0 bg-white/10" aria-hidden />
-              </>
-            )}
-            {editingTC ? (
-              <>
-                <input
-                  type="number"
-                  value={tcInput}
-                  onChange={(e) => setTcInput(e.target.value)}
-                  className="w-20 border-none bg-transparent p-0 text-sm font-bold text-slate-50 tabular-nums focus:outline-none"
-                  min="0.01"
-                  step="0.01"
-                  autoFocus
-                  aria-label="Tipo de cambio USD a ARS"
-                />
-                <button type="button" onClick={handleTcSave} className="text-emerald-400 transition-colors hover:text-emerald-300">
-                  <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
-                    check
-                  </span>
-                </button>
-                <button type="button" onClick={() => setEditingTC(false)} className="text-red-400 transition-colors hover:text-red-300">
-                  <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
-                    close
-                  </span>
-                </button>
-              </>
-            ) : (
-              <>
-                <span className="text-sm font-bold text-slate-50 tabular-nums">{formatARS(tc)}</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTcInput(String(tc))
-                    setEditingTC(true)
-                  }}
-                  className="text-slate-500 transition-colors hover:text-primary"
-                  aria-label="Editar tipo de cambio"
-                >
-                  <span className="material-symbols-outlined" style={{ fontSize: 13 }}>
-                    edit
-                  </span>
-                </button>
-              </>
-            )}
-          </div>
+              )}
+            </div>
+          )}
 
           <div className="flex gap-1 rounded-full border border-white/5 bg-surface-container-low p-1">
             <select
@@ -560,8 +519,8 @@ export default function Dashboard() {
         </div>
       </motion.div>
 
-      {/* Warning TC */}
-      {!tipoCambio && (
+      {/* Warning TC: sin API ni fila en BD (se usa $1000) */}
+      {dolarLive == null && !tipoCambio && (
         <motion.div
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
@@ -1118,31 +1077,6 @@ export default function Dashboard() {
             />
           </div>
 
-          {/* TC card — colapsado a pill cuando no se está editando en el header */}
-          {editingTC && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35 }}
-              className="glass-card rounded-xl p-4"
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <span className="material-symbols-outlined text-tertiary" style={{ fontSize: 18 }}>currency_exchange</span>
-                <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Tipo de Cambio</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <input type="number" value={tcInput} onChange={(e) => setTcInput(e.target.value)}
-                  className="input-dark w-28 !py-1.5 !text-lg font-bold" min="0.01" step="0.01" autoFocus />
-                <button onClick={handleTcSave} className="text-emerald-400 hover:text-emerald-300 transition-colors p-1">
-                  <span className="material-symbols-outlined" style={{ fontSize: 20 }}>check</span>
-                </button>
-                <button onClick={() => setEditingTC(false)} className="text-red-400 hover:text-red-300 transition-colors p-1">
-                  <span className="material-symbols-outlined" style={{ fontSize: 20 }}>close</span>
-                </button>
-              </div>
-              <p className="text-xs text-slate-500 mt-1">{formatUSD(1)} = {formatARS(tc)}</p>
-            </motion.div>
-          )}
         </div>
 
         {/* ── Available + Reservas ─────────────────────────────────────── */}
