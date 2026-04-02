@@ -7,6 +7,7 @@ export const ORDEN_PRINCIPALES_GASTO = [
   'Supermercado',
   'Alimentos',
   'Compras online',
+  'BANCOS',
   'Regalos',
   'Auto',
   'Transporte',
