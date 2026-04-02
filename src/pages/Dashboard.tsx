@@ -430,6 +430,7 @@ export default function Dashboard() {
   const toGastos = `/movimientos?tipo=gasto&${qMesAnio}`
   const toGastosSinTc = `/movimientos?tipo=gasto&sin_tc=1&${qMesAnio}`
   const toSuscripciones = `/movimientos?tipo=suscripcion&${qMesAnio}`
+  const toResumenMesCompleto = `/movimientos?tipo=todos&${qMesAnio}`
   const toTarjetaCredito = `/tarjeta-credito?${qMesAnio}`
   const toGastoCategoriaKpi = useMemo(() => {
     if (!kpiCatId) return `/movimientos?tipo=gasto&${qMesAnio}`
@@ -447,7 +448,6 @@ export default function Dashboard() {
   return (
     <div className="px-4 pt-4 pb-28 lg:px-8 lg:pt-8 lg:pb-12 max-w-5xl mx-auto space-y-6">
 
-      {/* ── Header editorial ──────────────────────────────────────────────── */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -519,7 +519,6 @@ export default function Dashboard() {
         </div>
       </motion.div>
 
-      {/* Warning TC: sin API ni fila en BD (se usa $1000) */}
       {dolarLive == null && !tipoCambio && (
         <motion.div
           initial={{ opacity: 0, height: 0 }}
@@ -538,30 +537,34 @@ export default function Dashboard() {
       ) : (
         <>
 
-        {/* ── Hero: Balance Acumulado ────────────────────────────────────── */}
-        <motion.section
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="relative overflow-hidden rounded-xl p-7 md:p-10 flex flex-col items-center justify-center text-center"
-          style={{
-            background: 'linear-gradient(135deg, rgba(79,70,229,0.25) 0%, rgba(99,102,241,0.08) 100%)',
-            border: '1px solid rgba(255,255,255,0.08)',
-          }}
+        <Link
+          to={toResumenMesCompleto}
+          className="block rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-dark-950"
+          aria-label="Ver resumen del mes: ingresos, gastos, tarjeta de crédito y suscripciones"
         >
-          <span className="text-primary-fixed-dim text-[10px] font-bold tracking-[0.3em] uppercase mb-4 relative z-10 opacity-80">
-            Balance Acumulado
-          </span>
-          <p className={`relative z-10 font-black text-slate-50 tabular-nums tracking-tighter leading-none mb-3 ${montoDisplayClass(saldoAcumulado, 'saldoHero')} ${saldoAcumulado < 0 ? 'text-rose-400' : ''}`}>
-            {formatARS(saldoAcumulado)}
-          </p>
-          <div className="relative z-10 glass px-5 py-1.5 rounded-full inline-flex items-center gap-2">
-            <span className="text-slate-400 text-sm">Equivalente aprox.</span>
-            <span className="text-emerald-400 font-black tabular-nums tracking-tight text-sm">{formatUSD(saldoAcumulado / tc)}</span>
-          </div>
-        </motion.section>
+          <motion.section
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="relative cursor-pointer overflow-hidden rounded-xl p-7 md:p-10 flex flex-col items-center justify-center text-center transition-colors duration-300 hover:bg-white/[0.04]"
+            style={{
+              background: 'linear-gradient(135deg, rgba(79,70,229,0.25) 0%, rgba(99,102,241,0.08) 100%)',
+              border: '1px solid rgba(255,255,255,0.08)',
+            }}
+          >
+            <span className="text-primary-fixed-dim text-[10px] font-bold tracking-[0.3em] uppercase mb-4 relative z-10 opacity-80">
+              Balance Acumulado
+            </span>
+            <p className={`relative z-10 font-black text-slate-50 tabular-nums tracking-tighter leading-none mb-3 ${montoDisplayClass(saldoAcumulado, 'saldoHero')} ${saldoAcumulado < 0 ? 'text-rose-400' : ''}`}>
+              {formatARS(saldoAcumulado)}
+            </p>
+            <div className="relative z-10 glass px-5 py-1.5 rounded-full inline-flex items-center gap-2">
+              <span className="text-slate-400 text-sm">Equivalente aprox.</span>
+              <span className="text-emerald-400 font-black tabular-nums tracking-tight text-sm">{formatUSD(saldoAcumulado / tc)}</span>
+            </div>
+          </motion.section>
+        </Link>
 
-        {/* ── KPI + tarjeta + reservas ───────────────────────────────────── */}
         <div className="flex min-w-0 flex-col gap-4">
           <div
             className={`grid min-w-0 grid-cols-2 gap-3 lg:gap-4 ${
@@ -1030,9 +1033,6 @@ export default function Dashboard() {
                       </div>
                     )}
                   </div>
-                  <p className="relative mt-2 text-center text-[11px] text-sky-400/70">
-                    Tocá para asignar fondos o editar la meta →
-                  </p>
                 </Link>
               </motion.div>
             </div>
@@ -1079,7 +1079,6 @@ export default function Dashboard() {
 
         </div>
 
-        {/* ── Available + Reservas ─────────────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1138,10 +1137,8 @@ export default function Dashboard() {
         </>
       )}
 
-      {/* Desktop-only charts */}
       {!loading && (
         <div className="hidden lg:grid lg:grid-cols-2 gap-4 mt-6">
-          {/* Pie: distribución del mes */}
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1194,7 +1191,6 @@ export default function Dashboard() {
             )}
           </motion.div>
 
-          {/* Bar: top categorías de gastos */}
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1235,7 +1231,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Evolución anual — desktop only */}
       {!loading && lineData.length > 1 && (
         <motion.div
           initial={{ opacity: 0, y: 16 }}

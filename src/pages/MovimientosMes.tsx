@@ -38,6 +38,31 @@ function parseTipo(raw: string | null): 'ingreso' | 'gasto' | 'suscripcion' | 't
   return 'todos'
 }
 
+function sumaArsTransacciones(items: Transaccion[], tc: number) {
+  return items.reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
+}
+
+function SubtotalGrupoMovimientos({
+  items,
+  tc,
+  montoClassName,
+}: {
+  items: Transaccion[]
+  tc: number
+  montoClassName: string
+}) {
+  const sub = sumaArsTransacciones(items, tc)
+  return (
+    <div className="mt-3 flex items-end justify-between gap-3 border-t border-white/10 pt-3">
+      <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Subtotal</span>
+      <div className="text-right">
+        <p className={`text-base font-bold tabular-nums ${montoClassName}`}>{formatARS(sub)}</p>
+        <p className="text-xs text-gray-500 tabular-nums">{formatUSD(sub / tc)}</p>
+      </div>
+    </div>
+  )
+}
+
 const GASTOS_MEDIO_GRUPOS: {
   key: GrupoGastoPorMedio
   titulo: string
@@ -229,12 +254,34 @@ export default function MovimientosMes() {
     return GASTOS_MEDIO_GRUPOS.map((def) => ({ ...def, items: map[def.key] })).filter((x) => x.items.length > 0)
   }, [filtradas, tipo])
 
+  /** Vista `tipo=todos`: mismas secciones que gastos (medio) + ingresos, reintegros TC, suscripciones. */
+  const operacionesAgrupadasTodos = useMemo(() => {
+    if (tipo !== 'todos') return null
+    const ingresos = filtradas.filter(
+      (t) => t.tipo === 'ingreso' && !esIngresoReintegroTarjetaCredito(t),
+    )
+    const reintegrosTc = filtradas.filter(esIngresoReintegroTarjetaCredito)
+    const gastos = filtradas.filter((t) => t.tipo === 'gasto')
+    const suscripciones = filtradas.filter((t) => t.tipo === 'suscripcion')
+    const map: Record<GrupoGastoPorMedio, Transaccion[]> = {
+      transferencias: [],
+      debito: [],
+      credito: [],
+    }
+    for (const t of gastos) {
+      const g = grupoGastoPorMedio(t)
+      if (g) map[g].push(t)
+    }
+    const gastosGrupos = GASTOS_MEDIO_GRUPOS.map((def) => ({
+      ...def,
+      items: map[def.key],
+    })).filter((x) => x.items.length > 0)
+    return { ingresos, reintegrosTc, gastosGrupos, suscripciones }
+  }, [filtradas, tipo])
+
   const resumen = useMemo(() => {
     const ing = transaccionesDelMes
       .filter((t) => t.tipo === 'ingreso' && !esIngresoReintegroTarjetaCredito(t))
-      .reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
-    const reintegrosTc = transaccionesDelMes
-      .filter(esIngresoReintegroTarjetaCredito)
       .reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
     const gas = transaccionesDelMes.filter((t) => t.tipo === 'gasto').reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
     const sus = transaccionesDelMes.filter((t) => t.tipo === 'suscripcion').reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
@@ -243,7 +290,6 @@ export default function MovimientosMes() {
       .reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
     return {
       ingresos: ing,
-      reintegrosTc,
       gastos: gas,
       suscripciones: sus,
       resultadoMes: ing - salidasEf,
@@ -279,7 +325,7 @@ export default function MovimientosMes() {
             : 'Gastos del mes'
         : tipo === 'suscripcion'
           ? 'Suscripciones del mes'
-          : 'Todas las operaciones'
+          : 'Resumen del mes — todas las operaciones'
 
   const sub = `${MESES[mes - 1]} ${anio}`
 
@@ -380,50 +426,39 @@ export default function MovimientosMes() {
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              className="glass p-4 grid grid-cols-2 gap-3 mb-6"
+              className="glass mb-6 grid grid-cols-2 gap-3 rounded-2xl p-4"
             >
-              <div>
+              <div className="min-w-0 text-center">
                 <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Ingresos (efectivo)</p>
-                <p className="text-lg font-semibold text-emerald-400">{formatARS(resumen.ingresos)}</p>
-                <p className="text-xs text-gray-500">{formatUSD(resumen.ingresos / tc)}</p>
-                {resumen.reintegrosTc > 0 && (
-                  <p className="text-[10px] text-rose-400/90 mt-1 leading-snug">
-                    +{formatARS(resumen.reintegrosTc)} reintegro/promo TC (no suma acá; resta en resumen tarjeta)
-                  </p>
-                )}
+                <p className="text-lg font-semibold tabular-nums text-emerald-400">{formatARS(resumen.ingresos)}</p>
+                <p className="text-xs text-gray-500 tabular-nums">{formatUSD(resumen.ingresos / tc)}</p>
               </div>
-              <div>
+              <div className="min-w-0 text-center">
                 <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Gastos</p>
-                <p className="text-lg font-semibold text-red-400">{formatARS(resumen.gastos)}</p>
-                <p className="text-xs text-gray-500">{formatUSD(resumen.gastos / tc)}</p>
+                <p className="text-lg font-semibold tabular-nums text-red-400">{formatARS(resumen.gastos)}</p>
+                <p className="text-xs text-gray-500 tabular-nums">{formatUSD(resumen.gastos / tc)}</p>
               </div>
-              <div>
+              <div className="min-w-0 text-center">
                 <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Suscripciones</p>
-                <p className="text-lg font-semibold text-purple-400">{formatARS(resumen.suscripciones)}</p>
-                <p className="text-xs text-gray-500">{formatUSD(resumen.suscripciones / tc)}</p>
+                <p className="text-lg font-semibold tabular-nums text-purple-400">{formatARS(resumen.suscripciones)}</p>
+                <p className="text-xs text-gray-500 tabular-nums">{formatUSD(resumen.suscripciones / tc)}</p>
               </div>
-              <div>
+              <div className="min-w-0 text-center">
                 <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">Resultado del mes</p>
-                <p className={`text-lg font-semibold ${resumen.resultadoMes >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                <p className={`text-lg font-semibold tabular-nums ${resumen.resultadoMes >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                   {formatARS(resumen.resultadoMes)}
                 </p>
-                <p className="text-xs text-gray-500">{formatUSD(resumen.resultadoMes / tc)}</p>
+                <p className="text-xs text-gray-500 tabular-nums">{formatUSD(resumen.resultadoMes / tc)}</p>
               </div>
-              <div className="col-span-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5">
-                <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+              <div className="col-span-2 rounded-2xl border border-white/[0.1] bg-white/[0.04] px-4 py-5 text-center shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)]">
+                <p className="text-[10px] font-medium uppercase tracking-wider text-gray-500">
                   Saldo acumulado hasta fin de {MESES[mes - 1]}
                 </p>
-                <p className={`text-xl font-bold tabular-nums ${saldoAcumulado >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                <p className={`mt-2 text-xl font-bold tabular-nums ${saldoAcumulado >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                   {formatARS(saldoAcumulado)}
                 </p>
-                <p className="text-xs text-gray-500 mt-0.5">{formatUSD(saldoAcumulado / tc)}</p>
-                <p className="text-[10px] text-gray-600 mt-2 leading-snug">
-                  Suma de todo tu historial hasta el último día de este mes (sin consumos en tarjeta de crédito ni reintegros/promos TC). Si el mes anterior te sobró plata, acá sigue contando.
-                </p>
+                <p className="mt-0.5 text-xs text-gray-500">{formatUSD(saldoAcumulado / tc)}</p>
               </div>
-              <p className="col-span-2 text-[10px] text-gray-600 leading-snug -mt-1">
-                Resultado del mes = ingresos del mes − gastos y suscripciones en efectivo, transferencia o débito (sin tarjeta de crédito).
-              </p>
             </motion.div>
           )}
 
@@ -468,6 +503,97 @@ export default function MovimientosMes() {
                   </ul>
                 </div>
               ))}
+            </div>
+          ) : tipo === 'todos' && operacionesAgrupadasTodos ? (
+            <div className="space-y-10">
+              {operacionesAgrupadasTodos.ingresos.length > 0 && (
+                <div>
+                  <div className="mb-2.5">
+                    <h2 className="text-sm font-semibold text-emerald-400/95 uppercase tracking-wider">Ingresos</h2>
+                    <p className="text-[11px] text-gray-600 mt-0.5">Ingresos al efectivo (sin reintegros de tarjeta)</p>
+                  </div>
+                  <ul className="space-y-2">
+                    {operacionesAgrupadasTodos.ingresos.map((t, i) => (
+                      <EditableTransaccionListRow
+                        key={t.id}
+                        t={t}
+                        categorias={ordenarCategoriasPorTema(categorias.filter((c) => c.tipo === t.tipo))}
+                        delay={i * 0.02}
+                        mostrarTipo={false}
+                        onMutated={() => refetch()}
+                      />
+                    ))}
+                  </ul>
+                  <SubtotalGrupoMovimientos items={operacionesAgrupadasTodos.ingresos} tc={tc} montoClassName="text-emerald-400" />
+                </div>
+              )}
+              {operacionesAgrupadasTodos.reintegrosTc.length > 0 && (
+                <div>
+                  <div className="mb-2.5">
+                    <h2 className="text-sm font-semibold text-amber-300/95 uppercase tracking-wider">
+                      Reintegros y promos (tarjeta)
+                    </h2>
+                    <p className="text-[11px] text-gray-600 mt-0.5">Ingresos vinculados a tarjeta de crédito</p>
+                  </div>
+                  <ul className="space-y-2">
+                    {operacionesAgrupadasTodos.reintegrosTc.map((t, i) => (
+                      <EditableTransaccionListRow
+                        key={t.id}
+                        t={t}
+                        categorias={ordenarCategoriasPorTema(categorias.filter((c) => c.tipo === t.tipo))}
+                        delay={i * 0.02}
+                        mostrarTipo={false}
+                        onMutated={() => refetch()}
+                      />
+                    ))}
+                  </ul>
+                  <SubtotalGrupoMovimientos items={operacionesAgrupadasTodos.reintegrosTc} tc={tc} montoClassName="text-amber-300" />
+                </div>
+              )}
+              {operacionesAgrupadasTodos.gastosGrupos.map((grupo) => (
+                <div key={grupo.key}>
+                  <div className="mb-2.5">
+                    <h2 className="text-sm font-semibold text-rose-300/90 uppercase tracking-wider">
+                      Gastos · {grupo.titulo}
+                    </h2>
+                    <p className="text-[11px] text-gray-600 mt-0.5">{grupo.subtitulo}</p>
+                  </div>
+                  <ul className="space-y-2">
+                    {grupo.items.map((t, i) => (
+                      <EditableTransaccionListRow
+                        key={t.id}
+                        t={t}
+                        categorias={ordenarCategoriasPorTema(categorias.filter((c) => c.tipo === t.tipo))}
+                        delay={i * 0.02}
+                        mostrarTipo={false}
+                        onMutated={() => refetch()}
+                      />
+                    ))}
+                  </ul>
+                  <SubtotalGrupoMovimientos items={grupo.items} tc={tc} montoClassName="text-rose-400" />
+                </div>
+              ))}
+              {operacionesAgrupadasTodos.suscripciones.length > 0 && (
+                <div>
+                  <div className="mb-2.5">
+                    <h2 className="text-sm font-semibold text-purple-400/95 uppercase tracking-wider">Suscripciones</h2>
+                    <p className="text-[11px] text-gray-600 mt-0.5">Pagos recurrentes del mes</p>
+                  </div>
+                  <ul className="space-y-2">
+                    {operacionesAgrupadasTodos.suscripciones.map((t, i) => (
+                      <EditableTransaccionListRow
+                        key={t.id}
+                        t={t}
+                        categorias={ordenarCategoriasPorTema(categorias.filter((c) => c.tipo === t.tipo))}
+                        delay={i * 0.02}
+                        mostrarTipo={false}
+                        onMutated={() => refetch()}
+                      />
+                    ))}
+                  </ul>
+                  <SubtotalGrupoMovimientos items={operacionesAgrupadasTodos.suscripciones} tc={tc} montoClassName="text-purple-400" />
+                </div>
+              )}
             </div>
           ) : (
             <ul className="space-y-2">
