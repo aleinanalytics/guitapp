@@ -43,6 +43,7 @@ cross join (values
   ('Servicios', 'Internet', '#818cf8'),
   ('Servicios', 'TV', '#c084fc'),
   ('Servicios', 'Celular', '#34d399'),
+  ('Servicios', 'Gas', '#fb7c00'),
   ('Servicios', 'Otros', '#64748b'),
   ('Supermercado', 'Compra Mensual', '#f87171'),
   ('Supermercado', 'Compra Semanal', '#fb923c'),
