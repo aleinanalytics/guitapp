@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "secondary-container": "#571bc1",
+                        "tertiary-container": "#006a7c",
+                        "surface-tint": "#c3c0ff",
+                        "surface-container-high": "#2a2931",
+                        "on-surface-variant": "#c7c4d8",
+                        "outline": "#918fa1",
+                        "inverse-on-surface": "#303038",
+                        "outline-variant": "#464555",
+                        "on-error": "#690005",
+                        "on-error-container": "#ffdad6",
+                        "secondary-fixed": "#e9ddff",
+                        "primary-container": "#4f46e5",
+                        "on-secondary-fixed": "#23005c",
+                        "on-secondary-container": "#c4abff",
+                        "inverse-surface": "#e4e1ec",
+                        "on-primary-fixed": "#0f0069",
+                        "on-primary-container": "#dad7ff",
+                        "on-secondary": "#3c0091",
+                        "error": "#ffb4ab",
+                        "surface-variant": "#34343c",
+                        "inverse-primary": "#4d44e3",
+                        "primary": "#c3c0ff",
+                        "surface-dim": "#13131a",
+                        "surface": "#13131a",
+                        "surface-container": "#1f1f27",
+                        "tertiary-fixed-dim": "#4cd7f6",
+                        "surface-container-highest": "#34343c",
+                        "error-container": "#93000a",
+                        "primary-fixed-dim": "#c3c0ff",
+                        "on-tertiary-fixed-variant": "#004e5c",
+                        "on-primary-fixed-variant": "#3323cc",
+                        "on-tertiary": "#003640",
+                        "tertiary": "#4cd7f6",
+                        "on-tertiary-fixed": "#001f26",
+                        "secondary-fixed-dim": "#d0bcff",
+                        "surface-container-lowest": "#0e0d15",
+                        "primary-fixed": "#e2dfff",
+                        "on-tertiary-container": "#93e8ff",
+                        "on-secondary-fixed-variant": "#5516be",
+                        "on-background": "#e4e1ec",
+                        "tertiary-fixed": "#acedff",
+                        "on-surface": "#e4e1ec",
+                        "background": "#13131a",
+                        "surface-container-low": "#1b1b23",
+                        "surface-bright": "#393841",
+                        "secondary": "#d0bcff",
+                        "on-primary": "#1d00a5"
+                    },
+                    fontFamily: {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body { background-color: #13131a; color: #e4e1ec; }
+        .tnum { font-variant-numeric: tabular-nums; }
+        .glass {
+            background: rgba(52, 52, 60, 0.4);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .ghost-border {
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+    </style>
+</head>
+<body class="font-body antialiased selection:bg-primary/30">
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-full w-64 z-50 bg-[#13131a] dark:bg-[#13131a] flex flex-col p-6 space-y-8 font-['Inter'] tnum antialiased tracking-tight">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-xl bg-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-white" data-icon="account_balance_wallet">account_balance_wallet</span>
+</div>
+<div>
+<h1 class="text-2xl font-black tracking-tighter text-indigo-500">GuitaApp</h1>
+<p class="text-[10px] uppercase tracking-widest text-on-surface-variant/60 font-bold">Financial Observatory</p>
+</div>
+</div>
+<nav class="flex-1 space-y-2">
+<a class="flex items-center gap-4 px-4 py-3 text-gray-500 hover:text-white transition-colors hover:bg-white/5 rounded-xl transition-all duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="text-sm font-medium">Dashboard</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 text-gray-500 hover:text-white transition-colors hover:bg-white/5 rounded-xl transition-all duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="text-sm font-medium">Análisis</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 text-gray-500 hover:text-white transition-colors hover:bg-white/5 rounded-xl transition-all duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="add_circle">add_circle</span>
+<span class="text-sm font-medium">Cargar</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 text-white font-semibold bg-indigo-600/20 rounded-xl transition-all duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="account_balance_wallet">account_balance_wallet</span>
+<span class="text-sm font-medium">Presupuesto</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 text-gray-500 hover:text-white transition-colors hover:bg-white/5 rounded-xl transition-all duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="trending_up">trending_up</span>
+<span class="text-sm font-medium">Inversiones</span>
+</a>
+</nav>
+<div class="pt-6 border-t border-white/5">
+<a class="flex items-center gap-4 px-4 py-3 text-gray-500 hover:text-white transition-colors hover:bg-white/5 rounded-xl transition-all duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="text-sm font-medium">Profile Settings</span>
+</a>
+</div>
+</aside>
+<!-- TopAppBar -->
+<header class="fixed top-0 right-0 left-64 h-16 z-40 bg-[#13131a]/40 backdrop-blur-xl border-b border-white/5 flex items-center justify-between px-8 w-full font-['Inter'] tnum font-medium text-sm">
+<div class="flex items-center gap-4">
+<span class="text-on-surface-variant font-medium">Presupuesto Mensual</span>
+<span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex bg-surface-container-low rounded-full p-1 ghost-border">
+<button class="px-4 py-1.5 rounded-full text-xs font-semibold bg-primary text-on-primary">Octubre 2023</button>
+<button class="px-4 py-1.5 rounded-full text-xs text-on-surface-variant hover:text-white">Noviembre 2023</button>
+</div>
+<div class="flex items-center gap-3">
+<button class="material-symbols-outlined text-gray-400 hover:text-indigo-300 transition-opacity duration-200" data-icon="calendar_today">calendar_today</button>
+<button class="material-symbols-outlined text-gray-400 hover:text-indigo-300 transition-opacity duration-200" data-icon="currency_exchange">currency_exchange</button>
+</div>
+</div>
+</header>
+<!-- Main Content -->
+<main class="ml-64 pt-24 p-8 min-h-screen">
+<div class="max-w-7xl mx-auto space-y-10">
+<!-- Hero Stats / Header -->
+<div class="flex flex-col md:flex-row justify-between items-end gap-6">
+<div class="space-y-2">
+<h2 class="text-4xl font-black tracking-tight text-white leading-none">Observatorio de Gastos</h2>
+<p class="text-on-surface-variant max-w-md">Analiza la desviación de tus límites financieros con precisión editorial.</p>
+</div>
+<button class="bg-gradient-to-r from-primary to-primary-container text-on-primary font-bold px-8 py-4 rounded-xl flex items-center gap-3 shadow-xl shadow-primary/10 hover:scale-[1.02] active:scale-95 transition-all">
+<span class="material-symbols-outlined" data-icon="bolt">bolt</span>
+                    Optimizar Ahorro
+                </button>
+</div>
+<!-- Bento Grid Summary -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+<div class="col-span-1 md:col-span-2 glass rounded-xl p-8 flex flex-col justify-between min-h-[160px]">
+<div class="flex justify-between items-start">
+<p class="text-xs font-bold uppercase tracking-widest text-on-surface-variant/60">Total Presupuestado</p>
+<span class="material-symbols-outlined text-primary" data-icon="account_balance">account_balance</span>
+</div>
+<div class="mt-4">
+<p class="text-4xl font-black tnum text-white">$ 450.000,00</p>
+<p class="text-sm text-emerald-400 flex items-center gap-1 mt-1">
+<span class="material-symbols-outlined text-xs" data-icon="trending_down">trending_down</span>
+                            4.2% menos que el mes pasado
+                        </p>
+</div>
+</div>
+<div class="glass rounded-xl p-8 flex flex-col justify-between">
+<p class="text-xs font-bold uppercase tracking-widest text-on-surface-variant/60">Gastado</p>
+<div class="mt-4">
+<p class="text-3xl font-bold tnum text-white">$ 285.420,00</p>
+<div class="w-full bg-white/5 h-1.5 rounded-full mt-4 overflow-hidden">
+<div class="bg-primary h-full rounded-full" style="width: 63%"></div>
+</div>
+</div>
+</div>
+<div class="glass rounded-xl p-8 flex flex-col justify-between">
+<p class="text-xs font-bold uppercase tracking-widest text-on-surface-variant/60">Restante</p>
+<div class="mt-4">
+<p class="text-3xl font-bold tnum text-cyan-400">$ 164.580,00</p>
+<p class="text-xs text-on-surface-variant/60 mt-2">12 días para el cierre</p>
+</div>
+</div>
+</div>
+<!-- Robust Budget Table -->
+<section class="surface-container-low rounded-xl overflow-hidden ghost-border">
+<div class="p-8 border-b border-white/5 flex items-center justify-between bg-white/5">
+<h3 class="text-xl font-bold text-white">Categorías de Presupuesto</h3>
+<div class="flex gap-4">
+<button class="text-xs font-medium text-on-surface-variant hover:text-white flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="filter_list">filter_list</span>
+                            Filtrar
+                        </button>
+<button class="text-xs font-medium text-on-surface-variant hover:text-white flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="download">download</span>
+                            Exportar
+                        </button>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="text-[10px] uppercase tracking-widest text-on-surface-variant/40 font-black border-b border-white/5">
+<th class="px-8 py-4">Categoría</th>
+<th class="px-8 py-4">Mes Anterior</th>
+<th class="px-8 py-4">Presupuestado</th>
+<th class="px-8 py-4">Gastado</th>
+<th class="px-8 py-4">Estado / Barra</th>
+<th class="px-8 py-4 text-right">Restante</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-white/5">
+<!-- Row 1: Housing -->
+<tr class="group hover:bg-white/[0.02] transition-colors">
+<td class="px-8 py-6">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+</div>
+<div>
+<p class="text-sm font-bold text-white">Vivienda y Alquiler</p>
+<p class="text-[10px] text-on-surface-variant/60">Gasto Fijo Mensual</p>
+</div>
+</div>
+</td>
+<td class="px-8 py-6 tnum text-sm text-on-surface-variant/60">$ 150.000,00</td>
+<td class="px-8 py-6 tnum text-sm text-white font-medium">$ 155.000,00</td>
+<td class="px-8 py-6 tnum text-sm text-white font-medium">$ 155.000,00</td>
+<td class="px-8 py-6">
+<div class="w-48 space-y-2">
+<div class="flex justify-between items-center text-[10px] uppercase font-bold tracking-tighter">
+<span class="text-emerald-400">Completado</span>
+<span class="text-white">100%</span>
+</div>
+<div class="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+<div class="h-full bg-indigo-500" style="width: 100%"></div>
+</div>
+</div>
+</td>
+<td class="px-8 py-6 text-right">
+<span class="tnum text-sm font-bold text-on-surface-variant/40">$ 0,00</span>
+</td>
+</tr>
+<!-- Row 2: Supermarket -->
+<tr class="group hover:bg-white/[0.02] transition-colors">
+<td class="px-8 py-6">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+<span class="material-symbols-outlined" data-icon="shopping_cart">shopping_cart</span>
+</div>
+<div class="relative">
+<p class="text-sm font-bold text-white flex items-center gap-1">
+                                                Supermercado
+                                                <span class="material-symbols-outlined text-xs text-on-surface-variant/40 cursor-help" data-icon="info">info</span>
+</p>
+<p class="text-[10px] text-on-surface-variant/60">Alimentación y Limpieza</p>
+</div>
+</div>
+</td>
+<td class="px-8 py-6 tnum text-sm text-on-surface-variant/60">$ 85.000,00</td>
+<td class="px-8 py-6 tnum text-sm text-white font-medium">$ 90.000,00</td>
+<td class="px-8 py-6 tnum text-sm text-white font-medium">$ 62.300,00</td>
+<td class="px-8 py-6">
+<div class="w-48 space-y-2">
+<div class="flex justify-between items-center text-[10px] uppercase font-bold tracking-tighter">
+<span class="text-emerald-400">En Curso</span>
+<span class="text-white">69%</span>
+</div>
+<div class="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+<div class="h-full bg-emerald-500" style="width: 69%"></div>
+</div>
+</div>
+</td>
+<td class="px-8 py-6 text-right">
+<span class="tnum text-sm font-bold text-cyan-400">$ 27.700,00</span>
+</td>
+</tr>
+<!-- Row 3: Entertainment -->
+<tr class="group hover:bg-white/[0.02] transition-colors">
+<td class="px-8 py-6">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-pink-500/10 flex items-center justify-center text-pink-400">
+<span class="material-symbols-outlined" data-icon="movie">movie</span>
+</div>
+<div>
+<p class="text-sm font-bold text-white">Entretenimiento</p>
+<p class="text-[10px] text-on-surface-variant/60">Cine, Streaming, Salidas</p>
+</div>
+</div>
+</td>
+<td class="px-8 py-6 tnum text-sm text-on-surface-variant/60">$ 20.000,00</td>
+<td class="px-8 py-6 tnum text-sm text-white font-medium">$ 25.000,00</td>
+<td class="px-8 py-6 tnum text-sm text-white font-medium">$ 28.500,00</td>
+<td class="px-8 py-6">
+<div class="w-48 space-y-2">
+<div class="flex justify-between items-center text-[10px] uppercase font-bold tracking-tighter">
+<span class="text-red-400">Excedido</span>
+<span class="text-white">114%</span>
+</div>
+<div class="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+<div class="h-full bg-red-500" style="width: 100%"></div>
+</div>
+</div>
+</td>
+<td class="px-8 py-6 text-right">
+<span class="tnum text-sm font-bold text-red-400">-$ 3.500,00</span>
+</td>
+</tr>
+<!-- Row 4: Services -->
+<tr class="group hover:bg-white/[0.02] transition-colors">
+<td class="px-8 py-6">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center text-orange-400">
+<span class="material-symbols-outlined" data-icon="bolt">bolt</span>
+</div>
+<div>
+<p class="text-sm font-bold text-white">Servicios Públicos</p>
+<p class="text-[10px] text-on-surface-variant/60">Luz, Gas, Internet</p>
+</div>
+</div>
+</td>
+<td class="px-8 py-6 tnum text-sm text-on-surface-variant/60">$ 35.000,00</td>
+<td class="px-8 py-6 tnum text-sm text-white font-medium">$ 40.000,00</td>
+<td class="px-8 py-6 tnum text-sm text-white font-medium">$ 38.200,00</td>
+<td class="px-8 py-6">
+<div class="w-48 space-y-2">
+<div class="flex justify-between items-center text-[10px] uppercase font-bold tracking-tighter">
+<span class="text-orange-400">Al Límite</span>
+<span class="text-white">95%</span>
+</div>
+<div class="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+<div class="h-full bg-orange-400" style="width: 95%"></div>
+</div>
+</div>
+</td>
+<td class="px-8 py-6 text-right">
+<span class="tnum text-sm font-bold text-cyan-400">$ 1.800,00</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="p-6 bg-white/[0.01] flex justify-center">
+<button class="text-xs font-bold uppercase tracking-widest text-primary hover:text-white transition-colors">Cargar más categorías</button>
+</div>
+</section>
+<!-- Bottom Insight Card (Editorial Style) -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+<div class="col-span-1 md:col-span-2 glass rounded-xl overflow-hidden flex flex-col md:flex-row">
+<div class="p-8 space-y-4 flex-1">
+<div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-400/10 text-cyan-400 text-[10px] font-black uppercase tracking-tighter">
+<span class="material-symbols-outlined text-xs" data-icon="auto_awesome">auto_awesome</span>
+                            Insight de GuitaApp
+                        </div>
+<h4 class="text-2xl font-bold text-white tracking-tight leading-tight">Tu capacidad de ahorro ha subido un 12% este trimestre.</h4>
+<p class="text-on-surface-variant text-sm leading-relaxed">Detectamos que tus gastos en "Ocio" disminuyeron orgánicamente. Si derivas el excedente de $12.000 a tu Fondo de Emergencia hoy, alcanzarás tu meta 2 meses antes de lo previsto.</p>
+<button class="text-primary text-xs font-bold uppercase tracking-widest flex items-center gap-2 pt-4 group">
+                            Ver Plan de Inversión
+                            <span class="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+<div class="w-full md:w-64 h-48 md:h-auto overflow-hidden">
+<img alt="Digital financial abstract visualization" class="w-full h-full object-cover opacity-60 mix-blend-luminosity hover:opacity-100 hover:mix-blend-normal transition-all duration-700" data-alt="Abstract 3D render of floating digital coins and glowing network lines on a deep black background with cyan highlights" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB8BNWxMv1fnE4sl7WDSYH4Sc2ca2djXVH5nsPjWAOLXlCo_6R3OvUQO4VuuRzW00AKIuBLn9ZIX2xA5AFEzziSTWo7pxaoLTZO0wDUv6Abzw26a8V2pVHUK1rwD5GewBTtXKOVVMvbAKybhB1lJ5x5vJNB3N7YYMwkj9HVg6Is5oSorPQy42PhGSKx53Ffq_zVGyQJsFuRz14Q-217CA7pUGsis8hrnQsiIdPgGWQ_jSJVeIQ4fxs5Om8ul5KERqcZapE6Rvp47jW-"/>
+</div>
+</div>
+<div class="col-span-1 surface-container-highest rounded-xl p-8 flex flex-col justify-center items-center text-center space-y-6 relative overflow-hidden">
+<div class="absolute -top-10 -right-10 w-32 h-32 bg-primary/20 blur-3xl rounded-full"></div>
+<span class="material-symbols-outlined text-5xl text-primary" data-icon="savings">savings</span>
+<div>
+<h5 class="text-white font-bold">Fondo de Emergencia</h5>
+<p class="text-on-surface-variant text-xs mt-1">Objetivo: $ 1.200.000</p>
+</div>
+<div class="w-full space-y-2">
+<div class="h-3 w-full bg-white/5 rounded-full overflow-hidden p-0.5">
+<div class="h-full bg-gradient-to-r from-primary to-cyan-400 rounded-full" style="width: 42%"></div>
+</div>
+<div class="flex justify-between text-[10px] font-black uppercase tracking-tighter">
+<span class="text-on-surface-variant/40">$ 504.000</span>
+<span class="text-white">42%</span>
+</div>
+</div>
+<button class="w-full py-3 rounded-lg border border-white/10 hover:bg-white/5 text-xs font-bold uppercase tracking-widest transition-all">Configurar Alertas</button>
+</div>
+</div>
+</div>
+</main>
+<!-- Floating Action Button (Supressed as per mandate for detailed pages) -->
+</body></html>

@@ -11,6 +11,7 @@ import FondoEmergencia from './pages/FondoEmergencia'
 import Inversiones from './pages/Inversiones'
 import Presupuesto from './pages/Presupuesto'
 import Login from './pages/Login'
+import FeedbackButton from './components/FeedbackButton'
 
 function AppRoutes() {
   const { user, loading } = useAuth()
@@ -46,6 +47,7 @@ function AppRoutes() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+      <FeedbackButton />
     </>
   )
 }

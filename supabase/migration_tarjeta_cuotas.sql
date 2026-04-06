@@ -1,20 +1,22 @@
 -- Migration: add medio_pago to transacciones + new compras_cuotas table
--- Run this on existing databases. For new setups, use schema.sql instead.
+-- Idempotente: se puede re-ejecutar sin error si ya aplicaste partes antes.
+-- Bases nuevas: preferí schema.sql si partís de cero.
 
 -- 1. Add medio_pago column to transacciones
 alter table transacciones
   add column if not exists medio_pago text not null default 'efectivo'
-  check (medio_pago in ('efectivo','tarjeta'));
+  check (medio_pago in ('efectivo','tarjeta','transferencia'));
 
--- 2. Add update policy for transacciones (needed for edit feature)
+-- 2. Update policy for transacciones (edición en la app)
+drop policy if exists "Users can update own transacciones" on transacciones;
 create policy "Users can update own transacciones"
   on transacciones for update
   to authenticated
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
--- 3. New table: compras_cuotas (credit card installments)
-create table compras_cuotas (
+-- 3. Tabla compras_cuotas (cuotas tarjeta)
+create table if not exists compras_cuotas (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
   descripcion text not null,
@@ -27,18 +29,26 @@ create table compras_cuotas (
   created_at timestamptz default now()
 );
 
--- 4. RLS for compras_cuotas
+-- 4. RLS compras_cuotas
 alter table compras_cuotas enable row level security;
+
+drop policy if exists "Users can read own compras_cuotas" on compras_cuotas;
 create policy "Users can read own compras_cuotas"
   on compras_cuotas for select to authenticated
   using (auth.uid() = user_id);
+
+drop policy if exists "Users can insert own compras_cuotas" on compras_cuotas;
 create policy "Users can insert own compras_cuotas"
   on compras_cuotas for insert to authenticated
   with check (auth.uid() = user_id);
+
+drop policy if exists "Users can update own compras_cuotas" on compras_cuotas;
 create policy "Users can update own compras_cuotas"
   on compras_cuotas for update to authenticated
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
+
+drop policy if exists "Users can delete own compras_cuotas" on compras_cuotas;
 create policy "Users can delete own compras_cuotas"
   on compras_cuotas for delete to authenticated
   using (auth.uid() = user_id);

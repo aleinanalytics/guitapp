@@ -494,7 +494,22 @@ export default function Carga() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const montoNum = parseMontoInput(monto)
-    if (!fecha || !tipo || !categoriaId || !descripcion.trim() || !Number.isFinite(montoNum) || montoNum <= 0) return
+    if (!fecha || !tipo) {
+      window.alert('Completá la fecha y el tipo de movimiento.')
+      return
+    }
+    if (!categoriaId) {
+      window.alert('Elegí una categoría (y subcategoría si corresponde).')
+      return
+    }
+    if (!descripcion.trim()) {
+      window.alert('Ingresá una descripción.')
+      return
+    }
+    if (!Number.isFinite(montoNum) || montoNum <= 0) {
+      window.alert('Ingresá un monto válido mayor a cero.')
+      return
+    }
 
     // Si crédito + cuotas (gasto o suscripción), insertar en compras_cuotas
     if ((esTarjetaCreditoGasto || esTarjetaCreditoSuscripcion) && enCuotas) {
@@ -534,8 +549,15 @@ export default function Carga() {
       excluye_saldo: tipo === 'gasto' && excluyeSaldoCaja,
     })
     setSubmitting(false)
-    if (error) { window.alert('Error: ' + error.message) }
-    else {
+    if (error) {
+      const code = (error as { code?: string }).code
+      const hintTransferencia =
+        medioPagoDb === 'transferencia' &&
+        (code === '23514' || /medio_pago|check constraint/i.test(error.message))
+          ? ' Si tu proyecto en Supabase es anterior a transferencias, ejecutá en el SQL Editor el archivo supabase/migration_medio_pago_transferencia.sql.'
+          : ''
+      window.alert('Error: ' + error.message + hintTransferencia)
+    } else {
       window.alert('Registrado')
       setDescripcion(''); setMonto(''); setCategoriaId(''); setFecha(today); setMoneda('ARS')
       setMedioPagoNivel1('efectivo'); setPlasticoTipo('debito')

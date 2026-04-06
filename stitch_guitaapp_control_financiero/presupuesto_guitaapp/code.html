@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-secondary-container": "#c4abff",
+                    "primary": "#c3c0ff",
+                    "on-secondary-fixed": "#23005c",
+                    "on-background": "#e4e1ec",
+                    "error-container": "#93000a",
+                    "on-secondary": "#3c0091",
+                    "on-error-container": "#ffdad6",
+                    "on-surface": "#e4e1ec",
+                    "surface-container-high": "#2a2931",
+                    "on-primary": "#1d00a5",
+                    "error": "#ffb4ab",
+                    "secondary-fixed": "#e9ddff",
+                    "secondary-fixed-dim": "#d0bcff",
+                    "primary-fixed-dim": "#c3c0ff",
+                    "on-error": "#690005",
+                    "tertiary-container": "#006a7c",
+                    "primary-container": "#4f46e5",
+                    "inverse-surface": "#e4e1ec",
+                    "tertiary-fixed": "#acedff",
+                    "on-secondary-fixed-variant": "#5516be",
+                    "on-primary-container": "#dad7ff",
+                    "surface-variant": "#34343c",
+                    "tertiary-fixed-dim": "#4cd7f6",
+                    "outline": "#918fa1",
+                    "surface-tint": "#c3c0ff",
+                    "on-primary-fixed-variant": "#3323cc",
+                    "surface-dim": "#13131a",
+                    "surface-container-lowest": "#0e0d15",
+                    "inverse-primary": "#4d44e3",
+                    "outline-variant": "#464555",
+                    "surface-bright": "#393841",
+                    "on-tertiary-container": "#93e8ff",
+                    "on-tertiary-fixed-variant": "#004e5c",
+                    "on-surface-variant": "#c7c4d8",
+                    "on-primary-fixed": "#0f0069",
+                    "tertiary": "#4cd7f6",
+                    "background": "#08080f",
+                    "surface-container-low": "#1b1b23",
+                    "surface": "#13131a",
+                    "on-tertiary-fixed": "#001f26",
+                    "inverse-on-surface": "#303038",
+                    "primary-fixed": "#e2dfff",
+                    "secondary-container": "#571bc1",
+                    "surface-container-highest": "#34343c",
+                    "on-tertiary": "#003640",
+                    "surface-container": "#1f1f27",
+                    "secondary": "#d0bcff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Inter"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .tabular-nums { font-variant-numeric: tabular-nums; }
+        .glass-panel {
+            background: rgba(27, 27, 35, 0.4);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body min-h-screen pb-32 selection:bg-primary/30">
+<!-- TopAppBar Navigation -->
+<nav class="fixed top-0 w-full z-50 bg-slate-950/40 backdrop-blur-xl border-b border-white/10 flex justify-between items-center px-6 h-16">
+<div class="flex items-center gap-3">
+<button class="hover:bg-white/5 transition-colors p-2 rounded-full active:scale-95 duration-200">
+<span class="material-symbols-outlined text-slate-400">menu</span>
+</button>
+<span class="text-xl font-bold text-slate-100 tracking-tight">Presupuesto</span>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex flex-col items-end">
+<span class="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Octubre 2024</span>
+<span class="text-[10px] text-indigo-400 font-medium">Periodo Actual</span>
+</div>
+<div class="w-10 h-10 rounded-full border border-white/10 bg-surface-container-high overflow-hidden">
+<img alt="Avatar" data-alt="closeup portrait of a professional woman with a clean minimal background, soft studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDvOuz_NL3wo5pHV-ZdXXUPYxHZA-2YuSkSZb8HFSMcw98wUqIO01zWevdhEqqOC-eRf2j5ld1Cz8kdVRuJj6EDxJRxxBhSBcBwvI1XHeMwrJIfqt-DFd56w6rAdLuKGFFa_F0Cm5x_iDvqSU-MFuMtbZ5TpV7jZLmqXJP4Y0uNPyphgPIYB0cUHAiTATa6udHx4M4E_zUexSV7snEVIFWZGS6QhICHIOGUKcRlsiZuGt4AWe-LqNnzXWX9WoqZ7n5Jkh3oiwSdjieu"/>
+</div>
+</div>
+</nav>
+<main class="mt-20 px-6 max-w-2xl mx-auto space-y-8">
+<!-- Month Selector Editorial -->
+<header class="flex items-center justify-between">
+<div class="space-y-1">
+<p class="text-slate-500 text-sm font-medium tracking-wide">Vista Mensual</p>
+<div class="flex items-center gap-2">
+<h1 class="text-3xl font-bold tracking-tighter">Octubre 2024</h1>
+<span class="material-symbols-outlined text-indigo-400 text-lg">expand_more</span>
+</div>
+</div>
+<button class="glass-panel p-3 rounded-xl active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-indigo-400">calendar_month</span>
+</button>
+</header>
+<!-- Hero: The Vault Progress -->
+<section class="glass-panel p-8 rounded-xl relative overflow-hidden">
+<!-- Decorative Mesh Gradient Background -->
+<div class="absolute -top-24 -right-24 w-64 h-64 bg-primary/20 blur-[80px] rounded-full pointer-events-none"></div>
+<div class="absolute -bottom-24 -left-24 w-64 h-64 bg-tertiary/10 blur-[80px] rounded-full pointer-events-none"></div>
+<div class="relative z-10 space-y-6">
+<div class="flex justify-between items-start">
+<div>
+<h2 class="text-slate-400 text-xs font-bold uppercase tracking-[0.2em] mb-1">Gasto Consumido</h2>
+<div class="flex items-baseline gap-2">
+<span class="text-4xl font-extrabold tracking-tighter tabular-nums">$ 482.150,00</span>
+</div>
+</div>
+<div class="text-right">
+<h2 class="text-slate-400 text-xs font-bold uppercase tracking-[0.2em] mb-1">Presupuesto</h2>
+<span class="text-lg font-semibold text-slate-200 tabular-nums">$ 650.000,00</span>
+</div>
+</div>
+<div class="space-y-2">
+<div class="h-4 w-full bg-surface-container-lowest rounded-full overflow-hidden p-0.5 border border-white/5">
+<div class="h-full bg-gradient-to-r from-emerald-500 to-cyan-400 rounded-full" style="width: 74%"></div>
+</div>
+<div class="flex justify-between text-[11px] font-bold tracking-wider text-slate-500">
+<span>74% EJECUTADO</span>
+<span class="text-emerald-400">$ 167.850,00 RESTANTE</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Savings Suggestion: The Insight Chip -->
+<div class="bg-indigo-500/10 border border-indigo-500/20 rounded-2xl p-4 flex items-center gap-4">
+<div class="bg-indigo-500/20 p-2.5 rounded-full">
+<span class="material-symbols-outlined text-indigo-400" style="font-variation-settings: 'FILL' 1;">lightbulb</span>
+</div>
+<div class="flex-1">
+<p class="text-indigo-200 text-sm font-medium">Sugerencia de ahorro</p>
+<p class="text-indigo-400/80 text-xs">Podrías ahorrar <span class="font-bold tabular-nums">$ 65.000,00</span> (10%) este mes si optimizas Servicios.</p>
+</div>
+<span class="material-symbols-outlined text-indigo-400/50 text-sm">chevron_right</span>
+</div>
+<!-- Categorized Budget List -->
+<section class="space-y-6">
+<div class="flex items-center justify-between px-2">
+<h3 class="text-lg font-bold tracking-tight">Categorías</h3>
+<span class="text-indigo-400 text-xs font-bold uppercase tracking-widest cursor-pointer hover:underline">Ver Todo</span>
+</div>
+<div class="space-y-4">
+<!-- Alquiler -->
+<div class="glass-panel p-5 rounded-xl flex items-center gap-5 group hover:bg-white/5 transition-all">
+<div class="w-14 h-14 bg-pink-500/20 rounded-2xl flex items-center justify-center border border-pink-500/10">
+<span class="material-symbols-outlined text-pink-400 text-3xl">home</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-start mb-1">
+<h4 class="font-bold text-slate-100">Alquiler</h4>
+<div class="flex flex-col items-end">
+<span class="text-sm font-bold tabular-nums text-slate-100">$ 250.000,00</span>
+<span class="text-[10px] text-slate-500 tabular-nums">PAGADO</span>
+</div>
+</div>
+<div class="flex items-center justify-between text-[11px]">
+<div class="flex items-center gap-1.5 text-slate-500">
+<span class="material-symbols-outlined text-[14px]">history</span>
+<span class="tabular-nums">Anterior: $ 220.000,00</span>
+<span class="material-symbols-outlined text-[14px] text-indigo-400 cursor-help" title="Referencia mes anterior">help</span>
+</div>
+<span class="text-pink-400 font-bold uppercase tracking-tighter">100%</span>
+</div>
+</div>
+</div>
+<!-- Comida -->
+<div class="glass-panel p-5 rounded-xl flex items-center gap-5 group hover:bg-white/5 transition-all">
+<div class="w-14 h-14 bg-orange-500/20 rounded-2xl flex items-center justify-center border border-orange-500/10">
+<span class="material-symbols-outlined text-orange-400 text-3xl">restaurant</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-start mb-1">
+<h4 class="font-bold text-slate-100">Comida</h4>
+<div class="flex flex-col items-end">
+<span class="text-sm font-bold tabular-nums text-slate-100">$ 92.400,00</span>
+<span class="text-[10px] text-slate-500 tabular-nums">PRESUP: $ 120.000,00</span>
+</div>
+</div>
+<div class="flex items-center justify-between text-[11px]">
+<div class="flex items-center gap-1.5 text-slate-500">
+<span class="material-symbols-outlined text-[14px]">history</span>
+<span class="tabular-nums">Anterior: $ 105.300,00</span>
+</div>
+<div class="w-20 h-1.5 bg-surface-container-lowest rounded-full overflow-hidden">
+<div class="h-full bg-orange-400" style="width: 77%"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Servicios -->
+<div class="glass-panel p-5 rounded-xl flex items-center gap-5 group hover:bg-white/5 transition-all">
+<div class="w-14 h-14 bg-cyan-500/20 rounded-2xl flex items-center justify-center border border-cyan-500/10">
+<span class="material-symbols-outlined text-cyan-400 text-3xl">bolt</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-start mb-1">
+<h4 class="font-bold text-slate-100">Servicios</h4>
+<div class="flex flex-col items-end">
+<span class="text-sm font-bold tabular-nums text-slate-100">$ 45.100,00</span>
+<span class="text-[10px] text-slate-500 tabular-nums">PRESUP: $ 80.000,00</span>
+</div>
+</div>
+<div class="flex items-center justify-between text-[11px]">
+<div class="flex items-center gap-1.5 text-slate-500">
+<span class="material-symbols-outlined text-[14px]">history</span>
+<span class="tabular-nums">Anterior: $ 74.000,00</span>
+</div>
+<div class="w-20 h-1.5 bg-surface-container-lowest rounded-full overflow-hidden">
+<div class="h-full bg-cyan-400" style="width: 56%"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Suscripciones -->
+<div class="glass-panel p-5 rounded-xl flex items-center gap-5 group hover:bg-white/5 transition-all">
+<div class="w-14 h-14 bg-violet-500/20 rounded-2xl flex items-center justify-center border border-violet-500/10">
+<span class="material-symbols-outlined text-violet-400 text-3xl">subscriptions</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-start mb-1">
+<h4 class="font-bold text-slate-100">Suscripciones</h4>
+<div class="flex flex-col items-end">
+<span class="text-sm font-bold tabular-nums text-slate-100">$ 18.500,00</span>
+<span class="text-[10px] text-slate-500 tabular-nums">PRESUP: $ 20.000,00</span>
+</div>
+</div>
+<div class="flex items-center justify-between text-[11px]">
+<div class="flex items-center gap-1.5 text-slate-500">
+<span class="material-symbols-outlined text-[14px]">history</span>
+<span class="tabular-nums">Anterior: $ 16.200,00</span>
+</div>
+<div class="w-20 h-1.5 bg-surface-container-lowest rounded-full overflow-hidden">
+<div class="h-full bg-violet-400" style="width: 92%"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Aesthetic Overlap Element: Future Forecast -->
+<div class="relative pt-12 pb-8 overflow-hidden rounded-[3rem] bg-indigo-900/20 border border-white/5 p-8 flex flex-col gap-4">
+<img alt="Background Pattern" class="absolute inset-0 w-full h-full object-cover opacity-10 mix-blend-overlay" data-alt="abstract digital artwork of flowing crystal blue and purple light particles in a dark void space" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB8DBTU5xlhrtZ32yz770NFyTd0OXbm3YHbgttZDsOhz6CegCC9lV8NR-_gTk2KSiyKxtNrIX2nLjj4-ybdPjdgbzM1Fm-XxW1xWa9ekRCBs3LsdOX8LgNO4PWCW9IUggwtJlyGVxlyIS2QJWc5W1f1hah2wOvmQislEYSQ2ivTZfTs7TAza0CmDJZZYzv5jsTrjdM6Y1HR7pNuayG6ASRqj9d28YD3HVawktqZOGkOglC2UCo-FyUbwtpTmZHA8u7DcrRtkdtppBks"/>
+<div class="relative z-10 space-y-2">
+<span class="text-indigo-400 text-[10px] font-bold uppercase tracking-[0.3em]">Proyección</span>
+<h4 class="text-2xl font-bold tracking-tight">Fin de mes estimado</h4>
+<p class="text-slate-400 text-sm leading-relaxed max-w-[80%]">Basado en tu ritmo actual, terminarás el mes con <span class="text-emerald-400 font-bold tabular-nums">$ 42.000,00</span> extras.</p>
+</div>
+<button class="relative z-10 w-fit px-6 py-2.5 bg-indigo-500 text-white font-bold rounded-full text-xs active:scale-95 transition-transform">
+                OPTIMIZAR AHORRO
+             </button>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 bg-[#13131a]/60 backdrop-blur-2xl rounded-t-[3rem] border-t border-white/5 flex justify-around items-center px-4 pb-6 pt-2 shadow-[0_-4px_40px_rgba(0,0,0,0.4)]">
+<button class="flex flex-col items-center justify-center text-slate-500 hover:text-slate-200 active:scale-90 transition-transform duration-300 ease-out p-3">
+<span class="material-symbols-outlined text-[24px]">dashboard</span>
+<span class="font-['Inter'] text-[10px] font-medium tracking-wide uppercase mt-1">Dashboard</span>
+</button>
+<button class="flex flex-col items-center justify-center text-slate-500 hover:text-slate-200 active:scale-90 transition-transform duration-300 ease-out p-3">
+<span class="material-symbols-outlined text-[24px]">account_balance_wallet</span>
+<span class="font-['Inter'] text-[10px] font-medium tracking-wide uppercase mt-1">Wallet</span>
+</button>
+<!-- Center Action -->
+<button class="bg-primary-container text-on-primary-container p-4 rounded-full -mt-12 shadow-xl border-4 border-background active:scale-90 transition-transform duration-300">
+<span class="material-symbols-outlined text-[32px]">add</span>
+</button>
+<button class="flex flex-col items-center justify-center text-indigo-400 font-bold active:scale-90 transition-transform duration-300 ease-out p-3">
+<span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 1;">insights</span>
+<span class="font-['Inter'] text-[10px] font-medium tracking-wide uppercase mt-1">Trends</span>
+</button>
+<button class="flex flex-col items-center justify-center text-slate-500 hover:text-slate-200 active:scale-90 transition-transform duration-300 ease-out p-3">
+<span class="material-symbols-outlined text-[24px]">settings</span>
+<span class="font-['Inter'] text-[10px] font-medium tracking-wide uppercase mt-1">Settings</span>
+</button>
+</nav>
+</body></html>
