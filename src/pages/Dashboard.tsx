@@ -184,6 +184,9 @@ export default function Dashboard() {
   const mayorGasto = gastosSinTcArs.length > 0
     ? gastosSinTcArs.reduce((max, t) => (t.monto > max.monto ? t : max))
     : null
+  /** % que el movimiento “Mayor gasto” (sin TC, solo ARS) representa sobre ingresos del mes */
+  const pctMayorGastoDelIngreso =
+    mayorGasto && ingresos > 0 ? (mayorGasto.monto / ingresos) * 100 : null
   const menorGasto = gastosSinTcArs.length > 0
     ? gastosSinTcArs.reduce((min, t) => (t.monto < min.monto ? t : min))
     : null
@@ -1047,7 +1050,12 @@ export default function Dashboard() {
               descripcion={mayorGasto?.descripcion}
               icon={<Banknote size={18} />}
               mobileStatLayout
-            />
+            >
+              <PorcentajeDelIngresoKpi
+                pct={pctMayorGastoDelIngreso}
+                hayMontoSinIngreso={!!mayorGasto && mayorGasto.monto > 0}
+              />
+            </KPICard>
             <KPICard
               titulo="Menor Gasto"
               delay={0.24}
