@@ -6,6 +6,7 @@ import FormEditGuardarCancelar from '../components/FormEditGuardarCancelar'
 import EditableCuotaCompraRow from '../components/EditableCuotaCompraRow'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
+import { guardarTransaccionConFallback } from '../lib/sync'
 import { useCuotas } from '../hooks/useCuotas'
 import {
   formatARS,
@@ -536,33 +537,38 @@ export default function Carga() {
     }
 
     setSubmitting(true)
-    const { error } = await supabase.from('transacciones').insert({
-      user_id: user!.id,
-      fecha,
-      tipo,
-      categoria_id: categoriaId,
-      descripcion: descripcion.trim(),
-      monto: montoNum,
-      moneda,
-      medio_pago: medioPagoDb,
-      es_gasto_fijo: tipo === 'gasto' && esGastoFijo,
-      excluye_saldo: tipo === 'gasto' && excluyeSaldoCaja,
-    })
-    setSubmitting(false)
-    if (error) {
-      const code = (error as { code?: string }).code
-      const hintTransferencia =
-        medioPagoDb === 'transferencia' &&
-        (code === '23514' || /medio_pago|check constraint/i.test(error.message))
-          ? ' Si tu proyecto en Supabase es anterior a transferencias, ejecutá en el SQL Editor el archivo supabase/migration_medio_pago_transferencia.sql.'
-          : ''
-      window.alert('Error: ' + error.message + hintTransferencia)
-    } else {
-      window.alert('Registrado')
+    try {
+      const result = await guardarTransaccionConFallback({
+        user_id: user!.id,
+        fecha,
+        tipo,
+        categoria_id: categoriaId,
+        descripcion: descripcion.trim(),
+        monto: montoNum,
+        moneda,
+        medio_pago: medioPagoDb,
+        es_gasto_fijo: tipo === 'gasto' && esGastoFijo,
+        excluye_saldo: tipo === 'gasto' && excluyeSaldoCaja,
+      })
+      if (result.offline) {
+        window.alert('Guardado localmente. Se sincronizará cuando recuperés conexión.')
+      } else {
+        window.alert('Registrado')
+        fetchRecientes()
+      }
       setDescripcion(''); setMonto(''); setCategoriaId(''); setFecha(today); setMoneda('ARS')
       setMedioPagoNivel1('efectivo'); setPlasticoTipo('debito')
       setEnCuotas(false); setNumCuotas(''); setEsGastoFijo(false); setExcluyeSaldoCaja(false)
-      fetchRecientes()
+    } catch (error) {
+      const err = error as { code?: string; message?: string }
+      const hintTransferencia =
+        medioPagoDb === 'transferencia' &&
+        (err.code === '23514' || /medio_pago|check constraint/i.test(err.message ?? ''))
+          ? ' Si tu proyecto en Supabase es anterior a transferencias, ejecutá en el SQL Editor el archivo supabase/migration_medio_pago_transferencia.sql.'
+          : ''
+      window.alert('Error: ' + (err.message ?? 'Error desconocido') + hintTransferencia)
+    } finally {
+      setSubmitting(false)
     }
   }
 

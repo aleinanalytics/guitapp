@@ -42,6 +42,7 @@ export interface TarjetaConfig {
   user_id: string
   fecha_cierre: string
   fecha_vencimiento: string
+  modo_credito: boolean
 }
 
 export interface CompraCuotas {
@@ -56,6 +57,22 @@ export interface CompraCuotas {
   categoria_id: string | null
   categoria?: Categoria
   created_at: string
+}
+
+export type TipoDeuda = 'prestamo_personal' | 'prestamo_prendario' | 'refinanciacion_bancaria' | 'arreglo_estudio' | 'otro'
+
+export interface Deuda {
+  id: string
+  user_id: string
+  descripcion: string
+  tipo_deuda: TipoDeuda
+  monto_total: number
+  cuotas_total: number
+  monto_cuota: number
+  fecha_primera_cuota: string
+  moneda: Moneda
+  created_at: string
+  updated_at?: string
 }
 
 export type BolsilloTipo = 'ahorro' | 'emergencia'

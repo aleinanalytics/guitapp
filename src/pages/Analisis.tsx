@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
-  PieChart, Pie, Cell, Area, CartesianGrid, ComposedChart, Line,
+  PieChart, Pie, Cell, Area, CartesianGrid, ComposedChart, Line, ReferenceLine,
 } from 'recharts'
 import type { PieLabelRenderProps } from 'recharts'
 import KPICard from '../components/KPICard'
@@ -17,8 +17,11 @@ import {
   ipcMonthKey,
   IPC_MENSUAL_VARIACION_PCT,
 } from '../lib/ipcArgentinaMensual'
-import { TrendingUp, TrendingDown, RotateCcw, CalendarDays } from 'lucide-react'
+import { TrendingUp, TrendingDown, RotateCcw, CalendarDays, AlertTriangle, Minus } from 'lucide-react'
 import MobileUserMenu from '../components/MobileUserMenu'
+import { useCuotas } from '../hooks/useCuotas'
+import { useDeudas } from '../hooks/useDeudas'
+import { proyectarCashflow, resumenAlertasCashflow } from '../lib/cashflow'
 
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
 const MESES_FULL = [
@@ -48,6 +51,7 @@ type TxSaldoMin = {
   tipo: string
   medio_pago: string
   excluye_saldo?: boolean | null
+  es_gasto_fijo?: boolean | null
 }
 
 function aggregateMomRows(rows: MomCatRow[]) {
@@ -80,7 +84,7 @@ export default function Analisis() {
     setLoadingSaldoHist(true)
     void supabase
       .from('transacciones')
-      .select('fecha,monto,moneda,tipo,medio_pago,excluye_saldo')
+      .select('fecha,monto,moneda,tipo,medio_pago,excluye_saldo,es_gasto_fijo')
       .order('fecha', { ascending: true })
       .then(({ data, error }) => {
         if (cancelled) return
@@ -109,6 +113,9 @@ export default function Analisis() {
   }, [])
 
   const tc = tipoCambio
+
+  const { cuotas } = useCuotas()
+  const { deudas } = useDeudas()
 
   // Section 1: Monthly data
   const barData = useMemo(() => {
@@ -173,6 +180,25 @@ export default function Analisis() {
       finMesAnterior: acumHasta(hastaPrev),
     }
   }, [txSaldoHist, tc, anioSeleccionado, mesSeleccionado])
+
+  /** Proyección de cashflow: próximos 6 meses basado en promedios históricos + cuotas + deudas. */
+  const proyeccionCashflow = useMemo(() => {
+    if (txSaldoHist.length === 0) return []
+    return proyectarCashflow({
+      transacciones: txSaldoHist,
+      cuotas,
+      deudas,
+      saldoActual: saldosAcumuladosMom.finMesActual,
+      tc,
+      mesActual: mesSeleccionado,
+      anioActual: anioSeleccionado,
+      mesesProyectar: 6,
+    })
+  }, [txSaldoHist, cuotas, deudas, saldosAcumuladosMom.finMesActual, tc, mesSeleccionado, anioSeleccionado])
+
+  const alertasCashflow = useMemo(() => {
+    return resumenAlertasCashflow(proyeccionCashflow, 0)
+  }, [proyeccionCashflow])
 
   // Section 2: Category donut
   const donutData = useMemo(() => {
@@ -944,6 +970,148 @@ export default function Analisis() {
                   </div>
                 </div>
               </div>
+            )}
+          </motion.section>
+
+          {/* Section 3.5 — Cashflow Projection */}
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.28 }}
+            className="glass-card p-4 lg:p-6 rounded-xl"
+          >
+            <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-1">
+              Proyección de cashflow — Próximos 6 meses
+            </h2>
+            <p className="text-[11px] text-gray-500 mb-4 leading-relaxed">
+              Basado en promedios de tus últimos 3 meses: ingresos, gastos fijos, suscripciones y gastos variables.
+              Incluye cuotas de tarjeta y deudas activas calculadas mes a mes.
+            </p>
+
+            {alertasCashflow.hayAlerta && (
+              <div className="mb-4 space-y-2">
+                {alertasCashflow.primerNegativo && (
+                  <div className="flex items-center gap-2 rounded-xl border border-rose-500/25 bg-rose-500/[0.06] px-4 py-3">
+                    <AlertTriangle size={16} className="shrink-0 text-rose-400" />
+                    <p className="text-sm text-rose-200/90">
+                      Tu saldo se proyecta <strong>negativo</strong> en{' '}
+                      <span className="font-semibold text-rose-100">{alertasCashflow.primerNegativo.label}</span>{' '}
+                      ({formatARS(alertasCashflow.primerNegativo.saldoFinal)})
+                    </p>
+                  </div>
+                )}
+                {!alertasCashflow.primerNegativo && alertasCashflow.mesesBajoEmergencia.length > 0 && (
+                  <div className="flex items-center gap-2 rounded-xl border border-amber-500/25 bg-amber-500/[0.06] px-4 py-3">
+                    <Minus size={16} className="shrink-0 text-amber-400" />
+                    <p className="text-sm text-amber-200/90">
+                      Tu saldo cae por debajo del fondo de emergencia en{' '}
+                      {alertasCashflow.mesesBajoEmergencia.map((m) => m.label).join(', ')}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {proyeccionCashflow.length === 0 ? (
+              <p className="text-gray-500 text-sm text-center py-8">
+                Necesitás movimientos históricos para generar la proyección.
+              </p>
+            ) : (
+              <>
+                <ResponsiveContainer width="100%" height={260}>
+                  <ComposedChart data={proyeccionCashflow} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
+                    <defs>
+                      <linearGradient id="cashflowGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#34d399" stopOpacity={0.25} />
+                        <stop offset="100%" stopColor="#34d399" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <XAxis
+                      dataKey="label"
+                      tick={{ fontSize: 11, fill: CHART_COLORS.axis }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`}
+                      tick={{ fontSize: 10, fill: CHART_COLORS.axis }}
+                      axisLine={false}
+                      tickLine={false}
+                      width={44}
+                    />
+                    <Tooltip
+                      content={({ active, payload, label }) => {
+                        if (!active || !payload?.length) return null
+                        const p = payload[0]?.payload as (typeof proyeccionCashflow)[number]
+                        return (
+                          <div className="glass p-2.5 text-sm border border-white/[0.08]" style={{ background: CHART_COLORS.tooltipBg }}>
+                            <p className="text-gray-400 text-xs mb-1.5 font-medium">{label}</p>
+                            <p className="text-emerald-400 text-xs">
+                              Saldo proyectado: <span className="font-semibold">{formatARS(p.saldoFinal)}</span>
+                            </p>
+                            <div className="border-t border-white/[0.06] mt-1.5 pt-1.5 space-y-0.5">
+                              <p className="text-[11px] text-gray-500">Ingresos: {formatARS(p.ingresos)}</p>
+                              <p className="text-[11px] text-gray-500">Gastos fijos: {formatARS(p.gastosFijos)}</p>
+                              <p className="text-[11px] text-gray-500">Suscripciones: {formatARS(p.suscripciones)}</p>
+                              <p className="text-[11px] text-gray-500">Variables: {formatARS(p.gastosVariables)}</p>
+                              {p.cuotasTC > 0 && (
+                                <p className="text-[11px] text-rose-300/80">Cuotas TC: {formatARS(p.cuotasTC)}</p>
+                              )}
+                              {p.deudas > 0 && (
+                                <p className="text-[11px] text-rose-300/80">Deudas: {formatARS(p.deudas)}</p>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      }}
+                      cursor={{ stroke: 'rgba(255,255,255,0.06)' }}
+                    />
+                    <ReferenceLine y={0} stroke="#ef4444" strokeDasharray="4 4" strokeOpacity={0.5} />
+                    <Area
+                      type="monotone"
+                      dataKey="saldoFinal"
+                      name="Saldo proyectado"
+                      stroke="#34d399"
+                      strokeWidth={2}
+                      fill="url(#cashflowGrad)"
+                      dot={(props: any) => {
+                        const val = props?.payload?.saldoFinal as number
+                        return (
+                          <circle
+                            cx={props.cx}
+                            cy={props.cy}
+                            r={3}
+                            fill={val < 0 ? '#ef4444' : '#34d399'}
+                            strokeWidth={0}
+                          />
+                        )
+                      }}
+                      activeDot={{ r: 5, fill: '#34d399', stroke: '#151524', strokeWidth: 2 }}
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+
+                <div className="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                  {proyeccionCashflow.map((p, i) => (
+                    <motion.div
+                      key={p.label}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.35 + i * 0.05 }}
+                      className={`rounded-xl border px-3 py-3 text-center ${
+                        p.saldoFinal < 0
+                          ? 'border-rose-500/20 bg-rose-500/[0.04]'
+                          : 'border-white/[0.06] bg-white/[0.02]'
+                      }`}
+                    >
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">{p.label}</p>
+                      <p className={`text-sm font-bold tabular-nums ${p.saldoFinal < 0 ? 'text-rose-400' : 'text-emerald-300'}`}>
+                        {formatARS(p.saldoFinal)}
+                      </p>
+                    </motion.div>
+                  ))}
+                </div>
+              </>
             )}
           </motion.section>
 

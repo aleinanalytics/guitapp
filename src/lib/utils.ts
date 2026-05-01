@@ -9,12 +9,16 @@ import type { Moneda, Transaccion } from './types'
  */
 export function cuentaComoSalidaDeEfectivo(
   t: Pick<Transaccion, 'tipo' | 'medio_pago'> & { excluye_saldo?: boolean | null },
+  incluirTarjetaCredito = false,
 ): boolean {
   if (
     (t.tipo === 'gasto' || t.tipo === 'suscripcion') &&
     t.excluye_saldo === true
   ) {
     return false
+  }
+  if (incluirTarjetaCredito && (t.tipo === 'gasto' || t.tipo === 'suscripcion') && t.medio_pago === 'tarjeta') {
+    return true
   }
   return (
     (t.tipo === 'gasto' || t.tipo === 'suscripcion') &&

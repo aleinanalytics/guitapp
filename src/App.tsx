@@ -12,6 +12,7 @@ import Inversiones from './pages/Inversiones'
 import Presupuesto from './pages/Presupuesto'
 import Login from './pages/Login'
 import FeedbackButton from './components/FeedbackButton'
+import OfflineBanner from './components/OfflineBanner'
 
 function AppRoutes() {
   const { user, loading } = useAuth()
@@ -31,6 +32,7 @@ function AppRoutes() {
 
   return (
     <>
+      <OfflineBanner />
       <NavBar />
       {/* pb-20 on mobile for bottom nav, lg:pl-64 for sidebar */}
       <main className="min-h-screen pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] pt-[max(0.5rem,env(safe-area-inset-top,0px))] lg:pb-4 lg:pl-64 lg:pt-0">

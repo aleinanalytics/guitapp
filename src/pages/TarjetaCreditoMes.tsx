@@ -56,7 +56,7 @@ export default function TarjetaCreditoMes() {
     void refetchTx()
     void refetchCuotas()
   }
-  const { config: tcConfig, upsert: upsertConfig } = useTarjetaConfig()
+  const { config: tcConfig, upsert: upsertConfig, toggleModoCredito } = useTarjetaConfig()
 
   const diaCierreTc =
     tcConfig?.fecha_cierre != null
@@ -349,6 +349,42 @@ export default function TarjetaCreditoMes() {
                 )}
               </AnimatePresence>
             </div>
+
+            {tcConfig && !editingConfig && (
+              <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-white/[0.06] bg-black/20 px-4 py-3">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold text-gray-300">TC descuenta del disponible</p>
+                  <p className="mt-0.5 text-[10px] leading-relaxed text-gray-600">
+                    {tcConfig.modo_credito
+                      ? 'Los gastos de TC ya restan de tu saldo acumulado'
+                      : 'Los gastos de TC van a un flujo separado'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { void toggleModoCredito() }}
+                  className={`inline-flex shrink-0 items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold transition-all duration-200 ${
+                    tcConfig.modo_credito
+                      ? 'bg-rose-500/20 text-rose-300 ring-1 ring-rose-500/30'
+                      : 'bg-white/[0.04] text-gray-500 hover:text-gray-300 ring-1 ring-white/[0.08]'
+                  }`}
+                  aria-label={tcConfig.modo_credito ? 'Desactivar: TC descuenta del disponible' : 'Activar: TC descuenta del disponible'}
+                >
+                  <span
+                    className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${
+                      tcConfig.modo_credito ? 'bg-rose-500' : 'bg-gray-600'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-3 w-3 rounded-full bg-white transition-transform ${
+                        tcConfig.modo_credito ? 'translate-x-3.5' : 'translate-x-0.5'
+                      }`}
+                    />
+                  </span>
+                  {tcConfig.modo_credito ? 'Activo' : 'Inactivo'}
+                </button>
+              </div>
+            )}
 
             <div className="mt-6 rounded-2xl border border-rose-500/35 bg-black/25 px-4 py-5 text-center">
               <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-rose-400">Cashback acumulado</p>

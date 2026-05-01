@@ -286,7 +286,7 @@ export default function MovimientosMes() {
     const gas = transaccionesDelMes.filter((t) => t.tipo === 'gasto').reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
     const sus = transaccionesDelMes.filter((t) => t.tipo === 'suscripcion').reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
     const salidasEf = transaccionesDelMes
-      .filter(cuentaComoSalidaDeEfectivo)
+      .filter((t) => cuentaComoSalidaDeEfectivo(t))
       .reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
     return {
       ingresos: ing,

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import { notify } from '../components/Toaster'
 import type { CompraCuotas } from '../lib/types'
 
 export function useCuotas() {
@@ -35,17 +36,22 @@ export function useCuotas() {
       monto_cuota,
     })
     if (error) {
-      window.alert('Error: ' + error.message)
+      notify.error('No se pudo crear la compra', error.message)
       return false
     }
     await fetchCuotas()
+    notify.success('Compra registrada')
     return true
   }, [fetchCuotas])
 
   const deleteCuota = useCallback(async (id: string) => {
     const { error } = await supabase.from('compras_cuotas').delete().eq('id', id)
-    if (error) window.alert('Error: ' + error.message)
-    else await fetchCuotas()
+    if (error) {
+      notify.error('No se pudo eliminar', error.message)
+    } else {
+      notify.success('Compra eliminada')
+      await fetchCuotas()
+    }
   }, [fetchCuotas])
 
   return { cuotas, loading, insertCuota, deleteCuota, refetch: fetchCuotas }

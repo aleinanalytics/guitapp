@@ -1,16 +1,30 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { addMonths, isAfter, parseISO, startOfDay } from 'date-fns'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import { useTipoCambio } from './useTipoCambio'
 import { convertirARS, cuentaComoSalidaDeEfectivo, esIngresoReintegroTarjetaCredito } from '../lib/utils'
-import type { BolsilloTipo, BolsilloConfig, BolsilloMovimiento, Moneda, Transaccion } from '../lib/types'
+import type { BolsilloTipo, BolsilloConfig, BolsilloMovimiento, Moneda, Transaccion, CompraCuotas } from '../lib/types'
 
 function movimientoEquivalenteARS(m: BolsilloMovimiento, tc: number): number {
   const mon = m.moneda ?? 'ARS'
   return mon === 'USD' ? m.monto * tc : m.monto
 }
 
-export function useBolsillos() {
+/** Cuántas cuotas de una compra ya vencieron hasta hoy (inclusive). */
+function cuotasPagadasHastaHoy(c: Pick<CompraCuotas, 'cuotas_total' | 'fecha_primera_cuota'>): number {
+  const primera = startOfDay(parseISO(c.fecha_primera_cuota))
+  const hoy = startOfDay(new Date())
+  let count = 0
+  for (let i = 0; i < c.cuotas_total; i++) {
+    const fechaCuota = addMonths(primera, i)
+    if (!isAfter(fechaCuota, hoy)) count++
+    else break
+  }
+  return count
+}
+
+export function useBolsillos({ modoCredito = false }: { modoCredito?: boolean } = {}) {
   const { user } = useAuth()
   const { tipoCambio } = useTipoCambio()
   const tc = tipoCambio?.usd_ars ?? 1000
@@ -32,13 +46,14 @@ export function useBolsillos() {
     setLoading(true)
     setError(null)
 
-    const [movRes, cfgRes, txRes] = await Promise.all([
+    const [movRes, cfgRes, txRes, cuotasRes] = await Promise.all([
       supabase
         .from('bolsillo_movimientos')
         .select('*')
         .order('created_at', { ascending: false }),
       supabase.from('bolsillos_config').select('*'),
       supabase.from('transacciones').select('monto, moneda, tipo, medio_pago, excluye_saldo'),
+      supabase.from('compras_cuotas').select('monto_cuota, cuotas_total, fecha_primera_cuota, moneda'),
     ])
 
     if (movRes.error) setError(movRes.error.message)
@@ -67,13 +82,24 @@ export function useBolsillos() {
         const ars = convertirARS(Number(t.monto), t.moneda as 'ARS' | 'USD', tc)
         if (t.tipo === 'ingreso' && !esIngresoReintegroTarjetaCredito(t as Pick<Transaccion, 'tipo' | 'medio_pago'>))
           ing += ars
-        else if (cuentaComoSalidaDeEfectivo(t as Pick<Transaccion, 'tipo' | 'medio_pago' | 'excluye_saldo'>)) salidasEf += ars
+        else if (cuentaComoSalidaDeEfectivo(t as Pick<Transaccion, 'tipo' | 'medio_pago' | 'excluye_saldo'>, modoCredito)) salidasEf += ars
       }
+
+      // En modo crédito, las cuotas ya pagadas también reducen el disponible
+      if (modoCredito && !cuotasRes.error && cuotasRes.data) {
+        for (const c of cuotasRes.data as CompraCuotas[]) {
+          const pagadas = cuotasPagadasHastaHoy(c)
+          if (pagadas > 0) {
+            salidasEf += convertirARS(Number(c.monto_cuota) * pagadas, c.moneda as 'ARS' | 'USD', tc)
+          }
+        }
+      }
+
       setFluidoHistorial(ing - salidasEf)
     }
 
     setLoading(false)
-  }, [user, tc])
+  }, [user, tc, modoCredito])
 
   useEffect(() => {
     refetch()

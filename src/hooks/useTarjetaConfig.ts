@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { addMonths, format, isBefore, parseISO, startOfDay } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { supabase } from '../lib/supabase'
+import { notify } from '../components/Toaster'
 import type { TarjetaConfig } from '../lib/types'
 
 /** Próxima fecha de ciclo: la guardada o la misma fecha en meses futuros hasta que sea ≥ hoy */
@@ -68,7 +69,9 @@ function normalizarConfig(row: Record<string, unknown> | null): TarjetaConfig | 
   if (!fecha_vencimiento && dia_vencimiento != null) fecha_vencimiento = legacyDiaAFecha(dia_vencimiento)
   if (!fecha_cierre || !fecha_vencimiento) return null
 
-  return { id, user_id, fecha_cierre, fecha_vencimiento }
+  const modo_credito = !!row.modo_credito
+
+  return { id, user_id, fecha_cierre, fecha_vencimiento, modo_credito }
 }
 
 export function useTarjetaConfig() {
@@ -90,13 +93,14 @@ export function useTarjetaConfig() {
 
     const { min, max } = rangoPickerTarjeta()
     if (fecha_cierre < min || fecha_cierre > max || fecha_vencimiento < min || fecha_vencimiento > max) {
-      window.alert(
-        'Las fechas deben estar entre aproximadamente 15 años atrás y 5 años adelante. Si ves este mensaje con fechas razonables, revisá el año en el calendario.',
+      notify.error(
+        'Fecha inválida',
+        'Las fechas deben estar entre aproximadamente 15 años atrás y 5 años adelante.',
       )
       return false
     }
     if (fecha_vencimiento < fecha_cierre) {
-      window.alert('El vencimiento no puede ser anterior al cierre.')
+      notify.error('Fecha inválida', 'El vencimiento no puede ser anterior al cierre.')
       return false
     }
 
@@ -105,16 +109,34 @@ export function useTarjetaConfig() {
         .from('tarjeta_config')
         .update({ fecha_cierre, fecha_vencimiento })
         .eq('user_id', user.id)
-      if (error) { window.alert('Error: ' + error.message); return false }
+      if (error) { notify.error('No se pudo actualizar', error.message); return false }
     } else {
       const { error } = await supabase
         .from('tarjeta_config')
         .insert({ user_id: user.id, fecha_cierre, fecha_vencimiento })
-      if (error) { window.alert('Error: ' + error.message); return false }
+      if (error) { notify.error('No se pudo guardar', error.message); return false }
     }
     await fetchConfig()
     return true
   }, [config, fetchConfig])
 
-  return { config, loading, upsert, refetch: fetchConfig }
+  const toggleModoCredito = useCallback(async () => {
+    if (!config) return false
+    const nuevo = !config.modo_credito
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return false
+
+    const { error } = await supabase
+      .from('tarjeta_config')
+      .update({ modo_credito: nuevo })
+      .eq('user_id', user.id)
+    if (error) {
+      notify.error('No se pudo actualizar', error.message)
+      return false
+    }
+    await fetchConfig()
+    return true
+  }, [config, fetchConfig])
+
+  return { config, loading, upsert, toggleModoCredito, refetch: fetchConfig }
 }

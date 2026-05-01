@@ -83,14 +83,15 @@ export default function Dashboard() {
   const { transacciones, loading } = useTransacciones({ mes, anio })
   const { tipoCambio, dolarLive } = useTipoCambio()
   const { cuotas } = useCuotas()
-  const { config: tcConfig } = useTarjetaConfig()
+  const { config: tcConfig, toggleModoCredito } = useTarjetaConfig()
   const { transacciones: txAnio } = useAnalisis({ anio })
+  const modoCredito = !!tcConfig?.modo_credito
   const {
     disponible: disponibleReservas,
     saldoEquivARS,
     configs: bolsillosConfigs,
     loading: loadingBolsillos,
-  } = useBolsillos()
+  } = useBolsillos({ modoCredito })
 
   const diaCierreTc =
     tcConfig?.fecha_cierre != null
@@ -143,7 +144,7 @@ export default function Dashboard() {
 
   /** Prioriza cotización de la API (dolarapi); si no hay, fila en BD; último recurso 1000. */
   const tc = dolarLive ?? tipoCambio?.usd_ars ?? 1000
-  const { saldoAcumulado, loading: loadingSaldoAcum } = useSaldoAcumuladoHastaMes({ mes, anio, tc })
+  const { saldoAcumulado, loading: loadingSaldoAcum } = useSaldoAcumuladoHastaMes({ mes, anio, tc, modoCredito })
 
   const ingresosMesAnterior = useMemo(
     () =>
@@ -781,6 +782,37 @@ export default function Dashboard() {
                 <CreditCard size={22} className="shrink-0 text-rose-400" strokeWidth={2} />
                 <span className="text-base font-bold tracking-tight text-white">Tarjeta de Crédito</span>
               </div>
+
+              {tcConfig && (
+                <div className="mb-3 flex items-center justify-center">
+                  <button
+                    type="button"
+                    onClick={async (e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      await toggleModoCredito()
+                    }}
+                    className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold transition-all duration-200 ${
+                      tcConfig.modo_credito
+                        ? 'bg-rose-500/20 text-rose-300 ring-1 ring-rose-500/30'
+                        : 'bg-white/[0.04] text-gray-500 hover:text-gray-300 ring-1 ring-white/[0.08]'
+                    }`}
+                  >
+                    <span
+                      className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${
+                        tcConfig.modo_credito ? 'bg-rose-500' : 'bg-gray-600'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-3 w-3 rounded-full bg-white transition-transform ${
+                          tcConfig.modo_credito ? 'translate-x-3.5' : 'translate-x-0.5'
+                        }`}
+                      />
+                    </span>
+                    {tcConfig.modo_credito ? 'TC resta del disponible' : 'TC no afecta disponible'}
+                  </button>
+                </div>
+              )}
 
               {tcConfig ? (
                 <div className="mb-4 flex flex-row flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[10px] sm:gap-x-3">

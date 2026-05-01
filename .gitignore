@@ -14,3 +14,6 @@ dist/
 
 # Claude Code local (opcional; quita esta línea si quieres versionar settings)
 .claude/settings.local.json
+
+# ZIPs generados para subir skills a la app Claude (Customize → Skills)
+claude-app-skill-zips/
