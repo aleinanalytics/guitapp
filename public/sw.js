@@ -1,4 +1,4 @@
-const CACHE_NAME = 'guitaapp-v1'
+const CACHE_NAME = 'guitaapp-v2'
 const ASSETS = [
   '/',
   '/index.html',
@@ -31,19 +31,12 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event
 
-  // API calls: network first, fallback to cache
-  if (request.url.includes('supabase.co')) {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          const clone = response.clone()
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone))
-          return response
-        })
-        .catch(() => caches.match(request)),
-    )
-    return
-  }
+  // No cachear requests que no sean GET (evita errores silenciosos con POST/PUT/DELETE)
+  if (request.method !== 'GET') return
+
+  // No cachear API de Supabase: respuestas autenticadas podrían filtrarse
+  // entre usuarios si comparten el mismo dispositivo/browser.
+  if (request.url.includes('supabase.co')) return
 
   // Static assets: cache first, fallback to network
   event.respondWith(

@@ -54,8 +54,8 @@ export interface Database {
           tipo: 'ingreso' | 'gasto' | 'suscripcion'
           medio_pago: 'efectivo' | 'tarjeta' | 'transferencia'
           categoria_id: string | null
-          es_gasto_fijo: boolean | null
-          excluye_saldo: boolean | null
+          es_gasto_fijo: boolean
+          excluye_saldo: boolean
           created_at: string
         }
         Insert: {
@@ -68,8 +68,8 @@ export interface Database {
           tipo: 'ingreso' | 'gasto' | 'suscripcion'
           medio_pago: 'efectivo' | 'tarjeta' | 'transferencia'
           categoria_id?: string | null
-          es_gasto_fijo?: boolean | null
-          excluye_saldo?: boolean | null
+          es_gasto_fijo?: boolean
+          excluye_saldo?: boolean
           created_at?: string
         }
         Update: {
@@ -82,8 +82,31 @@ export interface Database {
           tipo?: 'ingreso' | 'gasto' | 'suscripcion'
           medio_pago?: 'efectivo' | 'tarjeta' | 'transferencia'
           categoria_id?: string | null
-          es_gasto_fijo?: boolean | null
-          excluye_saldo?: boolean | null
+          es_gasto_fijo?: boolean
+          excluye_saldo?: boolean
+          created_at?: string
+        }
+      }
+      tipo_cambio: {
+        Row: {
+          id: string
+          user_id: string
+          fecha: string
+          usd_ars: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          fecha: string
+          usd_ars: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          fecha?: string
+          usd_ars?: number
           created_at?: string
         }
       }
@@ -172,6 +195,7 @@ export interface Database {
           user_id: string
           fecha_cierre: string
           fecha_vencimiento: string
+          modo_credito: boolean
           created_at: string
         }
         Insert: {
@@ -179,6 +203,7 @@ export interface Database {
           user_id: string
           fecha_cierre: string
           fecha_vencimiento: string
+          modo_credito?: boolean
           created_at?: string
         }
         Update: {
@@ -186,30 +211,11 @@ export interface Database {
           user_id?: string
           fecha_cierre?: string
           fecha_vencimiento?: string
+          modo_credito?: boolean
           created_at?: string
         }
       }
-      tipo_cambio: {
-        Row: {
-          id: string
-          fecha: string
-          usd_ars: number
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          fecha: string
-          usd_ars: number
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          fecha?: string
-          usd_ars?: number
-          created_at?: string
-        }
-      }
-      bolsillo_config: {
+      bolsillos_config: {
         Row: {
           user_id: string
           tipo: 'ahorro' | 'emergencia'
@@ -261,23 +267,26 @@ export interface Database {
       feedback: {
         Row: {
           id: string
-          user_id: string
-          tipo: 'bug' | 'feature' | 'mejora' | 'otro'
+          user_id: string | null
+          tipo: 'fallo' | 'funcion' | 'categoria' | 'otro'
           mensaje: string
+          email: string | null
           created_at: string
         }
         Insert: {
           id?: string
-          user_id: string
-          tipo: 'bug' | 'feature' | 'mejora' | 'otro'
+          user_id?: string | null
+          tipo: 'fallo' | 'funcion' | 'categoria' | 'otro'
           mensaje: string
+          email?: string | null
           created_at?: string
         }
         Update: {
           id?: string
-          user_id?: string
-          tipo?: 'bug' | 'feature' | 'mejora' | 'otro'
+          user_id?: string | null
+          tipo?: 'fallo' | 'funcion' | 'categoria' | 'otro'
           mensaje?: string
+          email?: string | null
           created_at?: string
         }
       }

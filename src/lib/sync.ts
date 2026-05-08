@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { guardarPendiente, obtenerPendientes, eliminarPendiente, type TransaccionPendiente } from './offlineStore'
+import { guardarPendiente, obtenerPendientesPorUsuario, eliminarPendiente, type TransaccionPendiente } from './offlineStore'
 import { notify } from '../components/Toaster'
 
 /**
@@ -35,14 +35,17 @@ export async function guardarTransaccionConFallback(
 }
 
 /**
- * Sincroniza todas las transacciones pendientes con Supabase.
+ * Sincroniza las transacciones pendientes del usuario actual con Supabase.
  * Llama a onSuccess por cada transacción sincronizada.
  */
 export async function sincronizarPendientes(onSuccess?: () => void): Promise<{
   sincronizadas: number
   errores: number
 }> {
-  const pendientes = await obtenerPendientes()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { sincronizadas: 0, errores: 0 }
+
+  const pendientes = await obtenerPendientesPorUsuario(user.id)
   if (pendientes.length === 0) return { sincronizadas: 0, errores: 0 }
 
   let sincronizadas = 0

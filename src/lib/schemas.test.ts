@@ -54,6 +54,7 @@ describe('transaccionSchema', () => {
     tipo: 'gasto',
     medio_pago: 'efectivo',
     fecha: '2024-03-15',
+    categoria_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
   }
 
   it('acepta transacción válida', () => {
@@ -78,8 +79,8 @@ describe('transaccionSchema', () => {
     expect(() => transaccionSchema.parse({ ...base, fecha: '2024/03/15' })).toThrow()
   })
 
-  it('acepta categoria_id nulo', () => {
-    expect(transaccionSchema.parse({ ...base, categoria_id: null })).toEqual({ ...base, categoria_id: null })
+  it('rechaza categoria_id inválido', () => {
+    expect(() => transaccionSchema.parse({ ...base, categoria_id: 'no-uuid' })).toThrow()
   })
 
   it('acepta flags opcionales', () => {
@@ -99,6 +100,7 @@ describe('compraCuotasSchema', () => {
     cuotas_total: 12,
     fecha_primera_cuota: '2024-03-15',
     moneda: 'ARS',
+    categoria_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
   }
 
   it('acepta compra válida', () => {
@@ -156,14 +158,31 @@ describe('tarjetaConfigSchema', () => {
 // ─── feedbackSchema ───────────────────────────────────────────────────────────
 describe('feedbackSchema', () => {
   it('acepta feedback válido', () => {
-    expect(feedbackSchema.parse({ tipo: 'bug', mensaje: 'No funciona el botón de guardar' })).toEqual({
-      tipo: 'bug',
+    expect(feedbackSchema.parse({ tipo: 'fallo', mensaje: 'No funciona el botón de guardar' })).toEqual({
+      tipo: 'fallo',
       mensaje: 'No funciona el botón de guardar',
+      email: undefined,
     })
   })
 
+  it('acepta feedback con email', () => {
+    expect(feedbackSchema.parse({ tipo: 'funcion', mensaje: 'Agregar modo oscuro', email: 'test@example.com' })).toEqual({
+      tipo: 'funcion',
+      mensaje: 'Agregar modo oscuro',
+      email: 'test@example.com',
+    })
+  })
+
+  it('rechaza tipo inválido', () => {
+    expect(() => feedbackSchema.parse({ tipo: 'bug', mensaje: 'No funciona el botón de guardar' })).toThrow()
+  })
+
   it('rechaza mensaje corto', () => {
-    expect(() => feedbackSchema.parse({ tipo: 'bug', mensaje: 'corto' })).toThrow()
+    expect(() => feedbackSchema.parse({ tipo: 'fallo', mensaje: 'corto' })).toThrow()
+  })
+
+  it('rechaza email inválido', () => {
+    expect(() => feedbackSchema.parse({ tipo: 'otro', mensaje: 'Mensaje válido de más de diez caracteres', email: 'no-es-email' })).toThrow()
   })
 })
 

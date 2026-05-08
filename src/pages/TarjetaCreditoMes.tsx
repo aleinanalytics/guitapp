@@ -87,8 +87,12 @@ export default function TarjetaCreditoMes() {
   }
   const saveConfig = async () => {
     if (!inputCierre || !inputVto) return
-    const ok = await upsertConfig(inputCierre, inputVto)
-    if (ok) setEditingConfig(false)
+    try {
+      await upsertConfig({ fecha_cierre: inputCierre, fecha_vencimiento: inputVto })
+      setEditingConfig(false)
+    } catch {
+      // error ya mostrado por notify en el hook
+    }
   }
 
   /** Pagos únicos al cierre: gastos y suscripciones con tarjeta de crédito. */

@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import type { User, Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
+import { notify } from '../components/Toaster'
 
 type AuthError = { error: string | null }
 
@@ -42,7 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       provider: 'google',
       options: { redirectTo: window.location.origin },
     })
-    if (error) window.alert('Error al iniciar sesión: ' + error.message)
+    if (error) notify.error('Error al iniciar sesión: ' + error.message)
   }
 
   const signInWithEmail = async (email: string, password: string) => {

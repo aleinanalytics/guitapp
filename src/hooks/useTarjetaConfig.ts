@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from 'react'
 import { addMonths, format, isBefore, parseISO, startOfDay } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { notify } from '../components/Toaster'
+import { tarjetaConfigSchema, parseFormData } from '../lib/schemas'
 import type { TarjetaConfig } from '../lib/types'
 
 /** Próxima fecha de ciclo: la guardada o la misma fecha en meses futuros hasta que sea ≥ hoy */
@@ -74,69 +75,84 @@ function normalizarConfig(row: Record<string, unknown> | null): TarjetaConfig | 
   return { id, user_id, fecha_cierre, fecha_vencimiento, modo_credito }
 }
 
+async function fetchTarjetaConfig(): Promise<TarjetaConfig | null> {
+  const { data } = await supabase.from('tarjeta_config').select('*').maybeSingle()
+  return normalizarConfig(data as Record<string, unknown> | null)
+}
+
 export function useTarjetaConfig() {
-  const [config, setConfig] = useState<TarjetaConfig | null>(null)
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
 
-  const fetchConfig = useCallback(async () => {
-    setLoading(true)
-    const { data } = await supabase.from('tarjeta_config').select('*').maybeSingle()
-    setConfig(normalizarConfig(data as Record<string, unknown> | null))
-    setLoading(false)
-  }, [])
+  const query = useQuery({
+    queryKey: ['tarjeta_config'],
+    queryFn: fetchTarjetaConfig,
+  })
 
-  useEffect(() => { fetchConfig() }, [fetchConfig])
+  const upsertMutation = useMutation({
+    mutationFn: async ({ fecha_cierre, fecha_vencimiento }: { fecha_cierre: string; fecha_vencimiento: string }) => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('No autenticado')
 
-  const upsert = useCallback(async (fecha_cierre: string, fecha_vencimiento: string) => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return false
+      const parsed = parseFormData(tarjetaConfigSchema, { fecha_cierre, fecha_vencimiento })
+      if (!parsed.success) throw new Error(parsed.errors.join(' · '))
 
-    const { min, max } = rangoPickerTarjeta()
-    if (fecha_cierre < min || fecha_cierre > max || fecha_vencimiento < min || fecha_vencimiento > max) {
-      notify.error(
-        'Fecha inválida',
-        'Las fechas deben estar entre aproximadamente 15 años atrás y 5 años adelante.',
-      )
-      return false
-    }
-    if (fecha_vencimiento < fecha_cierre) {
-      notify.error('Fecha inválida', 'El vencimiento no puede ser anterior al cierre.')
-      return false
-    }
+      const { min, max } = rangoPickerTarjeta()
+      if (fecha_cierre < min || fecha_cierre > max || fecha_vencimiento < min || fecha_vencimiento > max) {
+        throw new Error('Las fechas deben estar entre aproximadamente 15 años atrás y 5 años adelante.')
+      }
+      if (fecha_vencimiento < fecha_cierre) {
+        throw new Error('El vencimiento no puede ser anterior al cierre.')
+      }
 
-    if (config) {
+      if (query.data) {
+        const { error } = await supabase
+          .from('tarjeta_config')
+          .update({ fecha_cierre, fecha_vencimiento })
+          .eq('user_id', user.id)
+        if (error) throw new Error(error.message)
+      } else {
+        const { error } = await supabase
+          .from('tarjeta_config')
+          .insert({ user_id: user.id, fecha_cierre, fecha_vencimiento })
+        if (error) throw new Error(error.message)
+      }
+      return true
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tarjeta_config'] })
+    },
+    onError: (err: Error) => {
+      notify.error('No se pudo guardar', err.message)
+    },
+  })
+
+  const toggleModoCreditoMutation = useMutation({
+    mutationFn: async () => {
+      if (!query.data) throw new Error('No hay configuración')
+      const nuevo = !query.data.modo_credito
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('No autenticado')
+
       const { error } = await supabase
         .from('tarjeta_config')
-        .update({ fecha_cierre, fecha_vencimiento })
+        .update({ modo_credito: nuevo })
         .eq('user_id', user.id)
-      if (error) { notify.error('No se pudo actualizar', error.message); return false }
-    } else {
-      const { error } = await supabase
-        .from('tarjeta_config')
-        .insert({ user_id: user.id, fecha_cierre, fecha_vencimiento })
-      if (error) { notify.error('No se pudo guardar', error.message); return false }
-    }
-    await fetchConfig()
-    return true
-  }, [config, fetchConfig])
+      if (error) throw new Error(error.message)
+      return true
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tarjeta_config'] })
+    },
+    onError: (err: Error) => {
+      notify.error('No se pudo actualizar', err.message)
+    },
+  })
 
-  const toggleModoCredito = useCallback(async () => {
-    if (!config) return false
-    const nuevo = !config.modo_credito
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return false
-
-    const { error } = await supabase
-      .from('tarjeta_config')
-      .update({ modo_credito: nuevo })
-      .eq('user_id', user.id)
-    if (error) {
-      notify.error('No se pudo actualizar', error.message)
-      return false
-    }
-    await fetchConfig()
-    return true
-  }, [config, fetchConfig])
-
-  return { config, loading, upsert, toggleModoCredito, refetch: fetchConfig }
+  return {
+    config: query.data ?? null,
+    loading: query.isLoading,
+    upsert: upsertMutation.mutateAsync,
+    toggleModoCredito: toggleModoCreditoMutation.mutateAsync,
+    refetch: query.refetch,
+  }
 }

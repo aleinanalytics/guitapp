@@ -69,10 +69,12 @@ export function useSaldoAcumuladoHastaMes({
       supabase
         .from('transacciones')
         .select('monto, moneda, tipo, medio_pago, excluye_saldo')
+        .eq('user_id', user.id)
         .lte('fecha', hasta),
       supabase
         .from('compras_cuotas')
-        .select('monto_cuota, cuotas_total, fecha_primera_cuota, moneda'),
+        .select('monto_cuota, cuotas_total, fecha_primera_cuota, moneda')
+        .eq('user_id', user.id),
     ])
 
     if (txRes.error) {

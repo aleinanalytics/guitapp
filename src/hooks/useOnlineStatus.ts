@@ -1,15 +1,21 @@
 import { useState, useEffect, useCallback } from 'react'
-import { contarPendientes } from '../lib/offlineStore'
+import { contarPendientesPorUsuario } from '../lib/offlineStore'
 import { sincronizarPendientes } from '../lib/sync'
+import { useAuth } from '../lib/AuthContext'
 
 export function useOnlineStatus() {
+  const { user } = useAuth()
   const [isOnline, setIsOnline] = useState(navigator.onLine)
   const [pendientesCount, setPendientesCount] = useState(0)
 
   const refreshPendientes = useCallback(async () => {
-    const count = await contarPendientes()
+    if (!user) {
+      setPendientesCount(0)
+      return
+    }
+    const count = await contarPendientesPorUsuario(user.id)
     setPendientesCount(count)
-  }, [])
+  }, [user])
 
   useEffect(() => {
     refreshPendientes()

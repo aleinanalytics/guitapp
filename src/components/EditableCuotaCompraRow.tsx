@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { Pencil, Trash2 } from 'lucide-react'
 import FormEditGuardarCancelar from './FormEditGuardarCancelar'
 import { supabase } from '../lib/supabase'
+import { notify } from '../components/Toaster'
 import { formatARS, formatMontoFromNumber, formatUSD, montoFieldNextValue, parseMontoInput } from '../lib/utils'
 import type { Categoria, CompraCuotas, Moneda } from '../lib/types'
 import { principalesGastoOrdenadas, subcategoriasDe } from '../lib/categoriasJerarquia'
@@ -53,7 +54,7 @@ export default function EditableCuotaCompraRow({
     const nCuotas = parseInt(editCuotasTotal, 10)
     if (!editDesc.trim() || !Number.isFinite(total) || total <= 0 || !editCategoriaId || !editFechaPrimera) return
     if (!Number.isFinite(nCuotas) || nCuotas < 2 || nCuotas > 48) {
-      window.alert('El número de cuotas debe estar entre 2 y 48.')
+      notify.warning('El número de cuotas debe estar entre 2 y 48.')
       return
     }
     const monto_cuota = Math.round((total / nCuotas) * 100) / 100
@@ -68,7 +69,7 @@ export default function EditableCuotaCompraRow({
       fecha_primera_cuota: editFechaPrimera,
     }).eq('id', compra.id)
     setBusy(false)
-    if (error) window.alert('Error: ' + error.message)
+    if (error) notify.error('Error: ' + error.message)
     else {
       setEditing(false)
       onMutated()
@@ -80,7 +81,7 @@ export default function EditableCuotaCompraRow({
     setBusy(true)
     const { error } = await supabase.from('compras_cuotas').delete().eq('id', compra.id)
     setBusy(false)
-    if (error) window.alert('Error: ' + error.message)
+    if (error) notify.error('Error: ' + error.message)
     else {
       setEditing(false)
       onMutated()

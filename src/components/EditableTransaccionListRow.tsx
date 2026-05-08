@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { CreditCard, Pencil, Trash2, ArrowLeftRight, CircleDollarSign } from 'lucide-react'
 import FormEditGuardarCancelar from './FormEditGuardarCancelar'
 import { supabase } from '../lib/supabase'
+import { notify } from '../components/Toaster'
 import { formatMontoFromNumber, montoFieldNextValue, parseMontoInput } from '../lib/utils'
 import type { Categoria, TipoTransaccion, Transaccion } from '../lib/types'
 import { principalesGastoOrdenadas, subcategoriasDe } from '../lib/categoriasJerarquia'
@@ -63,7 +64,7 @@ export default function EditableTransaccionListRow({ t, categorias, delay = 0, m
     if (t.tipo === 'ingreso') patch.medio_pago = editIngresoReintegroTc ? 'tarjeta' : 'efectivo'
     const { error } = await supabase.from('transacciones').update(patch).eq('id', t.id)
     setBusy(false)
-    if (error) window.alert('Error: ' + error.message)
+    if (error) notify.error('Error: ' + error.message)
     else {
       setEditing(false)
       onMutated()
@@ -75,7 +76,7 @@ export default function EditableTransaccionListRow({ t, categorias, delay = 0, m
     setBusy(true)
     const { error } = await supabase.from('transacciones').delete().eq('id', t.id)
     setBusy(false)
-    if (error) window.alert('Error: ' + error.message)
+    if (error) notify.error('Error: ' + error.message)
     else {
       setEditing(false)
       onMutated()

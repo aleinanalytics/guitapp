@@ -39,7 +39,7 @@ export const transaccionSchema = z.object({
   tipo: tipoTransaccionSchema,
   medio_pago: medioPagoSchema,
   fecha: fechaValida,
-  categoria_id: z.string().uuid().nullable().optional(),
+  categoria_id: z.string().uuid(),
   es_gasto_fijo: z.boolean().optional(),
   excluye_saldo: z.boolean().optional(),
 })
@@ -53,7 +53,7 @@ export const compraCuotasSchema = z.object({
   cuotas_total: z.number().int().min(2, 'Mínimo 2 cuotas').max(48, 'Máximo 48 cuotas'),
   fecha_primera_cuota: fechaValida,
   moneda: monedaSchema,
-  categoria_id: z.string().uuid().nullable().optional(),
+  categoria_id: z.string().uuid(),
 })
 
 export type CompraCuotasFormData = z.infer<typeof compraCuotasSchema>
@@ -80,8 +80,9 @@ export type TarjetaConfigFormData = z.infer<typeof tarjetaConfigSchema>
 
 // ─── Schema: Feedback ──────────────────────────────────────────────────────────
 export const feedbackSchema = z.object({
-  tipo: z.enum(['bug', 'feature', 'mejora', 'otro']),
+  tipo: z.enum(['fallo', 'funcion', 'categoria', 'otro']),
   mensaje: stringNoVacio.min(10, 'Mínimo 10 caracteres').max(1000, 'Máximo 1000 caracteres'),
+  email: z.string().email('Email inválido').optional().nullable(),
 })
 
 export type FeedbackFormData = z.infer<typeof feedbackSchema>

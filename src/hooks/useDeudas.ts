@@ -1,91 +1,103 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { notify } from '../components/Toaster'
 import type { Deuda } from '../lib/types'
 
+async function fetchDeudas(): Promise<Deuda[]> {
+  const { data, error } = await supabase
+    .from('deudas')
+    .select('*')
+    .order('created_at', { ascending: false })
+  if (error) throw new Error(error.message)
+  return (data as Deuda[]) ?? []
+}
+
 export function useDeudas() {
-  const [deudas, setDeudas] = useState<Deuda[]>([])
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
 
-  const fetchDeudas = useCallback(async () => {
-    setLoading(true)
-    const { data } = await supabase
-      .from('deudas')
-      .select('*')
-      .order('created_at', { ascending: false })
-    setDeudas((data as Deuda[]) ?? [])
-    setLoading(false)
-  }, [])
+  const query = useQuery({
+    queryKey: ['deudas'],
+    queryFn: fetchDeudas,
+  })
 
-  useEffect(() => { fetchDeudas() }, [fetchDeudas])
+  const insertDeuda = useMutation({
+    mutationFn: async (deuda: {
+      descripcion: string
+      tipo_deuda: string
+      monto_total: number
+      cuotas_total: number
+      fecha_primera_cuota: string
+      moneda: string
+    }) => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('No autenticado')
+      const monto_cuota = Math.round((deuda.monto_total / deuda.cuotas_total) * 100) / 100
+      const { error } = await supabase.from('deudas').insert({
+        user_id: user.id,
+        ...deuda,
+        monto_cuota,
+      })
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['deudas'] })
+    },
+    onError: (err: Error) => {
+      notify.error('No se pudo crear la deuda', err.message)
+    },
+  })
 
-  const insertDeuda = useCallback(async (deuda: {
-    descripcion: string
-    tipo_deuda: string
-    monto_total: number
-    cuotas_total: number
-    fecha_primera_cuota: string
-    moneda: string
-  }) => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return false
-    const monto_cuota = Math.round((deuda.monto_total / deuda.cuotas_total) * 100) / 100
-    const { error } = await supabase.from('deudas').insert({
-      user_id: user.id,
-      ...deuda,
-      monto_cuota,
-    })
-    if (error) {
-      notify.error('No se pudo crear la deuda', error.message)
-      return false
-    }
-    await fetchDeudas()
-    return true
-  }, [fetchDeudas])
-
-  const updateDeuda = useCallback(async (id: string, deuda: {
-    descripcion?: string
-    tipo_deuda?: string
-    monto_total?: number
-    cuotas_total?: number
-    fecha_primera_cuota?: string
-    moneda?: string
-  }) => {
-    const updates: Record<string, unknown> = { ...deuda }
-    if (deuda.monto_total != null && deuda.cuotas_total != null) {
-      updates.monto_cuota = Math.round((deuda.monto_total / deuda.cuotas_total) * 100) / 100
-    } else if (deuda.monto_total != null) {
-      const existing = deudas.find(d => d.id === id)
-      if (existing) {
+  const updateDeuda = useMutation({
+    mutationFn: async ({ id, deuda }: { id: string; deuda: {
+      descripcion?: string
+      tipo_deuda?: string
+      monto_total?: number
+      cuotas_total?: number
+      fecha_primera_cuota?: string
+      moneda?: string
+    } }) => {
+      const updates: Record<string, unknown> = { ...deuda }
+      const existing = query.data?.find((d) => d.id === id)
+      if (deuda.monto_total != null && deuda.cuotas_total != null) {
+        updates.monto_cuota = Math.round((deuda.monto_total / deuda.cuotas_total) * 100) / 100
+      } else if (deuda.monto_total != null && existing) {
         updates.monto_cuota = Math.round((deuda.monto_total / existing.cuotas_total) * 100) / 100
-      }
-    } else if (deuda.cuotas_total != null) {
-      const existing = deudas.find(d => d.id === id)
-      if (existing) {
+      } else if (deuda.cuotas_total != null && existing) {
         updates.monto_cuota = Math.round((existing.monto_total / deuda.cuotas_total) * 100) / 100
       }
-    }
-    const { error } = await supabase.from('deudas').update(updates).eq('id', id)
-    if (error) {
-      notify.error('No se pudo actualizar la deuda', error.message)
-      return false
-    }
-    await fetchDeudas()
-    return true
-  }, [fetchDeudas, deudas])
+      const { error } = await supabase.from('deudas').update(updates).eq('id', id)
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['deudas'] })
+    },
+    onError: (err: Error) => {
+      notify.error('No se pudo actualizar la deuda', err.message)
+    },
+  })
 
-  const deleteDeuda = useCallback(async (id: string) => {
-    const { error } = await supabase.from('deudas').delete().eq('id', id)
-    if (error) {
-      notify.error('No se pudo eliminar la deuda', error.message)
-      return false
-    }
-    await fetchDeudas()
-    notify.success('Deuda eliminada')
-    return true
-  }, [fetchDeudas])
+  const deleteDeuda = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('deudas').delete().eq('id', id)
+      if (error) throw new Error(error.message)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['deudas'] })
+      notify.success('Deuda eliminada')
+    },
+    onError: (err: Error) => {
+      notify.error('No se pudo eliminar la deuda', err.message)
+    },
+  })
 
-  return { deudas, loading, insertDeuda, updateDeuda, deleteDeuda, refetch: fetchDeudas }
+  return {
+    deudas: query.data ?? [],
+    loading: query.isLoading,
+    insertDeuda: insertDeuda.mutateAsync,
+    updateDeuda: updateDeuda.mutateAsync,
+    deleteDeuda: deleteDeuda.mutateAsync,
+    refetch: query.refetch,
+  }
 }
 
 /**

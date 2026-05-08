@@ -1,23 +1,19 @@
 import { useState, useMemo, useEffect } from 'react'
-import { format } from 'date-fns'
-import { es } from 'date-fns/locale'
 import { Link, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Pencil, X, TrendingUp, TrendingDown, CreditCard, RotateCcw, Shield, Store, Banknote } from 'lucide-react'
-import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell,
-  LineChart, Line, CartesianGrid, Legend,
-} from 'recharts'
+import { Pencil, X, TrendingUp, TrendingDown, CreditCard, RotateCcw, Store, Banknote } from 'lucide-react'
 import KPICard from '../components/KPICard'
 import PorcentajeDelIngresoKpi from '../components/PorcentajeDelIngresoKpi'
 import VariacionIngresosMesAnteriorKpi from '../components/VariacionIngresosMesAnteriorKpi'
 import MobileUserMenu from '../components/MobileUserMenu'
+import DashboardTarjetaSection from '../components/DashboardTarjetaSection'
+import DashboardFondoSection from '../components/DashboardFondoSection'
+import { DashboardPieChart, DashboardBarChart, DashboardLineChart } from '../components/DashboardCharts'
 import { useTransacciones } from '../hooks/useTransacciones'
 import { useSaldoAcumuladoHastaMes } from '../hooks/useSaldoAcumuladoHastaMes'
 import { useTipoCambio } from '../hooks/useTipoCambio'
 import { useCuotas, getCuotaForMonth } from '../hooks/useCuotas'
-import { useTarjetaConfig, fechaProximaCiclo, countdownTarjeta } from '../hooks/useTarjetaConfig'
+import { useTarjetaConfig } from '../hooks/useTarjetaConfig'
 import { useAnalisis } from '../hooks/useAnalisis'
 import type { Categoria, Moneda, Transaccion } from '../lib/types'
 
@@ -51,11 +47,6 @@ const MESES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ]
-
-/** Fecha corta tipo "28 OCT" para filas Cierre / Vence en KPI home TC. */
-function tcFechaCortaHome(iso: string) {
-  return format(fechaProximaCiclo(iso), 'd MMM', { locale: es }).replace(/\./g, '').toUpperCase()
-}
 
 const now = new Date()
 const currentYear = now.getFullYear()
@@ -309,29 +300,12 @@ export default function Dashboard() {
     }
   }, [transaccionesDelMes, cuotas, mes, anio])
 
-  const kpiTarjetaCashbackPrincipal =
-    tarjetaData.reintegroArs > 0
-      ? formatARS(tarjetaData.reintegroArs)
-      : tarjetaData.reintegroUsd > 0
-        ? formatUSD(tarjetaData.reintegroUsd)
-        : formatARS(0)
-  const kpiTarjetaCashbackSecundario =
-    tarjetaData.reintegroArs > 0 && tarjetaData.reintegroUsd > 0 ? formatUSD(tarjetaData.reintegroUsd) : null
-
   // Chart data — desktop only
-  type PieSlice = {
-    name: string
-    value: number
-    color: string
-    /** Si existe, el tooltip/leyenda muestran USD real; value sigue en ARS equivalente solo para el área del gráfico */
-    tarjetaUsdMonto?: number
-  }
-
-  const pieData = useMemo((): PieSlice[] => {
+  const pieData = useMemo(() => {
     const gastosEfectivo = transaccionesDelMes
       .filter((t) => esGastoEnKpisDelMes(t) && t.medio_pago !== 'tarjeta')
       .reduce((s, t) => s + convertirARS(t.monto, t.moneda, tc), 0)
-    const out: PieSlice[] = [
+    const out: { name: string; value: number; color: string; tarjetaUsdMonto?: number }[] = [
       { name: 'Ingresos', value: ingresos, color: '#10b981' },
       { name: 'Gastos', value: gastosEfectivo, color: '#ef4444' },
     ]
@@ -763,315 +737,17 @@ export default function Dashboard() {
             )}
           </div>
 
-          <Link
-            to={toTarjetaCredito}
-            className="block h-full w-full min-w-0 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/45 focus-visible:ring-offset-2 focus-visible:ring-offset-dark-950"
-            aria-label="Ver detalle de tarjeta de crédito"
-          >
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
-              className="relative h-full cursor-pointer overflow-hidden rounded-2xl border border-white/[0.08] p-4 text-center transition-all duration-300 hover:border-white/[0.14] hover:bg-white/[0.02] sm:p-5"
-              style={{
-                background:
-                  'linear-gradient(165deg, rgba(72, 62, 95, 0.35) 0%, rgba(24, 22, 32, 0.92) 42%, rgba(10, 9, 14, 0.98) 100%)',
-              }}
-            >
-              <div className="mb-3 flex items-center justify-center gap-2.5">
-                <CreditCard size={22} className="shrink-0 text-rose-400" strokeWidth={2} />
-                <span className="text-base font-bold tracking-tight text-white">Tarjeta de Crédito</span>
-              </div>
+          <DashboardTarjetaSection
+            tcConfig={tcConfig}
+            toggleModoCredito={toggleModoCredito}
+            tarjetaData={tarjetaData}
+            toTarjetaCredito={toTarjetaCredito}
+          />
 
-              {tcConfig && (
-                <div className="mb-3 flex items-center justify-center">
-                  <button
-                    type="button"
-                    onClick={async (e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      await toggleModoCredito()
-                    }}
-                    className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold transition-all duration-200 ${
-                      tcConfig.modo_credito
-                        ? 'bg-rose-500/20 text-rose-300 ring-1 ring-rose-500/30'
-                        : 'bg-white/[0.04] text-gray-500 hover:text-gray-300 ring-1 ring-white/[0.08]'
-                    }`}
-                  >
-                    <span
-                      className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${
-                        tcConfig.modo_credito ? 'bg-rose-500' : 'bg-gray-600'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-3 w-3 rounded-full bg-white transition-transform ${
-                          tcConfig.modo_credito ? 'translate-x-3.5' : 'translate-x-0.5'
-                        }`}
-                      />
-                    </span>
-                    {tcConfig.modo_credito ? 'TC resta del disponible' : 'TC no afecta disponible'}
-                  </button>
-                </div>
-              )}
-
-              {tcConfig ? (
-                <div className="mb-4 flex flex-row flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[10px] sm:gap-x-3">
-                  <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
-                    <span className="h-2 w-2 shrink-0 rounded-full bg-sky-400" aria-hidden />
-                    <span className="font-bold uppercase tracking-[0.15em] text-gray-500">Cierre</span>
-                    <span className="font-semibold text-gray-100">{tcFechaCortaHome(tcConfig.fecha_cierre)}</span>
-                    <span className="text-sky-400/90">· {countdownTarjeta(tcConfig.fecha_cierre)}</span>
-                  </div>
-                  <span className="shrink-0 px-0.5 text-gray-600 sm:px-1" aria-hidden>
-                    ·
-                  </span>
-                  <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
-                    <span className="h-2 w-2 shrink-0 rounded-full bg-rose-400" aria-hidden />
-                    <span className="font-bold uppercase tracking-[0.15em] text-gray-500">Vence</span>
-                    <span className="font-semibold text-gray-100">{tcFechaCortaHome(tcConfig.fecha_vencimiento)}</span>
-                    <span className="text-rose-400/90">· {countdownTarjeta(tcConfig.fecha_vencimiento)}</span>
-                  </div>
-                </div>
-              ) : (
-                <p className="mb-4 text-[11px] text-gray-500">
-                  Configurá cierre y vencimiento en el detalle de tarjeta.
-                </p>
-              )}
-
-              <div className="mb-4 rounded-2xl border border-rose-500/35 bg-black/25 px-3 py-3.5 text-center">
-                <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-rose-400">Cashback acumulado</p>
-                <p className="mt-2 font-black tabular-nums tracking-tighter text-white text-[clamp(1.1rem,4vw,1.45rem)] leading-none">
-                  {kpiTarjetaCashbackPrincipal}
-                </p>
-                {kpiTarjetaCashbackSecundario && (
-                  <p className="mt-1.5 text-xs font-semibold tabular-nums tracking-tight text-gray-400">
-                    {kpiTarjetaCashbackSecundario}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-4 border-t border-white/[0.06] pt-4">
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500">
-                    Total a pagar (ARS)
-                  </p>
-                  <p
-                    className={`mt-1 break-words font-black tabular-nums tracking-tighter text-white leading-none ${montoDisplayClass(tarjetaData.totalArs, 'pairArsTarjeta')}`}
-                  >
-                    {formatARS(tarjetaData.totalArs)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-500">
-                    Total a pagar (USD)
-                  </p>
-                  <p
-                    className={`mt-1 break-words font-black tabular-nums tracking-tighter text-white leading-none ${montoDisplayClass(tarjetaData.totalUsd, 'pairUsdTarjeta')}`}
-                  >
-                    {formatUSD(tarjetaData.totalUsd)}
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-4 border-t border-white/[0.06] pt-4">
-                <p className="text-center text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500">
-                  Cuotas del mes
-                </p>
-                {tarjetaData.cuotaDetails.length === 0 ? (
-                  <p className="mt-3 text-center text-xs text-gray-500">Sin cuotas en este mes.</p>
-                ) : (
-                  <ul className="mt-3 space-y-2">
-                    {tarjetaData.cuotaDetails.slice(0, 5).map((d, i) => {
-                      const cuotasRest = d.total - d.numero
-                      const montoRestante = cuotasRest > 0 ? cuotasRest * d.monto : 0
-                      return (
-                        <li
-                          key={i}
-                          className="rounded-2xl border border-white/[0.08] bg-[#1a1822] px-4 py-3 text-left"
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0 flex-1">
-                              <p className="text-sm font-medium leading-snug text-white">{d.desc}</p>
-                              <p className="mt-1 text-[11px] leading-snug text-gray-500">
-                                <span>Cuota {d.numero}/{d.total}</span>
-                                {cuotasRest > 0 && (
-                                  <>
-                                    {' '}
-                                    <span aria-hidden>-</span>{' '}
-                                    <span className="font-semibold tabular-nums text-gray-400">
-                                      {d.moneda === 'USD'
-                                        ? formatUSD(montoRestante)
-                                        : formatARS(montoRestante)}
-                                    </span>
-                                  </>
-                                )}
-                              </p>
-                            </div>
-                            <div className="shrink-0 self-start text-right">
-                              <p className="text-sm font-black tabular-nums tracking-tighter text-white">
-                                {d.moneda === 'USD' ? formatUSD(d.monto) : formatARS(d.monto)}
-                              </p>
-                            </div>
-                          </div>
-                        </li>
-                      )
-                    })}
-                  </ul>
-                )}
-                {tarjetaData.cuotaDetails.length > 5 && (
-                  <p className="mt-2 text-center text-[10px] text-gray-500">
-                    +{tarjetaData.cuotaDetails.length - 5} en detalle →
-                  </p>
-                )}
-              </div>
-
-              {(tarjetaData.nextMonthArs > 0 || tarjetaData.nextMonthUsd > 0) && (
-                <div className="mt-4 border-t border-white/[0.06] pt-4">
-                  <ul className="mx-auto w-full max-w-md space-y-2 text-left">
-                      {tarjetaData.nextDetails.slice(0, 4).map((d, i) => {
-                        const cuotasRest = d.total - d.numero
-                        const montoRestante = cuotasRest > 0 ? cuotasRest * d.monto : 0
-                        return (
-                          <li
-                            key={i}
-                            className="rounded-2xl border border-amber-500/35 bg-gradient-to-br from-amber-950/40 via-amber-950/15 to-transparent p-4 sm:p-[1.125rem] shadow-[inset_0_1px_0_0_rgba(251,191,36,0.06)]"
-                          >
-                            <div className="flex items-center justify-between gap-3 sm:gap-4">
-                              <div className="min-w-0 flex-1 space-y-1.5">
-                                <p className="text-[9px] font-bold uppercase leading-none tracking-[0.18em] text-amber-400/85">
-                                  Próximo ciclo
-                                </p>
-                                <p className="text-sm font-medium leading-snug text-amber-50/95">{d.desc}</p>
-                                <p className="text-[11px] leading-snug text-amber-200/50">
-                                  <span>Cuota {d.numero}/{d.total}</span>
-                                  {cuotasRest > 0 && (
-                                    <>
-                                      {' '}
-                                      <span aria-hidden>-</span>{' '}
-                                      <span className="font-semibold tabular-nums text-amber-100/90">
-                                        {d.moneda === 'USD'
-                                          ? formatUSD(montoRestante)
-                                          : formatARS(montoRestante)}
-                                      </span>
-                                    </>
-                                  )}
-                                </p>
-                              </div>
-                              <div className="flex shrink-0 items-center self-stretch text-right">
-                                <p className="text-sm font-black tabular-nums tracking-tighter text-amber-100">
-                                  {d.moneda === 'USD' ? formatUSD(d.monto) : formatARS(d.monto)}
-                                </p>
-                              </div>
-                            </div>
-                          </li>
-                        )
-                      })}
-                  </ul>
-                  {tarjetaData.nextDetails.length > 4 && (
-                    <p className="mx-auto mt-2 max-w-md text-center text-[10px] text-gray-600">
-                      +{tarjetaData.nextDetails.length - 4} más en detalle de tarjeta →
-                    </p>
-                  )}
-                </div>
-              )}
-            </motion.div>
-          </Link>
-
-          {!loadingBolsillos && saldoFondoEmergencia > 0 && (
-            <div className="min-w-0 w-full">
-              <motion.div
-                initial={{ opacity: 0, y: 14 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.22 }}
-              >
-                <Link
-                  to="/fondo-emergencia"
-                  className="block glass relative overflow-hidden rounded-2xl border border-sky-500/25 bg-gradient-to-br from-sky-500/[0.07] to-transparent p-5 sm:p-6 lg:p-7 transition-all duration-300 hover:border-sky-400/35 hover:from-sky-500/[0.1] focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/45 focus-visible:ring-offset-2 focus-visible:ring-offset-dark-950"
-                >
-                  <div
-                    className="pointer-events-none absolute top-0 left-0 right-0 h-[2px] opacity-70"
-                    style={{ background: 'linear-gradient(90deg, transparent, #38bdf8, transparent)' }}
-                  />
-                  <div className="relative flex flex-col items-center text-center gap-6">
-                    <div className="w-full max-w-xl mx-auto px-1">
-                      <div className="flex items-center justify-center gap-2">
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/20 text-sky-300">
-                          <Shield size={22} strokeWidth={2} />
-                        </span>
-                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-200/80">
-                          Fondo de reserva
-                        </p>
-                      </div>
-                      {kpiReserva.tieneMeta ? (
-                        kpiReserva.metaAlcanzada ? (
-                          <>
-                            <p
-                              className={`mt-4 font-black tabular-nums tracking-tighter leading-[1.08] break-words ${montoDisplayClass(kpiReserva.actual, 'kpiStatProminent')} text-emerald-400`}
-                            >
-                              {formatARS(kpiReserva.actual)}
-                            </p>
-                            <p className="mt-2 text-sm text-gray-400">Meta alcanzada · en tu fondo</p>
-                            {kpiReserva.meta != null && kpiReserva.actual > kpiReserva.meta && (
-                              <p className="mt-1 text-xs text-emerald-400/85">
-                                {formatARS(kpiReserva.actual - kpiReserva.meta)} por encima de la meta
-                              </p>
-                            )}
-                          </>
-                        ) : (
-                          <>
-                            <p
-                              className={`mt-4 font-black tabular-nums tracking-tighter leading-[1.08] break-words ${montoDisplayClass(kpiReserva.actual, 'kpiStatProminent')} text-sky-100`}
-                            >
-                              {formatARS(kpiReserva.actual)}
-                            </p>
-                            <p className="mt-2 text-sm text-gray-400">En tu fondo ahora</p>
-                            <p className="mt-3 text-sm text-sky-200/85 tabular-nums leading-snug">
-                              Te falta{' '}
-                              <span className="font-semibold text-sky-100">{formatARS(kpiReserva.falta ?? 0)}</span> para la
-                              meta de <span className="font-semibold text-sky-100">{formatARS(kpiReserva.meta ?? 0)}</span>
-                            </p>
-                          </>
-                        )
-                      ) : (
-                        <>
-                          <p
-                            className={`mt-4 font-black tabular-nums tracking-tighter leading-[1.08] break-words ${montoDisplayClass(kpiReserva.actual, 'kpiStatProminent')} text-gray-50`}
-                          >
-                            {formatARS(kpiReserva.actual)}
-                          </p>
-                          <p className="mt-2 text-sm text-gray-400">
-                            Definí una meta en pesos en el detalle para ver cuánto te falta.
-                          </p>
-                        </>
-                      )}
-                    </div>
-                    {kpiReserva.tieneMeta && kpiReserva.pct != null && (
-                      <div className="w-full max-w-md mx-auto px-1">
-                        <div className="mb-1.5 flex items-center justify-center gap-3 text-[10px] uppercase tracking-wide text-gray-500">
-                          <span>Progreso</span>
-                          <span className="tabular-nums text-sky-300/90">
-                            {kpiReserva.metaAlcanzada && kpiReserva.pct > 100
-                              ? '100%+'
-                              : `${Math.round(kpiReserva.pct)}%`}
-                          </span>
-                        </div>
-                        <div className="h-2.5 overflow-hidden rounded-full bg-white/[0.08]">
-                          <div
-                            className={`h-full rounded-full transition-[width] duration-500 ${
-                              kpiReserva.metaAlcanzada
-                                ? 'bg-gradient-to-r from-emerald-600 to-emerald-400'
-                                : 'bg-gradient-to-r from-sky-600 to-cyan-400'
-                            }`}
-                            style={{ width: `${Math.min(100, kpiReserva.pct)}%` }}
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </Link>
-              </motion.div>
-            </div>
-          )}
+          <DashboardFondoSection
+            saldoFondoEmergencia={saldoFondoEmergencia}
+            kpiReserva={kpiReserva}
+          />
 
           <div className="grid min-w-0 grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
             <KPICard
@@ -1186,49 +862,7 @@ export default function Dashboard() {
             className="glass p-5"
           >
             <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-4">Distribución del mes</p>
-            {pieData.length === 0 ? (
-              <p className="text-gray-600 text-sm text-center py-10">Sin datos</p>
-            ) : (
-              <div className="flex items-center gap-4">
-                <ResponsiveContainer width={160} height={160}>
-                  <PieChart>
-                    <Pie data={pieData} dataKey="value" cx="50%" cy="50%" innerRadius={44} outerRadius={72} paddingAngle={2}>
-                      {pieData.map((entry, i) => (
-                        <Cell key={i} fill={entry.color} stroke="transparent" />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      formatter={(value, name, item) => {
-                        const p = item?.payload as PieSlice
-                        if (p?.tarjetaUsdMonto != null) {
-                          return [
-                            `${formatUSD(p.tarjetaUsdMonto)} (≈ ${formatARS(Number(value ?? 0))} al TC)`,
-                            name,
-                          ]
-                        }
-                        return [formatARS(Number(value ?? 0)), name]
-                      }}
-                      contentStyle={{ background: '#1b1b23', border: '1px solid rgba(70,69,85,0.6)', borderRadius: 12, fontSize: 12 }}
-                      itemStyle={{ color: '#e2e8f0' }}
-                      labelStyle={{ color: '#94a3b8' }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-                <ul className="flex-1 space-y-2">
-                  {pieData.map((d, i) => (
-                    <li key={i} className="flex items-center justify-between gap-2 text-xs">
-                      <span className="flex items-center gap-1.5 min-w-0">
-                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: d.color }} />
-                        <span className="text-gray-400 truncate">{d.name}</span>
-                      </span>
-                      <span className="text-gray-200 font-medium shrink-0 text-right">
-                        {d.tarjetaUsdMonto != null ? formatUSD(d.tarjetaUsdMonto) : formatARS(d.value)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+            <DashboardPieChart data={pieData} />
           </motion.div>
 
           <motion.div
@@ -1238,91 +872,12 @@ export default function Dashboard() {
             className="glass p-5"
           >
             <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-4">Gastos por categoría</p>
-            {barData.length === 0 ? (
-              <p className="text-gray-600 text-sm text-center py-10">Sin gastos registrados</p>
-            ) : (
-              <ResponsiveContainer width="100%" height={180}>
-                <BarChart data={barData} layout="vertical" margin={{ left: 0, right: 12, top: 0, bottom: 0 }}>
-                  <XAxis type="number" hide />
-                  <YAxis
-                    type="category"
-                    dataKey="nombre"
-                    width={90}
-                    tick={{ fill: '#9ca3af', fontSize: 11 }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <Tooltip
-                    formatter={(value) => formatARS(Number(value ?? 0))}
-                    contentStyle={{ background: '#1b1b23', border: '1px solid rgba(70,69,85,0.6)', borderRadius: 12, fontSize: 12 }}
-                    itemStyle={{ color: '#e2e8f0' }}
-                    labelStyle={{ color: '#94a3b8' }}
-                    cursor={{ fill: 'rgba(255,255,255,0.03)' }}
-                  />
-                  <Bar dataKey="total" radius={[0, 6, 6, 0]} maxBarSize={18}>
-                    {barData.map((entry, i) => (
-                      <Cell key={i} fill={entry.color} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            )}
+            <DashboardBarChart data={barData} />
           </motion.div>
         </div>
       )}
 
-      {!loading && lineData.length > 1 && (
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.45 }}
-          className="hidden lg:block glass p-5 mt-4"
-        >
-          <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-4">
-            Evolución de los gastos — {anio}
-          </p>
-          <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={lineData} margin={{ left: 8, right: 16, top: 4, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#2a2931" vertical={false} />
-              <XAxis dataKey="mes" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis
-                tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`}
-                tick={{ fill: '#6b7280', fontSize: 11 }}
-                axisLine={false}
-                tickLine={false}
-                width={52}
-              />
-              <Tooltip
-                formatter={(value, name) => [formatARS(Number(value ?? 0)), String(name ?? '')]}
-                contentStyle={{ background: '#1b1b23', border: '1px solid rgba(70,69,85,0.6)', borderRadius: 12, fontSize: 12 }}
-                itemStyle={{ color: '#e2e8f0' }}
-                labelStyle={{ color: '#94a3b8' }}
-              />
-              <Legend
-                iconType="circle"
-                iconSize={8}
-                wrapperStyle={{ fontSize: 12, color: '#9ca3af', paddingTop: 8 }}
-              />
-              <Line
-                type="monotone"
-                dataKey="Ingresos"
-                stroke="#10b981"
-                strokeWidth={2}
-                dot={{ r: 3, fill: '#10b981', strokeWidth: 0 }}
-                activeDot={{ r: 5 }}
-              />
-              <Line
-                type="monotone"
-                dataKey="Gastos"
-                stroke="#ef4444"
-                strokeWidth={2}
-                dot={{ r: 3, fill: '#ef4444', strokeWidth: 0 }}
-                activeDot={{ r: 5 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </motion.div>
-      )}
+      <DashboardLineChart data={lineData} anio={anio} />
     </div>
   )
 }

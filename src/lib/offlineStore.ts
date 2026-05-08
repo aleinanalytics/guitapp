@@ -31,8 +31,8 @@ export interface TransaccionPendiente {
   monto: number
   moneda: string
   medio_pago: string
-  es_gasto_fijo: boolean
-  excluye_saldo: boolean
+  es_gasto_fijo?: boolean
+  excluye_saldo?: boolean
   created_at: string
 }
 
@@ -58,6 +58,11 @@ export async function obtenerPendientes(): Promise<TransaccionPendiente[]> {
   })
 }
 
+export async function obtenerPendientesPorUsuario(userId: string): Promise<TransaccionPendiente[]> {
+  const todos = await obtenerPendientes()
+  return todos.filter((p) => p.user_id === userId)
+}
+
 export async function eliminarPendiente(id: number): Promise<void> {
   const db = await openDB()
   return new Promise((resolve, reject) => {
@@ -78,6 +83,11 @@ export async function contarPendientes(): Promise<number> {
     request.onsuccess = () => resolve(request.result)
     request.onerror = () => reject(request.error)
   })
+}
+
+export async function contarPendientesPorUsuario(userId: string): Promise<number> {
+  const todos = await obtenerPendientes()
+  return todos.filter((p) => p.user_id === userId).length
 }
 
 export async function limpiarPendientes(): Promise<void> {
